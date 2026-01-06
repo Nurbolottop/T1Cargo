@@ -1,7 +1,9 @@
-import os
-
 import telebot
 from telebot import types
+
+from django.db.utils import OperationalError, ProgrammingError
+
+from apps.base import models as base_models
 
 
 def _onboarding_keyboard() -> types.ReplyKeyboardMarkup:
@@ -21,8 +23,36 @@ def _main_menu_keyboard() -> types.ReplyKeyboardMarkup:
 def start_bot(token: str) -> None:
     bot = telebot.TeleBot(token)
 
-    company_name = os.getenv("COMPANY_NAME", "Dragon Express 777 Osh")
-    manager_contact = os.getenv("MANAGER_CONTACT", "")
+    try:
+        settings_obj = base_models.Settings.objects.first()
+    except (OperationalError, ProgrammingError):
+        return
+
+    if not settings_obj or not settings_obj.is_bot_enabled:
+        return
+
+    def _admin_chat_id() -> int | None:
+        admin_fk = getattr(settings_obj, "admin_id", None)
+        raw = getattr(admin_fk, "admin_id", None)
+        if raw is None:
+            return None
+        try:
+            return int(str(raw).strip())
+        except ValueError:
+            return None
+
+    def _notify_admin(text: str) -> None:
+        admin_chat = _admin_chat_id()
+        if not admin_chat:
+            return
+        try:
+            bot.send_message(admin_chat, text)
+        except Exception:
+            return
+
+    company_name = settings_obj.title
+    manager_contact = settings_obj.manager_contact
+    company_phone = settings_obj.phone
 
     registration_state: dict[int, str] = {}
 
@@ -46,14 +76,17 @@ def start_bot(token: str) -> None:
         if manager_contact:
             bot.send_message(
                 message.chat.id,
-                f"Связь с менеджером: {manager_contact}",
+                f"Связь с менеджером: {manager_contact}" + (f"\nТелефон: {company_phone}" if company_phone else ""),
                 reply_markup=_onboarding_keyboard(),
             )
             return
 
+        _notify_admin(
+            "Системное: пользователь нажал 'Написать менеджеру', но manager_contact не заполнен в Settings."
+        )
         bot.send_message(
             message.chat.id,
-            "Контакт менеджера пока не настроен. Укажи MANAGER_CONTACT в .env (например @username или +996...).",
+            "Контакт менеджера временно недоступен.",
             reply_markup=_onboarding_keyboard(),
         )
 
