@@ -1,0 +1,52 @@
+{% load static %}
+<div class="col-xl-8 col-lg-7">
+    <div class="contact-four__right">
+        <div class="section-title text-left sec-title-animation animation-style2">
+            <div class="section-title__tagline-box">
+                <div class="section-title__tagline-shape-box">
+                    <div class="section-title__tagline-shape"></div>
+                    <div class="section-title__tagline-shape-2"></div>
+                </div>
+                <span class="section-title__tagline">Биз менен байланышыңыз</span>
+            </div>
+            <h2 class="section-title__title title-animation">Кабар жөнөтүү</h2>
+        </div>
+        <form 
+            method="post" novalidate="novalidate">
+            {% csrf_token %}
+            <div class="row">
+                <div class="col-xl-6 col-lg-6">
+                    <h4 class="contact-four__input-title">Аты-жөнү *</h4>
+                    <div class="contact-four__input-box">
+                        <input type="text" name="name" placeholder="Аты-жөнү" required="">
+                    </div>
+                </div>
+                <div class="col-xl-6 col-lg-6">
+                    <h4 class="contact-four__input-title">Телефон *</h4>
+                    <div class="contact-four__input-box">
+                        <input type="text" name="phone" placeholder="0700123456"
+                            required="">
+                    </div>
+                </div>
+                <div class="col-xl-12">
+                    <h4 class="contact-four__input-title">Кайрылуунун темасы *</h4>
+                    <div class="contact-four__input-box">
+                        <input type="text" name="subject" placeholder="Кайрылуунун темасы"
+                            required="">
+                    </div>
+                </div>
+                <div class="col-xl-12">
+                    <h4 class="contact-four__input-title">Билдирүү *</h4>
+                    <div class="contact-four__input-box text-message-box">
+                        <textarea name="message"
+                            placeholder="Билдирүүңүздү жазыңыз"></textarea>
+                    </div>
+                    <div class="contact-four__btn-box">
+                        <button type="submit" class="thm-btn">Жөнөтүү<span><i class="icon-diagonal-arrow"></i></span></button>
+                    </div>
+                </div>
+            </div>
+        </form>
+        <div class="result"></div>
+    </div>
+</div>

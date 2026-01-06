@@ -1,0 +1,15 @@
+{% load static %}
+<div class="page-header__social">
+    {% if settings.facebook %}
+    <a href="{{settings.facebook}}">Facebook</a>
+    {% endif %}
+    {% if settings.telegram %}
+    <a href="{{settings.telegram}}">Telegram</a>
+    {% endif %}
+    {% if settings.whatsapp %}
+    <a href="{{settings.whatsapp}}">Whatsapp</a>
+    {% endif %}
+    {% if settings.instagram %}
+    <a href="{{settings.instagram}}">Instagram</a>
+    {% endif %}
+</div>

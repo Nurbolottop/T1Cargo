@@ -1,0 +1,63 @@
+{% load static %}
+<section class="before-after-two">
+    <div class="before-after-two__bg-shape"
+        style="background-image: url({% static 'assets/images/shapes/before-after-two-bg-shape.png' %});"></div>
+    <div class="before-after-two__shape-1 float-bob-y">
+        <img src="{% static 'assets/images/shapes/before-after-two-shape-1.png' %}" alt="">
+    </div>
+    <div class="before-after-two__shape-2"></div>
+    <div class="before-after-two__shape-3"></div>
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-6">
+                <div class="before-after-two__left">
+                    <div class="before-after-two__img-box">
+                        <div class="before-after">
+                            {% if before_after.0 %}
+                                <div class="before-after-twentytwenty" id="wrinkle-before-after-1">
+                                    <img src="{{ before_after.0.before_image.url }}" alt="{{ before_after.0.title }} до">
+                                    <img src="{{ before_after.0.after_image.url }}" alt="{{ before_after.0.title }} после">
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="before-after-two__tag"><span>Тазалоого чейин</span></div>
+                        <div class="before-after-two__tag before-after-two__tag-2">
+                            <span>Тазалоодон кийин</span></div>
+                    </div>
+                  
+                </div>
+            </div>
+            
+            <div class="col-xl-6">
+                <div class="before-after-two__right">
+                    <div class="section-title text-left sec-title-animation animation-style2">
+                        <div class="section-title__tagline-box">
+                            <div class="section-title__tagline-shape-box">
+                                <div class="section-title__tagline-shape"></div>
+                                <div class="section-title__tagline-shape-2"></div>
+                            </div>
+                            <span class="section-title__tagline">Тазалоого чейин / Тазалоодон кийин</span>
+                        </div>
+                        <h2 class="section-title__title title-animation">Тазалык — бул жөн гана кызмат эмес, <br><span>бул жашоого болгон мамиле.</span>
+                        </h2>
+                    </div>
+                    <div class="before-after-two__img-box-2">
+                        <div class="before-after">
+                            {% if before_after.1 %}
+                                <div class="before-after-twentytwenty" id="wrinkle-before-after-2">
+                                    <img src="{{ before_after.1.before_image.url }}" alt="{{ before_after.1.title }} до">
+                                    <img src="{{ before_after.1.after_image.url }}" alt="{{ before_after.1.title }} после">
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="before-after-two__tag"><span>Тазалоого чейин</span></div>
+                        <div class="before-after-two__tag before-after-two__tag-2">
+                            <span>Тазалоодон кийин </span></div>
+                    </div>
+                </div>
+                
+            </div>
+            
+        </div>
+    </div>
+</section>

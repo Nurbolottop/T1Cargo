@@ -1,0 +1,51 @@
+{% load static %}
+<section class="process-one">
+    <div class="process-one__shape-1 float-bob-x">
+        <img src="{% static 'assets/images/shapes/process-one-shape-1.png' %}" alt="">
+    </div>
+    <div class="process-one__shape-2 float-bob-y">
+        <img src="{% static 'assets/images/shapes/process-one-shape-2.png' %}" alt="">
+    </div>
+    <div class="container">
+        <div class="section-title text-center sec-title-animation animation-style1">
+            <div class="section-title__tagline-box">
+                <div class="section-title__tagline-shape-box">
+                    <div class="section-title__tagline-shape"></div>
+                    <div class="section-title__tagline-shape-2"></div>
+                </div>
+                <span class="section-title__tagline">
+                    Кантип иштейбиз</span>
+            </div>
+            <h2 class="section-title__title title-animation">
+                Биздин тазалоо процесси — башынан
+                <span>аягына</span><br>
+                <span>
+                    чейин таза жана тынчысыз    
+                </span>
+            </h2>
+        </div>
+        <div class="process-one__inner">
+            <ul class="row list-unstyled">
+                {% for process in process %}
+                <li class="col-xl-3 col-lg-6 col-md-6">
+                    <div class="process-one__single">
+                        <div class="process-one__single-shape-1">
+                            {% if forloop.counter|divisibleby:2 %}
+                                <img src="{% static 'assets/images/shapes/process-one-single-shape-2.png' %}" alt="">
+                            {% else %}
+                                <img src="{% static 'assets/images/shapes/process-one-single-shape-1.png' %}" alt="">
+                            {% endif %}
+                        </div>
+                        <h3 class="process-one__title">{{ process.title }}</h3>
+                        <p class="process-one__text">{{ process.description|linebreaksbr }}</p>
+                        <div class="process-one__icon">
+                            <span class="{{ process.icon }}"></span>
+                            <div class="process-one__count"></div>
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</section>

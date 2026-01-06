@@ -1,0 +1,90 @@
+{% extends 'include/secondary/homepage.html' %}
+{% block title %}{{blog.title}}{% endblock %}
+{% load static %}
+{% block content %}
+
+    <div class="custom-cursor__cursor"></div>
+    <div class="custom-cursor__cursor-two"></div>
+
+    <!--Start Preloader-->
+    <div class="loader js-preloader">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <!--End Preloader-->
+
+    {% include 'include/base/head.html' %}
+
+    <div class="page-wrapper">
+        {% include 'include/base/header.html' %}
+
+        <div class="stricky-header stricked-menu main-menu main-menu-three">
+            <div class="sticky-header__content"></div><!-- /.sticky-header__content -->
+        </div><!-- /.stricky-header -->
+
+
+        <!--Page Header Start-->
+        <section class="page-header">
+            <div class="page-header__bg" style="background-image: url({% static 'assets/images/backgrounds/page-header-bg.jpg' %});">
+            </div>
+            {% include 'include/secondary/social.html' %}
+            <div class="container">
+                <div class="page-header__inner">
+                    <div class="page-header__img-1">
+                        <img src="{% static 'assets/images/resources/page-header-img-1.jpg' %}" alt="">
+                    </div>
+                    <h2>{{blog.title}}</h2>
+                    <div class="thm-breadcrumb__box">
+                        <ul class="thm-breadcrumb list-unstyled">
+                            <li><a href="{% url 'index' %}">Башкы бет</a></li>
+                            <li><span class="icon-arrow-right"></span></li>
+                            <li>Жанылыктар</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--Page Header End-->
+
+        <!--Blog Details Start-->
+        <section class="blog-details">
+            <div class="container">
+                <div class="row">
+                        <div class="blog-details__left">
+                            <div class="blog-details__img">
+                                <img src="{{blog.image.url}}" alt="">
+                            </div>
+                            <div class="blog-details__content">
+                                <h3 class="blog-details__title">{{blog.title}}</h3>
+                                <ul class="blog-details__meta-list list-unstyled">
+                                    <li>
+                                        <div class="icon">
+                                            <span class="icon-calendar"></span>
+                                        </div>
+                                        <div class="content">
+                                            <span>{{blog.created_at|date:"d"}}</span>
+                                            <h5>{{blog.created_at|date:"M"}}</h5>
+                                        </div>
+                                    </li>
+                                </ul>
+                                <p class="blog-details__text-1">{{blog.description|safe}}</p>
+                            </div>
+                           
+                        </div>
+                    
+                </div>
+            </div>
+        </section>
+        <!--Blog Details End-->
+
+        <!--Site Footer Two Start-->
+        {% include 'include/base/footer.html' %}
+        <!--Site Footer Two End-->
+
+
+
+
+    </div><!-- /.page-wrapper -->
+
+{% endblock %}

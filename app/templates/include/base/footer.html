@@ -1,0 +1,548 @@
+{% load static %}
+<footer class="site-footer-two">
+    <div class="container">
+        <div class="site-footer-two__inner">
+            <div class="site-footer-two__shape-1 img-bounce">
+                <img src="{% static 'assets/images/shapes/site-footer-two-shape-1.png' %}" alt="">
+            </div>
+            <div class="site-footer-two__top">
+                <div class="row">
+                    <div class="col-xl-5">
+                        <div class="site-footer-two__top-left">
+                            <div class="site-footer-two__logo-box">
+                                <div class="site-footer-two__logo">
+                                    <a href="{% url 'index' %}"><img
+                                            src="{{ settings.logo.url }}" style="width: 300px;" alt=""></a>
+                                </div>
+                                <p class="site-footer-two__text-1">{{ settings.description }}</p>
+                            </div>
+                            <div class="site-footer-two__social-box">
+                                <h4 class="site-footer-two__social-title">Соцтармактарда биз менен болуңуз</h4>
+                                <div class="site-footer-two__social">
+                                    {% if settings.facebook %}
+                                    <a href="{{ settings.facebook }}"><span class="icon-facebook-app-symbol"></span></a>
+                                    {% endif %}
+                                    {% if settings.instagram %}
+                                    <a href="{{ settings.instagram }}"><span class="icon-instagram"></span></a>
+                                    {% endif %}
+                                    {% if settings.whatsapp %}
+                                    <a href="{{ settings.whatsapp }}"><span class="fab fa-whatsapp"></span></a>
+                                    {% endif %}
+                                    {% if settings.telegram %}
+                                    <a href="{{ settings.telegram }}"><span class="fab fa-telegram"></span></a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p class="site-footer-two__copyright-text">Copyright 2025 by <a
+                                    href="https://www.instagram.com/n.erk1nbaew/">ZEA.</a> компаниясына таандык. Бардык укуктар корголгон.</p>
+                        </div>
+                    </div>
+                    <div class="col-xl-7">
+                        <div class="site-footer-two__top-right">
+                            <div class="site-footer-two__widget-box">
+                                <div class="row">
+                                    <div class="col-xl-3 col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="100ms">
+                                        <div class="footer-widget-two__quick-links">
+                                            <h4 class="footer-widget-two__title">Башкы бөлүмдөр</h4>
+                                            <ul class="footer-widget-two__quick-links-list list-unstyled">
+                                                <li><a href="{% url 'index' %}"> <span class="icon-next"></span>
+                                                        Башкы бет</a></li>
+                                                <li><a href="{% url 'about' %}"> <span class="icon-next"></span>
+                                                        Биз жөнүндө</a></li>
+                                                <li><a href="{% url 'services' %}"> <span class="icon-next"></span>
+                                                        Кызматтар</a></li>
+                                                <li><a href="{% url 'team' %}"> <span class="icon-next"></span>
+                                                        Команда</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="col-xl-3 col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="200ms">
+                                        <div class="footer-widget-two__essential-links">
+                                            <h4 class="footer-widget-two__title">Байланыш жана маалымат</h4>
+                                            <ul class="footer-widget-two__quick-links-list list-unstyled">
+                                                <li><a href="{% url 'contacts' %}"> <span class="icon-next"></span>
+                                                        Байланыш</a></li>
+                                                <li><a href="{% url 'blog' %}"> <span class="icon-next"></span>
+                                                        Блог</a></li>
+                                                <li><a href="{% url 'testimonial_form' %}"> <span class="icon-next"></span>
+                                                        Пикир калтыруу</a></li>
+                                                <li><a href="{% url 'booking_form' %}"> <span class="icon-next"></span>
+                                                        Заказ берүү</a></li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="col-xl-3 col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="300ms">
+                                        <div class="footer-cleaning-animation">
+                                            <div class="cleaning-scene">
+                                                <!-- Vacuum cleaner animation -->
+                                                <div class="vacuum-cleaner">
+                                                    <div class="vacuum-body"></div>
+                                                    <div class="vacuum-hose"></div>
+                                                    <div class="vacuum-nozzle"></div>
+                                                </div>
+                                                
+                                                <!-- Dust particles -->
+                                                <div class="dust-particles">
+                                                    <div class="dust"></div>
+                                                    <div class="dust"></div>
+                                                    <div class="dust"></div>
+                                                    <div class="dust"></div>
+                                                    <div class="dust"></div>
+                                                </div>
+                                                
+                                                <!-- Floor lines -->
+                                                <div class="floor-lines">
+                                                    <div class="line"></div>
+                                                    <div class="line"></div>
+                                                    <div class="line"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xl-3 col-lg-3 col-md-6 wow fadeInUp" data-wow-delay="400ms">
+                                        <div class="footer-mop-animation">
+                                            <div class="mop-scene">
+                                                <!-- Mop animation -->
+                                                <div class="mop">
+                                                    <div class="mop-handle"></div>
+                                                    <div class="mop-head"></div>
+                                                </div>
+                                                
+                                                <!-- Water droplets -->
+                                                <div class="water-droplets">
+                                                    <div class="droplet"></div>
+                                                    <div class="droplet"></div>
+                                                    <div class="droplet"></div>
+                                                </div>
+                                                
+                                                <!-- Soap bubbles -->
+                                                <div class="soap-bubbles">
+                                                    <div class="bubble"></div>
+                                                    <div class="bubble"></div>
+                                                    <div class="bubble"></div>
+                                                    <div class="bubble"></div>
+                                                </div>
+                                                
+                                                <!-- Clean streak -->
+                                                <div class="clean-streak"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="site-footer-two__bottom">
+        <div class="container">
+            <ul class="list-unstyled site-footer-two__contact-info">
+                <li>
+                    <div class="site-footer__contact-info-icon">
+                        <span class="icon-envelope"></span>
+                    </div>
+                    <div class="site-footer__contact-info-content">
+                        <p>Электрондук почта:</p>
+                        <h5><a href="mailto:{{ settings.email }}">{{ settings.email }}</a></h5>
+                    </div>
+                </li>
+                <li>
+                    <div class="site-footer__contact-info-icon">
+                        <span class="icon-phone-call"></span>
+                    </div>
+                    <div class="site-footer__contact-info-content">
+                        <p>Телефон:</p>
+                        <h5><a href="tel:{{ settings.phone }}">{{ settings.phone }}</a></h5>
+                    </div>
+                </li>
+                <li>
+                    <div class="site-footer__contact-info-icon">
+                        <span class="icon-calendar"></span>
+                    </div>
+                    <div class="site-footer__contact-info-content">
+                        <p>Жумуш убактысы</p>
+                        <h5>{{settings.work_schedule}}</h5>
+                    </div>
+                </li>
+                <li>
+                    <div class="site-footer__contact-info-icon">
+                        <span class="icon-pin"></span>
+                    </div>
+                    <div class="site-footer__contact-info-content">
+                        <p>Биздин дарек:</p>
+                        <h5>{{ settings.locate }}</h5>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </div>
+</footer>
+
+<div class="mobile-nav__wrapper">
+    <div class="mobile-nav__overlay mobile-nav__toggler"></div>
+    <!-- /.mobile-nav__overlay -->
+    <div class="mobile-nav__content">
+        <span class="mobile-nav__close mobile-nav__toggler"><i class="fa fa-times"></i></span>
+
+        <div class="logo-box">
+            <a href="{% url 'index' %}" aria-label="logo image"><img src="{{ settings.logo.url }}" width="150"
+                    alt="" /></a>
+        </div>
+        <!-- /.logo-box -->
+        <div class="mobile-nav__container"></div>
+        <!-- /.mobile-nav__container -->
+
+        <ul class="mobile-nav__contact list-unstyled">
+            <li>
+                <i class="fa fa-envelope"></i>
+                <a href="mailto:{{ settings.email }}">{{ settings.email }}</a>
+            </li>
+            <li>
+                <i class="fas fa-phone"></i>
+                <a href="tel:{{ settings.phone }}">{{ settings.phone }}</a>
+            </li>
+        </ul><!-- /.mobile-nav__contact -->
+        <div class="mobile-nav__top">
+            <div class="mobile-nav__social">
+                {% if settings.facebook %}
+                <a href="{{ settings.facebook }}" class="fab fa-facebook"></a>
+                {% endif %}
+                {% if settings.instagram %}
+                <a href="{{ settings.instagram }}" class="fab fa-instagram"></a>
+                {% endif %}
+                {% if settings.whatsapp %}
+                <a href="{{ settings.whatsapp }}" class="fab fa-whatsapp"></a>
+                {% endif %}
+                {% if settings.telegram %}
+                <a href="{{ settings.telegram }}" class="fab fa-telegram"></a>
+                {% endif %}
+            </div><!-- /.mobile-nav__social -->
+        </div><!-- /.mobile-nav__top -->
+
+
+
+    </div>
+    <!-- /.mobile-nav__content -->
+</div>
+<!-- /.mobile-nav__wrapper -->
+
+
+<style>
+/* Cleaning Animation Styles */
+.footer-cleaning-animation, .footer-mop-animation {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.cleaning-scene, .mop-scene {
+    width: 150px;
+    height: 150px;
+    position: relative;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Vacuum Cleaner Animation */
+.vacuum-cleaner {
+    position: absolute;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    animation: vacuumMove 4s ease-in-out infinite;
+}
+
+.vacuum-body {
+    width: 25px;
+    height: 20px;
+    background: linear-gradient(45deg, #4a90e2, #357abd);
+    border-radius: 8px;
+    position: relative;
+}
+
+.vacuum-body::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    background: #ff6b35;
+    border-radius: 50%;
+    animation: blink 1s ease-in-out infinite;
+}
+
+.vacuum-hose {
+    width: 3px;
+    height: 30px;
+    background: #666;
+    position: absolute;
+    top: 20px;
+    left: 11px;
+    border-radius: 2px;
+    animation: hoseWiggle 2s ease-in-out infinite;
+}
+
+.vacuum-nozzle {
+    width: 15px;
+    height: 8px;
+    background: #333;
+    position: absolute;
+    top: 48px;
+    left: 5px;
+    border-radius: 4px;
+}
+
+/* Dust Particles */
+.dust-particles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.dust {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(139, 69, 19, 0.7);
+    border-radius: 50%;
+    animation: dustFloat 3s ease-in-out infinite;
+}
+
+.dust:nth-child(1) { top: 60px; left: 60px; animation-delay: 0s; }
+.dust:nth-child(2) { top: 80px; left: 80px; animation-delay: 0.5s; }
+.dust:nth-child(3) { top: 70px; left: 100px; animation-delay: 1s; }
+.dust:nth-child(4) { top: 90px; left: 70px; animation-delay: 1.5s; }
+.dust:nth-child(5) { top: 85px; left: 90px; animation-delay: 2s; }
+
+/* Floor Lines */
+.floor-lines {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    right: 10px;
+}
+
+.line {
+    height: 2px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 3px 0;
+    border-radius: 1px;
+    animation: cleanLine 4s ease-in-out infinite;
+}
+
+.line:nth-child(1) { animation-delay: 0s; }
+.line:nth-child(2) { animation-delay: 1s; }
+.line:nth-child(3) { animation-delay: 2s; }
+
+/* Mop Animation */
+.mop {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: mopSwing 3s ease-in-out infinite;
+}
+
+.mop-handle {
+    width: 4px;
+    height: 60px;
+    background: #8B4513;
+    border-radius: 2px;
+    position: relative;
+}
+
+.mop-head {
+    width: 20px;
+    height: 12px;
+    background: #E6E6FA;
+    position: absolute;
+    bottom: -12px;
+    left: -8px;
+    border-radius: 0 0 10px 10px;
+    animation: mopHeadMove 3s ease-in-out infinite;
+}
+
+/* Water Droplets */
+.water-droplets {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.droplet {
+    position: absolute;
+    width: 4px;
+    height: 6px;
+    background: rgba(135, 206, 235, 0.8);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    animation: dropletFall 2s ease-in-out infinite;
+}
+
+.droplet:nth-child(1) { top: 70px; left: 60px; animation-delay: 0s; }
+.droplet:nth-child(2) { top: 80px; left: 80px; animation-delay: 0.7s; }
+.droplet:nth-child(3) { top: 75px; left: 70px; animation-delay: 1.4s; }
+
+/* Soap Bubbles */
+.soap-bubbles {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(135, 206, 235, 0.3));
+    animation: bubbleFloat 4s ease-in-out infinite;
+}
+
+.bubble:nth-child(1) { width: 8px; height: 8px; top: 90px; left: 40px; animation-delay: 0s; }
+.bubble:nth-child(2) { width: 6px; height: 6px; top: 100px; left: 60px; animation-delay: 1s; }
+.bubble:nth-child(3) { width: 10px; height: 10px; top: 85px; left: 80px; animation-delay: 2s; }
+.bubble:nth-child(4) { width: 5px; height: 5px; top: 95px; left: 100px; animation-delay: 3s; }
+
+/* Clean Streak */
+.clean-streak {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+    border-radius: 2px;
+    animation: cleanStreak 3s ease-in-out infinite;
+}
+
+/* Animations */
+@keyframes vacuumMove {
+    0%, 100% { transform: translateY(-50%) translateX(0); }
+    50% { transform: translateY(-50%) translateX(20px); }
+}
+
+@keyframes hoseWiggle {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(5deg); }
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes dustFloat {
+    0% { opacity: 1; transform: translateY(0) translateX(0); }
+    50% { opacity: 0.5; transform: translateY(-10px) translateX(-10px); }
+    100% { opacity: 0; transform: translateY(-20px) translateX(-20px); }
+}
+
+@keyframes cleanLine {
+    0% { width: 0; background: rgba(255, 255, 255, 0.2); }
+    50% { width: 100%; background: rgba(255, 255, 255, 0.6); }
+    100% { width: 100%; background: rgba(255, 255, 255, 0.2); }
+}
+@keyframes mopSwing {
+    0%, 100% { transform: translateX(-50%) rotate(-10deg); }
+    50% { transform: translateX(-50%) rotate(10deg); }
+}
+
+@keyframes mopHeadMove {
+    0%, 100% { transform: scaleX(1); }
+    50% { transform: scaleX(1.2); }
+}
+
+@keyframes dropletFall {
+    0% { opacity: 0; transform: translateY(-10px); }
+    50% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(20px); }
+}
+
+@keyframes bubbleFloat {
+    0% { opacity: 0; transform: translateY(20px) scale(0.5); }
+    50% { opacity: 1; transform: translateY(-10px) scale(1); }
+    100% { opacity: 0; transform: translateY(-30px) scale(0.8); }
+}
+
+@keyframes cleanStreak {
+    0% { opacity: 0; transform: scaleX(0); }
+    50% { opacity: 1; transform: scaleX(1); }
+    100% { opacity: 0.3; transform: scaleX(1); }
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .footer-cleaning-animation {
+        height: 150px;
+    }
+    
+    .footer-mop-animation {
+        display: none;
+    }
+    
+    .cleaning-scene {
+        width: 120px;
+        height: 120px;
+    }
+}
+</style>
+
+<script>
+// Animated Counter for Stats
+document.addEventListener('DOMContentLoaded', function() {
+    const animateCounter = (element, target) => {
+        let current = 0;
+        const increment = target / 100;
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                current = target;
+                clearInterval(timer);
+            }
+            element.textContent = Math.floor(current);
+        }, 20);
+    };
+
+    // Intersection Observer for triggering animation when visible
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const statNumbers = entry.target.querySelectorAll('.stat-number');
+                statNumbers.forEach(stat => {
+                    const target = parseInt(stat.getAttribute('data-count'));
+                    animateCounter(stat, target);
+                });
+                observer.unobserve(entry.target);
+            }
+        });
+    });
+
+    const statsSection = document.querySelector('.footer-widget-two__stats');
+    if (statsSection) {
+        observer.observe(statsSection);
+    }
+
+    // Button hover effects
+    const ctaButtons = document.querySelectorAll('.footer-cta-btn');
+    ctaButtons.forEach(btn => {
+        btn.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px) scale(1.05)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+});
+</script>
+
+<a href="#" data-target="html" class="scroll-to-target scroll-to-top">
+    <span class="scroll-to-top__wrapper"><span class="scroll-to-top__inner"></span></span>
+    <span class="scroll-to-top__text"> Башына кайтуу</span>
+</a>

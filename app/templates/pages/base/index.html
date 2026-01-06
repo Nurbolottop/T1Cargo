@@ -1,0 +1,400 @@
+{% extends 'include/secondary/homepage.html' %}
+{% block title %}Башкы бет{% endblock %}
+{% load static %}
+<style>
+.member-name {
+    font-weight: 600;
+    color: #3c5b6f;
+    margin-right: 8px;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    transition: color 0.2s;
+}
+.team-two__social a:hover .member-name {
+    color: #2b8ae2;
+}
+.scroll-row{flex-wrap:nowrap;overflow-x:auto;scroll-behavior:smooth;gap:24px;}
+.scroll-row::-webkit-scrollbar{height:8px;}
+.scroll-row::-webkit-scrollbar-track{background:#e0e0e0;border-radius:4px;}
+.scroll-row::-webkit-scrollbar-thumb{background:#4caf50;border-radius:4px;}
+/* animation indicator (optional)*/
+</style>
+{% block content %}
+
+    <div class="custom-cursor__cursor"></div>
+    <div class="custom-cursor__cursor-two"></div>
+
+    <!--Start Preloader-->
+    <div class="loader js-preloader">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <!--End Preloader-->
+
+    <!-- Start sidebar widget content -->
+    {% include 'include/base/head.html' %}
+    <!-- End sidebar widget content -->
+
+
+
+    {% if messages %}
+    {% for message in messages %}
+        {% if 'reviewed' in message.tags %}
+        <div id="reviewModal">
+    <div class="modal-box">
+        <div class="checkmark"></div>
+        <h3 style="margin-bottom:20px;">{{ message }}</h3>
+        <button id="closeReviewModal" class="thm-btn">OK</button>
+    </div>
+    </div>
+        {% endif %}
+    {% endfor %}
+    {% endif %}
+
+<div class="page-wrapper">
+        {% include 'include/base/header.html' %}
+
+        <div class="stricky-header stricked-menu main-menu main-menu-two">
+            <div class="sticky-header__content"></div><!-- /.sticky-header__content -->
+        </div><!-- /.stricky-header -->
+
+
+
+        <!-- Main Slider Start -->
+        <section class="main-slider">
+            <div class="main-slider__wrap">
+                <div class="swiper-container main-slider-style1">
+                    <div class="swiper-wrapper">
+                        <!-- Slide Item -->
+                         {% for slide in slides %}
+                        <div class="swiper-slide">
+                            <div class="main-slider__bg"
+                                style="background-image: url({{slide.image.url}});">
+                            </div>
+                            <div class="main-slider__shape-bg float-bob-y"
+                                style="background-image: url({% static 'assets/images/shapes/main-slider-shape-bg.png' %});"></div>
+                            <div class="main-slider__shape-1 float-bob-y">
+                                <img src="{% static 'assets/images/shapes/main-slider-shape-1.png' %}" alt="">
+                            </div>
+                            <div class="main-slider__img-box">
+                                <div class="main-slider__img">
+                                    <img src="{{slide.icon.url}}" alt="">
+                                </div>
+                            </div>
+                            <div class="container">
+                                <div class="main-slider__content">
+                                    <h2 class="main-slider__title">{{slide.title}} <span>{{slide.title_2}}</span> <br></h2>
+                                    <p class="main-slider__text">{{slide.description}}</p>
+                                    <div class="main-slider__btn-box">
+                                        <a href="{% url 'about' %}" class="thm-btn">Кеттик!<span><i
+                                                    class="icon-diagonal-arrow"></i></span></a>
+                                    </div>  
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        <!-- Slide Item -->
+
+                    </div>
+                    <!-- If we need navigation buttons -->
+                    <div class="main-slider__nav">
+                        <div class="swiper-button-prev" id="main-slider__swiper-button-next">
+                            <i class="icon-diagonal-arrow"></i>
+                        </div>
+                        <div class="swiper-button-next" id="main-slider__swiper-button-prev">
+                            <i class="icon-diagonal-arrow"></i>
+                        </div>
+                    </div>
+
+
+
+                </div>
+            </div>
+        </section>
+        <!-- Main Slider End -->
+
+        <style>
+          .scroll-row{flex-wrap:nowrap;overflow-x:auto;scroll-behavior:smooth;gap:24px;}
+          .scroll-row::-webkit-scrollbar{height:8px;}
+          .scroll-row::-webkit-scrollbar-track{background:#e0e0e0;border-radius:4px;}
+          .scroll-row::-webkit-scrollbar-thumb{background:#4caf50;border-radius:4px;}
+          /* animation indicator (optional)*/
+        </style>
+        <script>
+          document.addEventListener('DOMContentLoaded',()=>{
+            const row=document.querySelector('.pricing-two__tab-content-box .row');
+            if(row){row.classList.add('scroll-row');
+              let dir=1;
+              setInterval(()=>{
+                row.scrollBy({left:dir*2,behavior:'smooth'});
+                if(row.scrollLeft+row.clientWidth>=row.scrollWidth-2) dir=-1;
+                if(row.scrollLeft<=2) dir=1;
+              },20);
+            }
+          });
+        </script>
+
+        {% if about %}
+        <!--About Two Start -->
+        {% include 'include/secondary/about.html' %}
+        <!--About Two End -->
+        {% endif %}
+        
+        {% if services %}
+        <!--Services Two Start -->
+        {% include 'include/secondary/services.html' %}
+        <!--Services Two End -->
+        {% endif %}
+
+        {% if before_after %}
+        <!--Before After Two Start -->
+        {% include 'include/secondary/after.html' %}
+        <!--Before After Two End -->
+        {% endif %}
+
+        {% if process %}
+        <!--Process One Start -->
+        {% include 'include/secondary/process.html' %}
+        <!--Process One End -->
+        {% endif %}
+
+        {% if services %}
+        <!--Services Two Start -->
+        {% include 'include/secondary/services_catolog.html' %}
+        <!--Services Two End -->
+        {% endif %}
+        
+        {% if projects %}
+        <!--Project Two Start -->
+        <section class="project-two">
+            <div class="project-two__bg-shape"
+                style="background-image: url({% static 'assets/images/shapes/project-two-bg-shape.png' %});"></div>
+            <div class="project-two__shape-1 float-bob-x">
+                <img src="{% static 'assets/images/shapes/project-two-shape-1.png' %}" alt="">
+            </div>
+            <div class="project-two__shape-2 float-bob-y">
+                <img src="{% static 'assets/images/shapes/project-two-shape-2.png' %}" alt="">
+            </div>
+            <div class="container">
+                <div class="project-two__top">
+                    <div class="section-title text-left sec-title-animation animation-style2">
+                        <div class="section-title__tagline-box">
+                            <div class="section-title__tagline-shape-box">
+                                <div class="section-title__tagline-shape"></div>
+                                <div class="section-title__tagline-shape-2"></div>
+                            </div>
+                            <span class="section-title__tagline">Биздин проекттер</span>
+                        </div>
+                        <h2 class="section-title__title title-animation">Идея менен инновация
+                            <span>чогулган </span><br><span>долбоорлор аренаcы.</span>
+                        </h2>
+                    </div>
+                    <div class="project-two__btn-box">
+                        <a href="products.html" class="thm-btn">View All Projects<span><i
+                                    class="icon-diagonal-arrow"></i></span></a>
+                    </div>
+                </div>
+                <div class="row masonary-layout">
+                    {% for project in projects %}
+                    <!--Project Two Single Start-->
+                    <div class="col-xl-4 col-lg-6 col-md-6 col-sm-12 col-12 wow fadeInUp" data-wow-delay="{{ forloop.counter|add:1 }}00ms"
+                        data-wow-duration="1500ms">
+                        <div class="project-two__single">
+                            <div class="project-two__img-box">
+                                <div class="project-two__img">
+                                    {% if project.image %}
+                                        <img src="{{ project.image.url }}" alt="{{ project.title }}" style="width: 100%; height: 350px; object-fit: cover; object-position: center;">
+                                    {% else %}
+                                        <img src="{% static 'assets/images/project/project-2-1.jpg' %}" alt="{{ project.title }}" style="width: 100%; height: 350px; object-fit: cover; object-position: center;">
+                                    {% endif %}
+                                </div>
+                                <div class="project-two__content-box">
+                                    <ul class="project-two__info-list list-unstyled">
+                                        <li>
+                                            <span>Клиент:</span>
+                                            <p>{{ project.title }}</p>
+                                        </li>
+                                        <li>
+                                            <span>Узактыгы :</span>
+                                            <p>{{ project.duration }}</p>
+                                        </li>
+                                        <li>
+                                            <span>Бюджет :</span>
+                                            <p>{{ project.price }}</p>
+                                        </li>
+                                    </ul>
+                                    <div class="project-two__title-box">
+                                        <span class="project-two__sub-title">🧹✨ CleaningKiki</span>
+                                        <h3 class="project-two__title"><a href="#" onclick="return false;">{{ project.service.title }}</a></h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--Project Two Single End-->
+                    {% empty %}
+                    <!--No Projects Message-->
+                    <div class="col-12">
+                        <div class="text-center">
+                            <p>Проекты пока не добавлены</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
+        <!--Testimonial Two Start -->
+        {% include 'include/secondary/testimonial.html' %}
+        <!--Testimonial One End -->
+
+        <!--Team Two Start -->
+        <section class="team-two">
+            <div class="team-two__shape-1"> 
+                <img src="{% static 'assets/images/shapes/team-two-shape-1.png' %}" alt="">
+            </div>
+            <div class="team-two__shape-2 img-bounce">
+                <img src="{% static 'assets/images/shapes/team-two-shape-2.png' %}" alt="">
+            </div>
+            <div class="team-two__shape-3"></div>
+            <div class="team-two__shape-4"></div>
+            <div class="container">
+                <div class="section-title text-center sec-title-animation animation-style1">
+                    <div class="section-title__tagline-box">
+                        <div class="section-title__tagline-shape-box">
+                            <div class="section-title__tagline-shape"></div>
+                            <div class="section-title__tagline-shape-2"></div>
+                        </div>
+                        <span class="section-title__tagline">Тажрыйбалуу кызматкерлерибиз</span>
+                    </div>
+                    <h2 class="section-title__title title-animation">Жаккан ишиңизди кылып жүрүңүз, <br>  
+                        <span> ал эми тазалоону кесипкөйлөргө тапшырыңыз</span></h2>
+                </div>
+                <div class="team-two__inner">
+                    <div class="team-two__main-tab-box tabs-box">
+                        <div class="row">
+                            <div class="col-xl-4">
+                                <div class="team-two__tab-buttons-box-one">
+                                    <ul class="tab-buttons list-unstyled">
+                                        {% for member in team_members %}
+                                            {% if forloop.counter|divisibleby:2 %}
+                                            <li data-tab="#team-left-{{ forloop.counter }}" class="tab-btn {% if forloop.first %}active-btn{% endif %}">
+                                                <div class="team-two__buttons">
+                                                    <div class="team-two__buttons-experience-years">
+                                                        <div class="team-two__buttons-experience-years-count">
+                                                            <h3>{{ member.experience }}</h3>
+                                                        </div>
+                                                        <p class="team-two__buttons-experience-years-text">Жылдык  <br>
+                                                            тажрыйба</p>
+                                                    </div>
+                                                    <div class="team-two__buttons-img-box">
+                                                        <div class="team-two__buttons-img">
+                                                            <img src="{{ member.image.url }}"
+                                                                alt="{{ member.name }}">
+                                                        </div>
+                                                    </div>
+                                                    <div class="team-two__buttons-content">
+                                                        <div class="team-two__buttons-title-box">
+                                                            <h4 class="team-two__buttons-title"><a
+                                                                    href="team-details.html">{{ member.name }}</a></h4>
+                                                            <p class="team-two__buttons-sub-title">{{ member.position }}</p>
+                                                        </div>
+                                                        <div class="team-two__buttons-arrow">
+                                                            <a href="team-details.html"><span
+                                                                    class="icon-diagonal-arrow"></span></a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                            <div class="col-xl-4">
+                                <div class="team-two__tabs-content-outer">
+                                    <div class="tabs-content">
+                                        {% for member in team_members|slice:":6" %}
+                                        <div class="tab {% if forloop.first %}active-tab{% endif %}" id="team-left-{{ forloop.counter }}">
+                                            <div class="team-two__tabs-content-box">
+                                                <div class="team-two__img-box">
+                                                    <div class="team-two__img">
+                                                        <img src="{{ member.image.url }}" alt="{{ member.name }}">
+                                                        <div class="team-two__social">
+                                                            <span class="social-text">{{ member.name }}</span>
+                                                        </div>
+                                                        <style>
+                                                            .social-text {
+                                                                color: #fff;
+                                                                font-weight: 600;
+                                                                font-size: 16px;
+                                                                margin-right: 12px;
+                                                                text-shadow: 0 1px 5px rgba(0,0,0,0.15);
+                                                                letter-spacing: 0.2px;
+                                                                transition: color 0.2s;
+                                                            }
+                                                        </style>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-4">
+                                <div class="team-two__tab-buttons-box-one">
+                                    <ul class="tab-buttons list-unstyled">
+                                        {% for member in team_members %}
+                                            {% if not forloop.counter|divisibleby:2 %}
+                                            <li data-tab="#team-left-{{ forloop.counter }}" class="tab-btn {% if forloop.first %}active-btn{% endif %}">
+                                                <div class="team-two__buttons">
+                                                    <div class="team-two__buttons-experience-years">
+                                                        <div class="team-two__buttons-experience-years-count">
+                                                            <h3>{{ member.experience }}</h3>
+                                                        </div>
+                                                        <p class="team-two__buttons-experience-years-text">Жылдык  <br>
+                                                            тажрыйба</p>
+                                                    </div>
+                                                    <div class="team-two__buttons-img-box">
+                                                        <div class="team-two__buttons-img">
+                                                            <img src="{{ member.image.url }}"
+                                                                alt="{{ member.name }}">
+                                                        </div>
+                                                    </div>
+                                                    <div class="team-two__buttons-content">
+                                                        <div class="team-two__buttons-title-box">
+                                                            <h4 class="team-two__buttons-title"><a
+                                                                    href="team-details.html">{{ member.name }}</a></h4>
+                                                            <p class="team-two__buttons-sub-title">{{ member.position }}</p>
+                                                        </div>
+                                                        <div class="team-two__buttons-arrow">
+                                                            <a href="team-details.html"><span
+                                                                    class="icon-diagonal-arrow"></span></a>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--Team Two End -->
+
+        <!--Pricing Two Start -->
+        
+        <!--Pricing Two End -->
+
+    </div><!-- /.page-wrapper -->
+
+    {% include 'include/base/footer.html' %}
+
+{% endblock %}

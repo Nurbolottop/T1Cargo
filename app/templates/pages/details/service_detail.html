@@ -1,0 +1,108 @@
+{% extends 'include/secondary/homepage.html' %}
+{% block title %}{{ service.title }}{% endblock %}
+{% load static %}
+{% block content %}
+
+<style>
+    @media (min-width: 1200px) {
+    .col-xl-8 {
+        /* flex: 0 0 auto; */
+        width: 100%;
+    }
+}
+</style>
+    <div class="custom-cursor__cursor"></div>
+    <div class="custom-cursor__cursor-two"></div>
+
+    <!--Start Preloader-->
+    <div class="loader js-preloader">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <!--End Preloader-->
+
+    {% include 'include/base/head.html' %}
+
+    <!-- End sidebar widget content -->
+    <div class="page-wrapper">
+        {% include 'include/base/header.html' %}
+        <div class="stricky-header stricked-menu main-menu main-menu-three">
+            <div class="sticky-header__content"></div><!-- /.sticky-header__content -->
+        </div><!-- /.stricky-header -->
+
+
+        <!--Page Header Start-->
+        <section class="page-header">
+            <div class="page-header__bg" style="background-image: url({% static 'assets/images/backgrounds/page-header-bg.jpg' %});">
+            </div>
+            {% include 'include/secondary/social.html' %}
+            <div class="container">
+                <div class="page-header__inner">
+                    <div class="page-header__img-1">
+                        <img src="{% static 'assets/images/resources/page-header-img-1.jpg' %}" alt="">
+                    </div>
+                    <h2>{{service.title}}</h2>
+                    <div class="thm-breadcrumb__box">
+                        <ul class="thm-breadcrumb list-unstyled">
+                            <li><a href="{% url 'index' %}">Башкы бет</a></li>
+                            <li><span class="icon-arrow-right"></span></li>
+                            <li><a href="{% url 'services' %}">Кызматтар</a></li>
+                            <li><span class="icon-arrow-right"></span></li>
+                            <li>{{service.title}}</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--Page Header End-->
+
+        <!--Service details Start-->
+        <section class="services-details">
+            <div class="container">
+                <div class="row">
+                    <div class="col-xl-8 col-lg-7">
+                        <div class="services-details__left">
+                            <h3 class="services-details__title-1">{{service.title}}</h3>
+                            <p class="services-details__text-1">{{service.subtitle}}</p>
+                            <div class="services-details__img-box">
+                                <div class="services-details__img">
+                                    <img src="{{service.banner_image.url}}" alt="">
+                                </div>
+                            </div>
+                            <h3 class="services-details__title-2">{{service.title}}</h3>
+                            <p class="services-details__text-2">{{service.description|safe}}</p>
+                            <div class="services-details__points-box">
+                                {% for point in service.points.all %}
+                                    {% if forloop.counter0|divisibleby:2 %}
+                                        <ul class="services-details__points list-unstyled">
+                                            <li>
+                                                <div class="icon">
+                                                    <span class="icon-star-1"></span>
+                                                </div>
+                                                <p>{{ point.title }}</p>
+                                            </li>
+                                        </ul>
+                                    {% else %}
+                                        <ul class="services-details__points list-unstyled">
+                                            <li>
+                                                <div class="icon">
+                                                    <span class="icon-star-1"></span>
+                                                </div>
+                                                <p>{{ point.title }}</p>
+                                            </li>
+                                        </ul>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div><!-- /.page-wrapper -->
+
+
+{% include 'include/base/footer.html' %}
+
+{% endblock %}

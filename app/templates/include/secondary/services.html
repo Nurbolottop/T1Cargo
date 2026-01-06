@@ -1,0 +1,57 @@
+{% load static %}
+<section class="services-two">
+    <div class="services-two__shape-bg-1"
+        style="background-image: url({% static 'assets/images/shapes/services-two-shape-bg-1.png' %});"></div>
+    <div class="services-two__shape-bg-2"
+        style="background-image: url({% static 'assets/images/shapes/services-two-shape-bg-2.png' %});"></div>
+    <div class="services-two__shape-bg-3"
+        style="background-image: url({% static 'assets/images/shapes/services-two-shape-bg-3.png' %});"></div>
+    <div class="services-two__shape-1 float-bob-x">
+        <img src="{% static 'assets/images/shapes/services-two-shape-1.png' %}" alt="">
+    </div>
+    <div class="services-two__shape-2 float-bob-y">
+        <img src="{% static 'assets/images/shapes/services-two-shape-2.png' %}" alt="">
+    </div>
+    <div class="services-two__shape-3"></div>
+    <div class="services-two__shape-4"></div>
+    <div class="services-two__shape-5"></div>
+    <div class="container">
+        <div class="section-title text-center sec-title-animation animation-style1">
+            <div class="section-title__tagline-box">
+                <div class="section-title__tagline-shape-box">
+                    <div class="section-title__tagline-shape"></div>
+                    <div class="section-title__tagline-shape-2"></div>
+                </div>
+                <span class="section-title__tagline">Биздин Кызматтар</span>
+            </div>
+            <h2 class="section-title__title title-animation">Сиздин <span>муктаждыктарыңызды</span><br> <span>канааттандыруу үчүн кызматтардын толук спектри</span>
+            </h2>
+        </div>
+        <div class="services-two__inner">
+            <ul class="services-two__services-list list-unstyled">
+                {% for service in services %}
+                <li class="hover-item">
+                    <div class="services-two__icon-and-title-box">
+                        <div class="services-two__icon">
+                            <span class="{{ service.icon }}"></span>
+                        </div>
+                        <div class="services-two__title-box">
+                            <div class="services-two__count"></div>
+                            <h3 class="services-two__title"><a href="{% url 'services_details' service.id %}">{{ service.title }}</a></h3>
+                        </div>
+                    </div>
+                    <div class="services-two__text-and-btn-box">
+                        <p class="services-two__text">{{ service.subtitle }}</p>
+                        <div class="services-two__btn-box">
+                            <a href="{% url 'services_details' service.id %}">Кененирээк маалымат<span class="icon-diagonal-arrow"></span></a>
+                        </div>
+                    </div>
+                    <div class="hover-item__box">
+                        <img src="{{ service.image.url }}" alt="{{ service.title }}" class="hover-item__box-img">
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</section>

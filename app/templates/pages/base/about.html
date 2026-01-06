@@ -1,0 +1,198 @@
+{% extends 'include/secondary/homepage.html' %}
+{% block title %}Биз жонундо{% endblock %}
+{% load static %}
+{% block content %}
+
+    <div class="custom-cursor__cursor"></div>
+    <div class="custom-cursor__cursor-two"></div>
+
+    <!--Start Preloader-->
+    <div class="loader js-preloader">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <!--End Preloader-->
+
+    <!-- Start sidebar widget content -->
+    {% include 'include/base/head.html' %}
+
+    <!-- End sidebar widget content -->
+
+    <div class="page-wrapper">
+        {% include 'include/base/header.html' %}
+
+        <div class="stricky-header stricked-menu main-menu main-menu-three">
+            <div class="sticky-header__content"></div><!-- /.sticky-header__content -->
+        </div><!-- /.stricky-header -->
+
+
+        <!--Page Header Start-->
+        <section class="page-header">
+            <div class="page-header__bg" style="background-image: url({% static 'assets/images/backgrounds/page-header-bg.jpg' %});">
+            </div>
+            {% include 'include/secondary/social.html' %}
+            <div class="container">
+                <div class="page-header__inner">
+                    <div class="page-header__img-1">
+                        <img src="{% static 'assets/images/resources/page-header-img-1.jpg' %}" alt="">
+                    </div>
+                    <h2>Биз жонундо</h2>
+                    <div class="thm-breadcrumb__box">
+                        <ul class="thm-breadcrumb list-unstyled">
+                            <li><a href="{% url 'index' %}">Башкы бет</a></li>
+                            <li><span class="icon-arrow-right"></span></li>
+                            <li>Биз жонундо</li>
+                        </ul>
+                    </div>
+                </div>  
+            </div>
+        </section>
+        <!--Page Header End-->
+
+        <!--About Two Start -->
+        {% include 'include/secondary/about.html' %}
+        <!--About Two End -->
+
+        {% include 'include/secondary/service_list.html' %}
+
+        <!--Process One Start -->
+        {% include 'include/secondary/process.html' %}
+        <!--Process One End -->
+
+        <!-- Counter Two Start -->
+        <section class="counter-two">
+            <div class="container">
+                <ul class="row list-unstyled">
+                    <li class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="counter-two__single">
+                            <div class="counter-two__bg"
+                                style="background-image: url({% static 'assets/images/backgrounds/counter-two-bg-1.jpg' %});"></div>
+                            <div class="counter-two__icon">
+                                <span class="icon-cleaning-cart"></span>
+                            </div>
+                            <div class="counter-two__content">
+                                <div class="counter-two__count-box">
+                                    <p class="odometer" data-count="{{ metric.projects_per_month }}">00</p>
+                                    <span>+</span>
+                                </div>
+                                <p class="counter-two__count-text">Ай сайын ийгиликтүү бүткөн иштер </p>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="counter-two__single">
+                            <div class="counter-two__bg"
+                                style="background-image: url({% static 'assets/images/backgrounds/counter-two-bg-1.jpg' %});"></div>
+                            <div class="counter-two__icon">
+                                <span class="icon-costumer"></span>
+                            </div>
+                            <div class="counter-two__content">
+                                <div class="counter-two__count-box">
+                                    <p class="odometer" data-count="{{ metric.happy_customers }}">00</p>
+                                    <span>%</span>
+                                </div>
+                                <p class="counter-two__count-text">Кардарларыбыздын ишенимине ээ болдук!</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="counter-two__single">
+                            <div class="counter-two__bg"
+                                style="background-image: url({% static 'assets/images/backgrounds/counter-two-bg-1.jpg' %});"></div>
+                            <div class="counter-two__icon">
+                                <span class="icon-review"></span>
+                            </div>
+                            <div class="counter-two__content">
+                                <div class="counter-two__count-box">
+                                    <p class="odometer" data-count="{{ metric.positive_reviews }}">00</p>
+                                    <span>m <sup>2</sup>+</span>
+                                </div>
+                                <p class="counter-two__count-text">Кызмат көрсөткөн чарчы метр</p>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="col-xl-3 col-lg-6 col-md-6">
+                        <div class="counter-two__single">
+                            <div class="counter-two__bg"
+                                style="background-image: url({% static 'assets/images/backgrounds/counter-two-bg-1.jpg' %});"></div>
+                            <div class="counter-two__icon">
+                                <span class="icon-work-schedule"></span>
+                            </div>
+                            <div class="counter-two__content">
+                                <div class="counter-two__count-box">
+                                    <p class="odometer" data-count="{{ metric.cleaned_area_m2 }}">00</p>
+                                    <span>+</span>
+                                </div>
+                                <p class="counter-two__count-text">Көрсөтүлгөн кызматтар</p>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </section>
+        <!-- Counter Two End -->
+
+        <!--Team One Start-->
+        <section class="team-one">
+            <div class="team-one__shape-1 float-bob-y">
+                <img src="{% static 'assets/images/shapes/team-one-shape-1.png' %}" alt="">
+            </div>
+            <div class="team-one__shape-2 float-bob-x">
+                <img src="{% static 'assets/images/shapes/team-one-shape-2.png' %}" alt="">
+            </div>
+            <div class="team-one__shape-3"></div>
+            <div class="team-one__shape-4"></div>
+            <div class="container">
+                <div class="section-title text-left sec-title-animation animation-style2">
+                    <div class="section-title__tagline-box">
+                        <div class="section-title__tagline-shape-box">
+                            <div class="section-title__tagline-shape"></div>
+                            <div class="section-title__tagline-shape-2"></div>
+                        </div>
+                        <span class="section-title__tagline">Командабыздын мүчөлөрү</span>
+                    </div>
+                    <h2 class="section-title__title title-animation">Ийгилигибиздин сыры — биздин  <br>
+                        адистер. <span>Сиз үчүн дайым </span><br><span>даяр команда.
+                        </span>
+                    </h2>
+                </div>
+                
+                <div class="team-one__carousel owl-theme owl-carousel">
+                    <!--Team One Single Start-->
+                    {% for team in team %}
+                    <div class="item">
+                        <div class="team-one__single">
+                            <div class="team-one__img-box">
+                                <div class="team-one__img">
+                                    <img src="{{ team.image.url }}" alt="">
+                                </div>
+                                <div class="team-one__share-and-social">
+                                    <div class="team-one__share">
+                                        <span class="icon-star"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="team-one__content">
+                                <div class="team-one__title-box">
+                                    <h3 class="team-one__title"><a href="team-details.html">{{ team.name }}</a></h3>
+                                    <p class="team-one__sub-title">{{ team.position }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        <!--Team One End-->
+
+        <!--Testimonial Two Start -->
+        {% include 'include/secondary/testimonial.html' %}
+        <!--Testimonial One End -->
+
+    </div><!-- /.page-wrapper -->
+
+    {% include 'include/base/footer.html' %}
+
+{% endblock %}  

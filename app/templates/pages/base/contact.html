@@ -1,0 +1,135 @@
+{% extends 'include/secondary/homepage.html' %}
+{% block title %}Байланышуу{% endblock %}
+{% load static %}
+{% block content %}
+
+    <div class="custom-cursor__cursor"></div>
+    <div class="custom-cursor__cursor-two"></div>
+
+    <!--Start Preloader-->
+    <div class="loader js-preloader">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <!--End Preloader-->
+
+    {% include 'include/base/head.html' %}
+
+    <div class="page-wrapper">
+        {% include 'include/base/header.html' %}
+
+        <div class="stricky-header stricked-menu main-menu main-menu-three">
+            <div class="sticky-header__content"></div><!-- /.sticky-header__content -->
+        </div><!-- /.stricky-header -->
+
+
+        <!--Page Header Start-->
+        <section class="page-header">
+            <div class="page-header__bg" style="background-image: url({% static 'assets/images/backgrounds/page-header-bg.jpg' %});">
+            </div>
+            {% include 'include/secondary/social.html' %}
+            <div class="container">
+                <div class="page-header__inner">
+                    <div class="page-header__img-1">
+                        <img src="{% static 'assets/images/resources/page-header-img-1.jpg' %}" alt="">
+                    </div>
+                    <h2>Кабарлоо</h2>
+                    <div class="thm-breadcrumb__box">
+                        <ul class="thm-breadcrumb list-unstyled">
+                            <li><a href="{% url 'index' %}">Башкы Бет</a></li>
+                            <li><span class="icon-arrow-right"></span></li>
+                            <li>Биз менен байланышыңыз</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--Page Header End-->
+
+        <!--Contact Four Start-->
+        <section class="contact-four">
+            <div class="contact-four__shape-1 img-bounce">
+                <img src="{% static 'assets/images/shapes/contact-four-shape-1.png' %}" alt="">
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-xl-4 col-lg-5">
+                        <div class="contact-four__left">
+                            <div class="section-title text-left sec-title-animation animation-style2">
+                                <div class="section-title__tagline-box">
+                                    <div class="section-title__tagline-shape-box">
+                                        <div class="section-title__tagline-shape"></div>
+                                        <div class="section-title__tagline-shape-2"></div>
+                                    </div>
+                                    <span class="section-title__tagline">Байланышыңыз</span>
+                                </div>
+                                <h2 class="section-title__title title-animation">Бизге  <span>кайрылыңыз </span> <br>
+                                    <span>Жардам же суроо</span></h2>
+                            </div>
+                            <p class="contact-four__left-text">Биз жардам берүү үчүн келдик — Бүгүн биз менен байланышыңыз!</p>
+                            <ul class="contact-four__contact-list list-unstyled">
+                                <li>
+                                    <div class="icon">
+                                        <span class="fas fa-map-marker-alt"></span>
+                                    </div>
+                                    <div class="content">
+                                        <h5>Биздин дарек</h5>
+                                        <p>{{settings.locate}}</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="contact-four__contact-list-shape-1">
+                                        <img src="{% static 'assets/images/shapes/contact-four-contact-list-shape-1.png' %}" alt="">
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="icon">
+                                        <span class="far fa-clock"></span>
+                                    </div>
+                                    <div class="content">
+                                        <h5>Байланыш маалыматы</h5>
+                                        <p><span>Телефон:</span> <a href="tel:{{settings.phone}}:">{{settings.phone}}</a></p>
+                                        <p><span>Почта:</span> <a href="mailto:{{settings.email}}">{{settings.email}}</a></p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="contact-four__contact-list-shape-1">
+                                        <img src="{% static 'assets/images/shapes/contact-four-contact-list-shape-1.png' %}" alt="">
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="icon">
+                                        <span class="fas fa-map-marker-alt"></span>
+                                    </div>
+                                    <div class="content">
+                                        <h5>Жумуш убактысы</h5>
+                                        <p><span>Жумуш кундору:</span> {{settings.work_schedule}}</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    {% include 'forms/pages/contacts_form.html' %}
+                </div>
+            </div>
+        </section>
+        <!--Contact Four End-->
+
+
+        <!--Google Map One Start-->
+        <section class="google-map-one">
+            <div class="container">
+                <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3033.24990684722!2d72.79939047583238!3d40.513967071424176!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x38bdac27bb1bc397%3A0xdb0af869ab0b0f67!2zODUg0YPQuy4g0JDQu9C40LXQstCwLCDQntGI!5e0!3m2!1sru!2skg!4v1753235455062!5m2!1sru!2skg"
+                    class="google-map__one" allowfullscreen></iframe>
+            </div>
+        </section>
+        <!--Google Map One End-->
+
+    </div><!-- /.page-wrapper -->
+
+
+    {% include 'include/base/footer.html' %}
+
+{% endblock %}

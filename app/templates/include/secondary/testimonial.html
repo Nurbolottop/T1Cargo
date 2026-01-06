@@ -1,0 +1,62 @@
+{% load static %}
+<section class="testimonial-two">
+    <div class="testimonial-two__shape-bg-1"
+        style="background-image: url({% static 'assets/images/shapes/testimonial-two-shape-bg-1.png' %});"></div>
+    <div class="testimonial-two__shape-1">
+        <img src="{% static 'assets/images/shapes/testimonial-two-shape-1.png' %}" alt="">
+    </div>
+    <div class="testimonial-two__shape-2">
+        <img src="{% static 'assets/images/shapes/testimonial-two-shape-2.png' %}" alt="">
+    </div>
+    <div class="container">
+        <div class="section-title text-left sec-title-animation animation-style2">
+            <div class="section-title__tagline-box">
+                <div class="section-title__tagline-shape-box">
+                    <div class="section-title__tagline-shape"></div>
+                    <div class="section-title__tagline-shape-2"></div>
+                </div>
+                <span class="section-title__tagline">Кардарлардын пикирлери</span>
+            </div>
+            <div class="section-title__content">
+                <h2 class="section-title__title title-animation">Ыраазы болгон <span>кардарларыбыздын </span> <br>
+                    <span>пикирлерин окуңуз</span></h2>
+                <a href="{% url 'testimonial_form' %}" class="thm-btn" style="text-align: center; padding: 12px 24px;">Пикир калтыруу</a>
+            </div>
+        </div>
+        <div class="testimonial-two__carousel owl-carousel owl-theme">
+
+            <!--Testimonial One Single Start -->
+            {% for testimonial in testimonials %}
+            {% if testimonial.show %}
+            <div class="item">
+                <div class="testimonial-two__single">
+                    <div class="testimonial-two__top">
+                        <div class="testimonial-two__top-title">
+                            <h4>{{testimonial.service}}</h4>
+                        </div>
+                        <div class="testimonial-two__top-quote">
+                            <span class="icon-left"></span>
+                        </div>
+                    </div>
+                    <p class="testimonial-two__text">{{testimonial.description}}</p>
+                    <div class="testimonial-two__bottom">
+                        <div class="testimonial-two__client-info">
+                            <div class="testimonial-two__client-img-box">
+                                <div class="testimonial-two__client-img">
+                                    <img src="{{testimonial.image.url}}" alt="">
+                                </div>
+                            </div>
+                            <div class="testimonial-two__client-content">
+                                <h3 class="testimonial-two__client-name"><a href="#" onclick="return false;">– {{testimonial.name}}</a></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>  
+            {% endif %}
+            {% endfor %}
+            <!--Testimonial One Single End -->
+          
+        </div>
+    </div>
+</section>

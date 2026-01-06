@@ -1,0 +1,298 @@
+{% extends 'forms/include/homepage.html' %} {% block title %}Пикир калтыруу{% endblock %} {% load static %} {% block content %}
+<style>
+  /* Custom styling for service dropdown to limit height and enable scrolling */
+  #service {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 5"><path fill="%23666" d="M2 0L0 2h4zm0 5L0 3h4z"/></svg>');
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    cursor: pointer;
+  }
+  
+  /* Limit the dropdown height using size attribute and CSS */
+  #service[size] {
+    height: auto;
+    max-height: 200px;
+    overflow-y: auto;
+    border: 1px solid #e0e4ea;
+    border-radius: 8px;
+  }
+  
+  #service option {
+    padding: 8px 12px;
+    line-height: 1.4;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  #service option:hover {
+    background-color: #f8fafc;
+  }
+  
+  #service option:checked {
+    background-color: #3c5b6f;
+    color: white;
+  }
+  
+  /* Custom scrollbar for the dropdown */
+  #service::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  #service::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  #service::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+  }
+  
+  #service::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+  }
+</style>
+<div class="custom-cursor__cursor"></div>
+<div class="custom-cursor__cursor-two"></div>
+<!--Start Preloader-->
+<div class="loader js-preloader">
+  <div></div>
+  <div></div>
+  <div></div>
+</div>
+<!--End Preloader-->
+<!-- Start sidebar widget content -->
+{% include 'include/base/head.html' %}
+<!-- End sidebar widget content -->
+<div class="page-wrapper"> {% include 'include/base/header.html' %} <div class="stricky-header stricked-menu main-menu main-menu-three">
+    <div class="sticky-header__content"></div>
+    <!-- /.sticky-header__content -->
+  </div>
+  <!-- /.stricky-header -->
+  <!--Start Testimonial Form-->
+  <section class="login-one">
+    <div class="container">
+      <div class="login-one__form">
+        <div class="inner-title text-center">
+          <h2>Пикир калтыруу</h2>
+        </div>
+        <form id="testimonial-form" name="testimonial_form" action="" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% if messages %}
+              <div class="alert-box">
+                {% for message in messages %}
+                  <div class="alert {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          <div class="row">
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <div class="input-file-box" style="background:#f8fafc;border:1px solid #e0e4ea;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:10px;">
+                    <span class="icon-photo" style="color:#3c5b6f;font-size:18px;">
+                      <i class="icon-camera"></i>
+                    </span>
+                    <input type="file" name="photo" id="photo" accept="image/*" class="form-control" style="border:none;background:transparent;padding:0;" required>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <div class="input-box" style="position:relative;">
+                    <span class="icon-user" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#3c5b6f;font-size:18px;">
+                      <i class="icon-user"></i>
+                    </span>
+                    <input type="text" name="name" id="name" placeholder="Атыңыз..." required style="padding-left:40px;border-radius:8px;background:#f8fafc;border:1px solid #e0e4ea;height:48px;">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <div class="custom-select-box" style="position:relative;">
+                    <span class="icon-service" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#3c5b6f;font-size:18px;z-index:2;">
+                      <i class="icon-broom"></i>
+                    </span>
+                    <!-- Hidden input for form submission -->
+                    <input type="hidden" name="service" id="service" required>
+                    <!-- Custom dropdown -->
+                    <div class="custom-dropdown" id="custom-dropdown">
+                      <div class="dropdown-selected" id="dropdown-selected" style="padding-left:40px;border-radius:8px;background:#f8fafc;border:1px solid #e0e4ea;height:48px;display:flex;align-items:center;cursor:pointer;">
+                        <span class="selected-text">🛎️ Кызматты тандаңыз</span>
+                        <span class="dropdown-arrow" style="position:absolute;right:12px;transition:transform 0.3s;">▼</span>
+                      </div>
+                      <div class="dropdown-options" id="dropdown-options" style="position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #e0e4ea;border-radius:8px;max-height:200px;overflow-y:auto;z-index:1000;display:none;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+                        {% for s in services %}
+                          <div class="dropdown-option" data-value="{{ s.id }}" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid #f0f0f0;">
+                            {{ s.title }}
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box" style="position:relative;">
+                  <span class="icon-desc" style="position:absolute;left:14px;top:18px;color:#3c5b6f;font-size:18px;">
+                    <i class="icon-message"></i>
+                  </span>
+                  <textarea name="description" id="description" rows="5" placeholder="Пикириңизди толук жазыңыз..." required style="padding-left:40px;padding-top:16px;border-radius:8px;background:#f8fafc;border:1px solid #e0e4ea;min-height:110px;width:100%;resize:vertical;"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <button class="thm-btn" type="submit" data-loading-text="Please wait...">Жөнөтүү <span>
+                    <i class="icon-diagonal-arrow"></i>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+  <!--End Testimonial Form--> {% include 'include/base/footer.html' %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dropdownSelected = document.getElementById('dropdown-selected');
+    const dropdownOptions = document.getElementById('dropdown-options');
+    const dropdownArrow = dropdownSelected.querySelector('.dropdown-arrow');
+    const selectedText = dropdownSelected.querySelector('.selected-text');
+    const hiddenInput = document.getElementById('service');
+    const optionElements = dropdownOptions.querySelectorAll('.dropdown-option');
+    
+    // Toggle dropdown visibility
+    dropdownSelected.addEventListener('click', function(e) {
+        e.preventDefault();
+        const isOpen = dropdownOptions.style.display === 'block';
+        
+        if (isOpen) {
+            dropdownOptions.style.display = 'none';
+            dropdownArrow.style.transform = 'rotate(0deg)';
+        } else {
+            // Calculate available space and adjust height if needed
+            const rect = dropdownSelected.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            const spaceBelow = viewportHeight - rect.bottom;
+            
+            if (spaceBelow < 220) {
+                dropdownOptions.style.maxHeight = Math.max(150, spaceBelow - 20) + 'px';
+            } else {
+                dropdownOptions.style.maxHeight = '200px';
+            }
+            
+            dropdownOptions.style.display = 'block';
+            dropdownArrow.style.transform = 'rotate(180deg)';
+        }
+    });
+    
+    // Handle option selection
+    optionElements.forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            const value = this.getAttribute('data-value');
+            const text = this.textContent.trim();
+            
+            // Update hidden input
+            hiddenInput.value = value;
+            
+            // Update displayed text
+            selectedText.textContent = text;
+            
+            // Close dropdown
+            dropdownOptions.style.display = 'none';
+            dropdownArrow.style.transform = 'rotate(0deg)';
+            
+            // Remove previous selection styling
+            optionElements.forEach(opt => opt.style.backgroundColor = '');
+            
+            // Add selection styling
+            this.style.backgroundColor = '#f0f8ff';
+        });
+        
+        // Add hover effects
+        option.addEventListener('mouseenter', function() {
+            if (this.style.backgroundColor !== '#f0f8ff') {
+                this.style.backgroundColor = '#f8fafc';
+            }
+        });
+        
+        option.addEventListener('mouseleave', function() {
+            if (this.style.backgroundColor !== '#f0f8ff') {
+                this.style.backgroundColor = '';
+            }
+        });
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!dropdownSelected.contains(e.target) && !dropdownOptions.contains(e.target)) {
+            dropdownOptions.style.display = 'none';
+            dropdownArrow.style.transform = 'rotate(0deg)';
+        }
+    });
+    
+    // Keyboard navigation
+    let currentIndex = -1;
+    
+    dropdownSelected.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.click();
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (dropdownOptions.style.display === 'block') {
+                currentIndex = Math.min(currentIndex + 1, optionElements.length - 1);
+                highlightOption(currentIndex);
+            } else {
+                this.click();
+            }
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (dropdownOptions.style.display === 'block') {
+                currentIndex = Math.max(currentIndex - 1, 0);
+                highlightOption(currentIndex);
+            }
+        } else if (e.key === 'Escape') {
+            dropdownOptions.style.display = 'none';
+            dropdownArrow.style.transform = 'rotate(0deg)';
+        }
+    });
+    
+    function highlightOption(index) {
+        optionElements.forEach((opt, i) => {
+            if (i === index) {
+                opt.style.backgroundColor = '#e3f2fd';
+                opt.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else if (opt.style.backgroundColor !== '#f0f8ff') {
+                opt.style.backgroundColor = '';
+            }
+        });
+        
+        if (index >= 0 && index < optionElements.length) {
+            optionElements[index].addEventListener('click', function() {
+                this.click();
+            }, { once: true });
+        }
+    }
+    
+    // Make the dropdown focusable
+    dropdownSelected.setAttribute('tabindex', '0');
+});
+</script>
+
+{% endblock %}

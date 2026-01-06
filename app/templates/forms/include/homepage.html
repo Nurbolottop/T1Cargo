@@ -1,0 +1,121 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title> {{settings.title}} || {{settings.description}} </title>
+    <!-- favicons Icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="{{settings.icon.url}}" />
+    <link rel="icon" type="image/png" sizes="32x32" href="{{settings.icon.url}}" />
+    <link rel="icon" type="image/png" sizes="16x16" href="{{settings.icon.url}}" />
+    <link rel="manifest" href="{{settings.icon.url}}" />
+    <meta name="description" content="{{settings.description}}" />
+
+    <!-- fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&display=swap"
+        rel="stylesheet">
+
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap"
+        rel="stylesheet">
+
+
+    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/animate.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/custom-animate.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/swiper.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/font-awesome-all.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/jarallax.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/jquery.magnific-popup.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/odometer.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/flaticon.css' %}">
+    <link rel="stylesheet" href="{% static 'assets/css/owl.carousel.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/owl.theme.default.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/nice-select.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/jquery-ui.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/aos.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/twentytwenty.css' %}" />
+
+
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/banner.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/slider.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/footer.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/sliding-text.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/about.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/services.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/counter.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/before-and-after.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/office-location.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/pricing.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/blog.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/newsletter.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/faq.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/team.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/testimonial.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/why-choose.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/process.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/project.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/contact.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/page-header.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/google-map.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/error-page.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/module-css/shop.css' %}" />
+
+    <!-- template styles -->
+    <link rel="stylesheet" href="{% static 'assets/css/style.css' %}" />
+    <link rel="stylesheet" href="{% static 'assets/css/custom.css' %}" />    
+    <link rel="stylesheet" href="{% static 'assets/css/responsive.css' %}" />
+</head>
+
+<body class="custom-cursor">
+    {% block content %}
+    {% endblock %}
+
+    <script src="{% static 'assets/js/jquery-latest.js' %}"></script>
+    <script src="{% static 'assets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'assets/js/jarallax.min.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.ajaxchimp.min.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.appear.min.js' %}"></script>
+    <script src="{% static 'assets/js/swiper.min.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.magnific-popup.min.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.validate.min.js' %}"></script>
+    <script src="{% static 'assets/js/odometer.min.js' %}"></script>
+    <script src="{% static 'assets/js/wNumb.min.js' %}"></script>
+    <script src="{% static 'assets/js/wow.js' %}"></script>
+    <script src="{% static 'assets/js/isotope.js' %}"></script>
+    <script src="{% static 'assets/js/owl.carousel.min.js' %}"></script>
+    <script src="{% static 'assets/js/jquery-ui.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.nice-select.min.js' %}"></script>
+    <script src="{% static 'assets/js/twentytwenty.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.event.move.js' %}"></script>
+    <script src="{% static 'assets/js/marquee.min.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.circleType.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.fittext.js' %}"></script>
+    <script src="{% static 'assets/js/jquery.lettering.min.js' %}"></script>
+    <script src="{% static 'assets/js/typed-2.0.11.js' %}"></script>
+    <script src="{% static 'assets/js/jquery-sidebar-content.js' %}"></script>
+    <script src="{% static 'assets/js/countdown.min.js' %}"></script>
+    <script src="{% static 'assets/js/aos.js' %}"></script>
+
+
+
+
+    <script src="{% static 'assets/js/gsap/gsap.js' %}"></script>
+    <script src="{% static 'assets/js/gsap/ScrollTrigger.js' %}"></script>
+    <script src="{% static 'assets/js/gsap/SplitText.js' %}"></script>
+
+
+
+
+    <!-- template js -->
+    <script src="{% static 'assets/js/script.js' %}"></script>
+    <script src="{% static 'assets/js/custom.js' %}"></script>
+</body>
+
+</html>

@@ -1,0 +1,121 @@
+{% load static %}
+<section class="about-two">
+    <div class="about-two__shape-1 float-bob-y">
+        <img src="{% static 'assets/images/shapes/about-two-shape-1.png' %}" alt="">
+    </div>
+    <div class="about-two__shape-2 rotate-me">
+        <img src="{% static 'assets/images/shapes/about-two-shape-2.png' %}" alt="">
+    </div>
+    <div class="about-two__shape-3 img-bounce">
+        <img src="{% static 'assets/images/shapes/about-two-shape-3.png' %}" alt="">
+    </div>
+    <div class="container">
+        <div class="row">
+            <div class="col-xl-6">
+                <div class="about-two__left">
+                    <div class="about-two__img-shape-1 img-bounce"></div>
+                    <div class="row">
+                        <div class="col-xl-6 col-lg-6 col-md-6 wow fadeInUp" data-wow-delay="100ms">
+                            <div class="about-two__left-img-box">
+                                <div class="about-two__img-1">
+                                    <img src="{{about.image_1.url}}" alt="">
+                                </div>
+                                <div class="about-two__img-2">
+                                    <img src="{{about.image_2.url}}" alt="">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xl-6 col-lg-6 col-md-6 wow fadeInUp" data-wow-delay="200ms">
+                            <div class="about-two__left-img-box-2">
+                                <div class="about-two__img-3">
+                                    <img src="{{about.image_3.url}}" alt="">
+                                </div>
+                                <div class="about-two__img-4">
+                                    <img src="{{about.image_4.url}}" alt="">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-6">
+                <div class="about-two__right">
+                    <div class="section-title text-left sec-title-animation animation-style2">
+                        <div class="section-title__tagline-box">
+                            <div class="section-title__tagline-shape-box">
+                                <div class="section-title__tagline-shape"></div>
+                                <div class="section-title__tagline-shape-2"></div>
+                            </div>
+                            <span class="section-title__tagline">Биз жонундо</span>
+                        </div>
+                        <h2 class="section-title__title title-animation">{{about.title_1}}<br> <span>{{about.title_2}}</span>
+                        </h2>
+                    </div>
+                    <p class="about-two__text">{{about.description}}</p>
+                    <div class="about-two__experience-and-counter">
+                        <div class="about-two__counter">
+                            <ul class="about-two__counter-list list-unstyled">
+                                <li>
+                                    <div class="about-two__counter-single">
+                                        <div class="about-two__counter-count">
+                                            <h3 class="odometer" data-count="{{about.experience}}">00</h3>
+                                            <span>+</span>
+                                        </div>
+                                        <p>жылдык тажрыйба</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="about-two__counter-single">
+                                        <div class="about-two__counter-count">
+                                            <h3 class="odometer" data-count="{{about.customers}}">00</h3>
+                                            <span>%</span>
+                                        </div>
+                                        <p>бактылуу Кардар</p>
+                                    </div>
+                                </li>
+                                <li>
+                                    <div class="about-two__counter-single">
+                                        <div class="about-two__counter-count">
+                                            <h3 class="odometer" data-count="{{about.successfully}}">00</h3>
+                                            <span>+</span>
+                                        </div>
+                                        <p>ийгиликтүү уюштуруу</p>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="about-two__points-and-mission-box">
+                        <ul class="about-two__points list-unstyled">
+                            {% for mission in about.missions.all %}
+                            <li>
+                                <div class="icon">
+                                    <span class="icon-check"></span>
+                                </div>
+                                <p>{{mission.title}}</p>
+                                
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        
+                    </div>
+                    <div class="about-two__btn-and-contact">
+                        <div class="about-two__btn-box">
+                            <a href="{% url 'contacts' %}" class="thm-btn">Байланышуу <span><i
+                                        class="icon-diagonal-arrow"></i></span></a>
+                        </div>
+                        <div class="about-two__contact-box">
+                            <div class="about-two__contact-icon">
+                                <span class="icon-customer-service"></span>
+                            </div>
+                            <div class="about-two__contact-content">
+                                <p>{{about.time}}</p>
+                                <h4><a href="tel:{{about.number}}">{{about.number}}</a></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

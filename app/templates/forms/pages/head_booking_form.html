@@ -1,0 +1,62 @@
+{% load static %}
+<style>
+.booking-card input::placeholder,
+.booking-card textarea::placeholder {
+  color: rgba(255,255,255,0.7) !important;
+}
+.booking-card label,
+.booking-card .label,
+.booking-card output {
+  color: white !important;
+}
+.service-option span {
+  color: white !important;
+}
+.range-wrap {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,0.3) !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+}
+</style>
+<div class="booking-card">
+    <h4 class="booking-card__title">Биз менен тазалыкка жол ачыңыз!</h4>
+    <form action="{% url 'index' %}" method="post"  novalidate>
+        {% csrf_token %}
+        <div class="service-group">
+            <p class="label">Услуга *</p>
+            <div class="service-options">
+                {% for s in services %}
+                <label class="service-option">
+                    <input type="radio" name="service" value="{{ s.id }}" required>
+                    <span>{{ s.title }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="contact-four__input-box">
+            <input type="text" name="name" placeholder="Аты-жөнү *" required="" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;border-radius:8px;">
+        </div>
+        <div class="contact-four__input-box">
+            <input type="tel" name="phone" placeholder="Телефон *" required="" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;border-radius:8px;">
+        </div>
+        <div class="range-wrap">
+            <label for="roomsRange">Комнат: <output id="roomsOut">1</output></label>
+            <input type="range" id="roomsRange" name="rooms" min="1" max="10" value="1" step="1" oninput="roomsOut.value = this.value" style="background:transparent;">
+        </div>
+        <div class="contact-four__input-box">
+            <textarea name="more" placeholder="Дополнительная информация..." rows="3" style="resize:vertical;background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;border-radius:8px;padding:12px;"></textarea>
+        </div>
+        <div class="">
+            <button type="submit" class="thm-btn">Жөнөтүү <span><i class="icon-diagonal-arrow"></i></span></button>
+        </div>
+    </form>
+    <div class="result"></div>
+{% if messages %}
+  {% for message in messages %}
+    {% if 'booking_sent' in message.tags %}
+      <span id="bookingSentFlag" style="display:none"></span>
+    {% endif %}
+  {% endfor %}
+{% endif %}
+</div>

@@ -1,0 +1,96 @@
+{% extends 'include/secondary/homepage.html' %}
+{% block title %}Жанылыктар{% endblock %}
+{% load static %}
+{% block content %}
+
+
+    <div class="custom-cursor__cursor"></div>
+    <div class="custom-cursor__cursor-two"></div>
+
+    <!--Start Preloader-->
+    <div class="loader js-preloader">
+        <div></div>
+        <div></div>
+        <div></div>
+    </div>
+    <!--End Preloader-->
+
+    {% include 'include/base/head.html' %}
+
+    <div class="page-wrapper">
+        {% include 'include/base/header.html' %}
+
+        <div class="stricky-header stricked-menu main-menu main-menu-three">
+            <div class="sticky-header__content"></div><!-- /.sticky-header__content -->
+        </div><!-- /.stricky-header -->
+
+
+        <!--Page Header Start-->
+        <section class="page-header">
+            <div class="page-header__bg" style="background-image: url({% static 'assets/images/backgrounds/page-header-bg.jpg' %});">
+            </div>
+            {% include 'include/secondary/social.html' %}
+            <div class="container">
+                <div class="page-header__inner">
+                    <div class="page-header__img-1">
+                        <img src="{% static 'assets/images/resources/page-header-img-1.jpg' %}" alt="">
+                    </div>
+                    <h2>Жанылыктар</h2>
+                    <div class="thm-breadcrumb__box">
+                        <ul class="thm-breadcrumb list-unstyled">
+                            <li><a href="{% url 'index' %}">Башкы бет</a></li>
+                            <li><span class="icon-arrow-right"></span></li>
+                            <li>Жанылыктар</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--Page Header End-->
+
+        <!--Blog Carousel page Start-->
+        <section class="blog-carousel-page">
+            <div class="container">
+                <div class="blog-one__bottom">
+                    <div class="blog-carousel-style owl-carousel owl-theme carousel-dot-style">
+{% for blog in blogs %}
+                        <div class="item" data-wow-duration="1500ms">
+                            <div class="blog-one__single">
+                                {% if forloop.counter|divisibleby:2 %}
+                                <div class="blog-one__content blog-one__content--two">
+                                    <h3 class="blog-one__title"><a href="blog-details.html">{{ blog.title }}</a></h3>
+                                    <div class="blog-one__text">{{ blog.description|safe|truncatewords_html:15 }}</div>
+                                </div>
+                                {% endif %}
+                                <div class="blog-one__img-box">
+                                    <div class="blog-one__img">
+                                        {% if blog.image %}
+                                        <img src="{{ blog.image.url }}" alt="{{ blog.title }}">
+                                        {% else %}
+                                        <img src="{% static 'assets/images/blog/blog-1-1.jpg' %}" alt="{{ blog.title }}">
+                                        {% endif %}
+                                    </div>
+                                    <div class="blog-one__date">
+                                        <p>{{ blog.created_at|date:"d" }}</p>
+                                        <span>{{ blog.created_at|date:"M" }}</span>
+                                    </div>
+                                </div>
+                                {% if not forloop.counter|divisibleby:2 %}
+                                <div class="blog-one__content">
+                                    <h3 class="blog-one__title"><a href="{% url 'blog_details' blog.id %}">{{ blog.title }}</a></h3>
+                                    <p class="blog-one__text">{{ blog.description|safe|truncatechars:100 }}</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!--Blog Carousel page End-->
+
+        {% include 'include/base/footer.html' %}
+    </div><!-- /.page-wrapper -->
+
+{% endblock %}

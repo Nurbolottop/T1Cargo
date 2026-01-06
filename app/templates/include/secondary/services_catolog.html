@@ -1,0 +1,70 @@
+{% load static %}
+<section class="pricing-two">
+    <div class="pricing-two__shape-bg"
+        style="background-image: url({% static 'assets/images/shapes/pricing-two-shape-bg.png' %});"></div>
+    <div class="pricing-two__shape-2 img-bounce">
+        <img src="{% static 'assets/images/shapes/pricing-two-shape-2.png' %}" alt="">
+    </div>
+    <div class="pricing-two__shape-3 float-bob-y">
+        <img src="{% static 'assets/images/shapes/pricing-two-shape-3.png' %}" alt="">
+    </div>
+    <div class="container">
+        <div class="section-title text-center sec-title-animation animation-style1">
+            <div class="section-title__tagline-box">
+                <div class="section-title__tagline-shape-box">
+                    <div class="section-title__tagline-shape"></div>
+                    <div class="section-title__tagline-shape-2"></div>
+                </div>
+                <span class="section-title__tagline">Кызматтардын түрлөрү</span>
+            </div>
+            <h2 class="section-title__title title-animation">Жаккан ишиңизди кылып жүрүңүз, <br> <span> ал эми тазалоону кесипкөйлөргө тапшырыңыз</span></h2>
+        </div>
+        <div class="pricing-two__inner">
+            <div class="pricing-two__main-tab-box tabs-box">
+                <div class="tabs-content">
+                    <div class="tab active-tab" id="monthly">
+                        <div class="pricing-two__tab-content-box">
+                            <div class="row">
+                                <!--Pricing Two Single Start -->
+                                {% for service in services %}
+                                <div class="col-xl-4 col-lg-6">
+                                    <div class="pricing-two__single pricing-card">
+                                        <div class="pricing-two__shape-1">
+                                            <img src="{% static 'assets/images/shapes/pricing-two-shape-1.png' %}" alt="">
+                                        </div>
+                                        <div class="pricing-two__pack-name">
+                                            <p>🫧{{service.title}}</p>
+                                        </div>
+                                        <h3 class="pricing-two__price-box"> <span class="dolar">{{service.price}}</span> </h3>
+                                        <p class="pricing-two__text">{{service.subtitle}}</p>
+                                        
+                                        <div class="pricing-two__btn-box">
+                                            <a href="{% url 'booking_form' %}" class="thm-btn">Кызматты тандоо<span><i
+                                                        class="icon-plus"></i></span></a>
+                                        </div>
+                                        <div class="pricing-two__points-box">
+                                            <ul class="list-unstyled pricing-two__points">
+                                                {% for point in service.points.all %}
+                                                <li>
+                                                    <div class="icon">
+                                                        <span class="icon-check-1"></span>
+                                                    </div>
+                                                    <div class="text">
+                                                        <p>{{point.title}}</p>
+                                                    </div>
+                                                </li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                <!--Pricing Two Single End -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

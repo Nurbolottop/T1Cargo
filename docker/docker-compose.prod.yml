@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  db_cargo:
+    image: postgres:14
+    container_name: postgres_db_cargo
+    env_file:
+      - ../.env
+    volumes:
+      - postgres_data_cargo:/var/lib/postgresql/data
+    networks:
+      - portfolio_network_cargo
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis_cargo:
+    image: redis:6
+    container_name: redis_cargo
+    networks:
+      - portfolio_network_cargo
+
+  web_cargo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: django_web_cargo
+    command: sh -c "/entrypoint.sh && gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+    volumes:
+      - ../app:/app
+      - static_cargo:/app/core/staticfiles
+      - media_cargo:/app/media
+    env_file:
+      - ../.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    depends_on:
+      db_cargo:
+        condition: service_healthy
+      redis_cargo:
+        condition: service_started
+    ports:
+      - "8003:8000"
+    networks:
+      - portfolio_network_cargo
+
+  telegram_bot:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: telegram_bot_cargo
+    command: python manage.py bot
+    volumes:
+      - ../app:/app
+    env_file:
+      - ../.env
+    depends_on:
+      - db_cargo
+      - web_cargo
+    networks:
+      - portfolio_network_cargo
+
+networks:
+  portfolio_network_cargo:
+    driver: bridge
+
+volumes:
+  postgres_data_cargo:
+  static_cargo:
+  media_cargo:

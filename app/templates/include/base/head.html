@@ -1,0 +1,74 @@
+{% load static %}
+<style>
+/* ===== Booking Form Custom Styles ===== */
+.booking-form {
+    background: #ffffff;
+    padding: 30px 25px;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+    max-width: 420px;
+    margin: 0 auto;
+}
+.booking-form h4 {
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    margin-bottom: 24px;
+}
+.booking-form-inner .contact-four__input-box {
+    margin-bottom: 16px;
+}
+.booking-form-inner select,
+.booking-form-inner input[type="text"],
+.booking-form-inner input[type="tel"] {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #dcdcdc;
+    border-radius: 6px;
+    font-size: 14px;
+    transition: border-color .2s;
+}
+.booking-form-inner select:focus,
+.booking-form-inner input:focus {
+    border-color: #7c3aed; /* accent color */
+    outline: none;
+}
+.rooms-range label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+.rooms-range input[type=range] {
+    width: 100%;
+}
+.booking-form-inner .thm-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 12px 18px;
+}
+</style>
+<div class="xs-sidebar-group info-group info-sidebar">
+        <div class="xs-overlay xs-bg-black"></div>
+        <div class="xs-sidebar-widget">
+            <div class="sidebar-widget-container">
+                <div class="widget-heading">
+                    <a href="#" class="close-side-widget">X</a>
+                </div>
+                <div class="sidebar-textwidget">
+                    <div class="sidebar-info-contents">
+                        <div class="content-inner">
+                            <div class="logo">
+                                <a href="{% url 'index' %}"><img src="{{settings.logo.url}}" style="width:300px;" alt="" /></a>
+                            </div>
+                            <div class="content-box">
+                                <h4>Биз жонундо</h4>
+                                <p>{{settings.description}}</p>
+                            </div>
+                            {% include 'forms/pages/head_booking_form.html' %}
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

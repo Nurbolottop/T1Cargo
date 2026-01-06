@@ -1,0 +1,220 @@
+{% extends 'forms/include/homepage.html' %} 
+{% block title %}Пикир калтыруу{% endblock %} 
+{% load static %} 
+{% block content %} 
+<div class="custom-cursor__cursor"></div>
+<div class="custom-cursor__cursor-two"></div>
+<!--Start Preloader-->
+<div class="loader js-preloader">
+  <div></div>
+  <div></div>
+  <div></div>
+</div>
+<!--End Preloader-->
+<!-- Start sidebar widget content -->
+{% include 'include/base/head.html' %}
+<!-- End sidebar widget content -->
+<div class="page-wrapper"> 
+  {% include 'include/base/header.html' %} 
+  <div class="stricky-header stricked-menu main-menu main-menu-three">
+    <div class="sticky-header__content"></div>
+    <!-- /.sticky-header__content -->
+  </div>
+  <!-- /.stricky-header -->
+  <!--Start Testimonial Form-->
+  <section class="login-one">
+    <div class="container">
+      <div class="login-one__form">
+        <div class="inner-title text-center">
+          <h2>Бронь / Заказ</h2>
+        </div>
+        <form name="booking_form" method="post">
+            {% csrf_token %}
+            {% if messages %}
+              <div class="alert-box">
+                {% for message in messages %}
+                  <div class="alert {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          <div class="row">
+            
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <div class="input-box" style="position:relative;"> 
+                    <span class="icon-user" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#000000;font-size:18px;">
+                      <i class="icon-user"></i>
+                    </span>
+                    <input type="text" name="name" id="name" placeholder="Атыңыз..." required style="padding-left:40px;border-radius:8px;background:#f8fafc;border:1px solid #e0e4ea;height:48px;">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <div class="input-box" style="position:relative;">
+                    <span class="icon-phone" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#3c5b6f;font-size:18px;">
+                      <i class="icon-phone"></i>
+                    </span>
+                    <input type="tel" name="phone" id="phone" placeholder="Телефон..." required style="padding-left:40px;border-radius:8px;background:#f8fafc;border:1px solid #e0e4ea;height:56px;width:100%;">
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <div class="custom-select-box" style="position:relative;">
+                    <span class="icon-service" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#3c5b6f;font-size:18px;">
+                      <i class="icon-broom"></i>
+                    </span>
+                    <select name="service" id="service" class="form-control" required style="padding-left:40px;border-radius:8px;background:#f8fafc;border:1px solid #e0e4ea;height:48px;">
+                      <option value="" disabled selected hidden> Кызматты тандаңыз</option>
+                      {% for s in services %}
+                        <option value="{{ s.id }}">{{ s.title }}</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <!-- Ползунок для выбора количества комнат -->
+                  <div class="slider-box" style="position:relative;background:#f8fafc;border:1px solid #e0e4ea;border-radius:8px;padding:20px 16px 12px 40px;">
+                    <span class="icon-home" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#3c5b6f;font-size:18px;">
+                      <i class="icon-home"></i>
+                    </span>
+                    <input type="range" name="rooms" id="rooms" min="1" max="10" value="1" step="1" style="width:100%;">
+                    <output id="roomsValue" for="rooms" class="slider-value">1</output>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <div class="input-box">
+                  <textarea name="more" id="more" class="form-control" rows="3" placeholder="Дополнительная информация..." style="border-radius:8px;background:#f8fafc;border:1px solid #e0e4ea;"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-12">
+              <div class="form-group">
+                <button class="thm-btn" type="submit" data-loading-text="Please wait...">Жөнөтүү <span>
+                    <i class="icon-diagonal-arrow"></i>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </form>
+        <!-- Стили для красивого ползунка -->
+        <style>
+          /* Черные placeholder'ы */
+          input::placeholder,
+          textarea::placeholder,
+          select::placeholder {
+            color: #000000 !important;
+            opacity: 1;
+          }
+          input::-webkit-input-placeholder,
+          textarea::-webkit-input-placeholder {
+            color: #000000 !important;
+          }
+          input::-moz-placeholder,
+          textarea::-moz-placeholder {
+            color: #000000 !important;
+            opacity: 1;
+          }
+          input:-ms-input-placeholder,
+          textarea:-ms-input-placeholder {
+            color: #000000 !important;
+          }
+          .slider-box input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 4px;
+            background: #e0e4ea;
+            outline: none;
+            transition: background 300ms ease-in;
+          }
+          /* WebKit */
+          .slider-box input[type=range]:focus { outline: none; }
+          .slider-box input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3c5b6f;
+            border: 2px solid #fff;
+            box-shadow: 0 0 4px rgba(0,0,0,.2);
+            cursor: pointer;
+          }
+          /* Bubble value */
+          .slider-value {
+            z-index: 2;
+            transition: left 0.15s cubic-bezier(.4,2,.6,1), background 0.2s;
+            box-shadow: 0 2px 8px rgba(60,91,111,0.10);
+            border: 1.5px solid #e0e4ea;
+            letter-spacing: 0.5px;
+            position: absolute;
+            top: -32px;
+            background: #3c5b6f;
+            color: #fff;
+            padding: 2px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            font-weight: 600;
+            white-space: nowrap;
+            transform: translateX(-50%);
+            pointer-events: none;
+          }
+          /* Firefox */
+          .slider-box input[type=range]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #3c5b6f;
+            border: 2px solid #fff;
+            box-shadow: 0 0 4px rgba(0,0,0,.2);
+            cursor: pointer;
+          }
+        </style>
+        <script>
+          document.addEventListener('DOMContentLoaded', function () {
+            const roomsInput = document.getElementById('rooms');
+            const roomsValue = document.getElementById('roomsValue');
+            if (roomsInput && roomsValue) {
+              const update = () => {
+                const val = roomsInput.value;
+                const min = roomsInput.min || 0;
+                const max = roomsInput.max || 10;
+                const percent = ((val - min) / (max - min)) * 100;
+                roomsInput.style.background = `linear-gradient(to right, #3c5b6f 0%, #3c5b6f ${percent}%, #e0e4ea ${percent}% 100%)`;
+                // Position bubble above thumb
+                const sliderWidth = roomsInput.offsetWidth;
+                const thumbSize = 20;
+                const minOffset = 40; // left padding for icon
+                const maxOffset = sliderWidth - thumbSize;
+                const valueOffset = minOffset + percent / 100 * (maxOffset - minOffset);
+                roomsValue.style.left = `${valueOffset}px`;
+                roomsValue.textContent = val;
+              };
+              update();
+              roomsInput.addEventListener('input', update);
+            }
+          });
+        </script>
+      </div>
+    </div>
+  </section>
+  <!--End Testimonial Form--> 
+  {% include 'include/base/footer.html' %}
+</div>
+{% endblock %}
