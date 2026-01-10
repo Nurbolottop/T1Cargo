@@ -1,0 +1,61 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Посылка • Менеджер{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Посылка</h2>
+    <div class="muted">Клиент: <b>{{ shipment.user.client_code|default:'—' }}</b> • {{ shipment.user.full_name|default:'' }}</div>
+
+    <div class="card" style="margin-top:12px;">
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+        <div>
+          <div class="muted">Трек</div>
+          <div style="font-weight:950; font-size:20px;">{{ shipment.tracking_number }}</div>
+        </div>
+        <div>
+          <div class="muted">Создано</div>
+          <div style="font-weight:900;">{{ shipment.created_at }}</div>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" class="card" style="margin-top:12px;">
+      {% csrf_token %}
+      <h3 class="h">Редактировать</h3>
+
+      <div class="form-row">
+        <div class="col-6">
+          <label>Статус</label>
+          <select name="status">
+            {% for value,label in statuses %}
+              <option value="{{ value }}" {% if shipment.status == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-6">
+          <label>Дата прибытия</label>
+          <input type="date" name="arrival_date" value="{% if shipment.arrival_date %}{{ shipment.arrival_date|date:'Y-m-d' }}{% endif %}" />
+        </div>
+
+        <div class="col-4">
+          <label>Вес (кг)</label>
+          <input name="weight_kg" value="{{ shipment.weight_kg }}" />
+        </div>
+        <div class="col-4">
+          <label>Цена за кг</label>
+          <input name="price_per_kg" value="{{ shipment.price_per_kg }}" />
+        </div>
+        <div class="col-4">
+          <label>Итоговая стоимость</label>
+          <input name="total_price" value="{{ shipment.total_price }}" />
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="btn accent" type="submit">Сохранить</button>
+        <a class="btn" href="{% url 'manager_shipments' %}">Назад</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Профиль</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --accent: #e0b13f;
+      --chip: #f6e7b5;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 18px 16px 26px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 10px 26px rgba(0,0,0,.06);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 800;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--chip);
+      color: #7a5b0a;
+      font-weight: 800;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .row {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .row .k {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .row .v {
+      font-size: 16px;
+      font-weight: 650;
+      word-break: break-word;
+    }
+
+    .btns {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .btn {
+      width: 100%;
+      border: none;
+      padding: 14px 14px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 800;
+      font-size: 16px;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(224, 177, 63, .28);
+      text-decoration: none;
+      text-align: center;
+      display: inline-block;
+      box-sizing: border-box;
+    }
+
+    .btn.secondary {
+      background: #111827;
+      box-shadow: 0 10px 22px rgba(17, 24, 39, .18);
+    }
+
+    .hint {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .tab {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 10px 8px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+      line-height: 1.1;
+      user-select: none;
+    }
+
+    .tab.active {
+      background: var(--chip);
+      border-color: #f1d57a;
+      color: #7a5b0a;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .item {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .item .t {
+      font-weight: 900;
+      margin-bottom: 6px;
+    }
+
+    .item .s {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #111827;
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .pill.light {
+      background: var(--chip);
+      color: #7a5b0a;
+    }
+
+    .copybox {
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fafafa;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .error {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff1f2;
+      color: #9f1239;
+      display: none;
+    }
+
+    .skeleton {
+      height: 14px;
+      border-radius: 8px;
+      background: linear-gradient(90deg, #eee, #f7f7f7, #eee);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 0% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="tabs" role="tablist">
+        <div class="tab active" data-tab="profile">Профиль</div>
+        <div class="tab" data-tab="parcels">Посылки</div>
+        <div class="tab" data-tab="addresses">Адреса</div>
+        <div class="tab" data-tab="instructions">Инструкции</div>
+        <div class="tab" data-tab="support">Поддержка</div>
+      </div>
+
+      <div id="section_profile" class="section active">
+      <div class="header">
+        <div class="title">📄 Ваш профиль</div>
+        <div id="code" class="badge"><span class="skeleton" style="width:120px;"></span></div>
+      </div>
+
+      <div class="grid">
+        <div class="row">
+          <div class="k">👤 ФИО</div>
+          <div id="full_name" class="v"><span class="skeleton" style="width:70%;"></span></div>
+        </div>
+        <div class="row">
+          <div class="k">📞 Номер</div>
+          <div id="phone" class="v"><span class="skeleton" style="width:45%;"></span></div>
+        </div>
+        <div class="row">
+          <div class="k">🏡 Адрес</div>
+          <div id="address" class="v"><span class="skeleton" style="width:90%;"></span></div>
+        </div>
+
+        <div class="row">
+          <div class="k">📍 ПВЗ</div>
+          <div id="pvz" class="v"><span class="skeleton" style="width:40%;"></span></div>
+        </div>
+      </div>
+
+      <div class="btns">
+        <a id="btn_manager" class="btn" href="#" target="_blank" rel="noopener" style="display:none;">WhatsApp менеджера</a>
+        <button id="btn_close" class="btn secondary" type="button">Закрыть</button>
+      </div>
+
+      <div class="hint">
+        Если данные не обновились, закройте страницу и откройте снова через кнопку в боте.
+      </div>
+    </div>
+
+    <div id="section_parcels" class="section">
+      <div class="header">
+        <div class="title">📦 Мои посылки</div>
+      </div>
+      <div id="parcels_list" class="list"></div>
+    </div>
+
+    <div id="section_addresses" class="section">
+      <div class="header">
+        <div class="title">🎁 Адреса</div>
+      </div>
+      <div class="row">
+        <div class="k">📦 Адрес склада в Китае (скопируйте блок)</div>
+        <div id="china_copy" class="copybox"><span class="skeleton" style="width:90%;"></span></div>
+        <div class="actions">
+          <button id="btn_copy" class="pill light" type="button">Скопировать</button>
+        </div>
+      </div>
+      <div class="grid">
+        <div class="row">
+          <div class="k">📍 ПВЗ</div>
+          <div id="addr_pvz" class="v"><span class="skeleton" style="width:40%;"></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="section_instructions" class="section">
+      <div class="header">
+        <div class="title">📕 Инструкции</div>
+      </div>
+      <div id="instr_list" class="list"></div>
+      <div id="instr_detail" class="item" style="display:none;">
+        <div id="instr_title" class="t"></div>
+        <div id="instr_text" class="s"></div>
+        <div class="actions" id="instr_actions" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div id="section_support" class="section">
+      <div class="header">
+        <div class="title">⚙ Поддержка</div>
+      </div>
+      <div class="row">
+        <div class="k">Контакты</div>
+        <div id="support_text" class="s"><span class="skeleton" style="width:90%;"></span></div>
+        <div class="actions" id="support_actions"></div>
+      </div>
+    </div>
+
+    <div id="error" class="error"></div>
+  </div>
+</div>
+
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    function showError(text) {
+      const el = document.getElementById('error');
+      el.textContent = text;
+      el.style.display = 'block';
+    }
+
+    function clearError() {
+      const el = document.getElementById('error');
+      el.textContent = '';
+      el.style.display = 'none';
+    }
+
+    function managerUrlFromContact(value) {
+      const v = (value || '').trim();
+      if (!v) return '';
+      if (v.startsWith('http://') || v.startsWith('https://')) return v;
+      if (v.startsWith('@')) {
+        const u = v.slice(1);
+        return u ? `https://t.me/${u}` : '';
+      }
+      const digits = v.replace(/\D/g, '');
+      return digits ? `https://wa.me/${digits}` : '';
+    }
+
+    async function loadProfile() {
+      const telegram_user_id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+      if (!telegram_user_id) {
+        showError('Не удалось получить Telegram ID. Откройте страницу из Telegram.');
+        return;
+      }
+
+      window.__tg_user_id = telegram_user_id;
+
+      try {
+        const resp = await fetch('/webapp/profile/data/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telegram_user_id })
+        });
+
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || !json.ok) {
+          showError('Не удалось загрузить профиль.');
+          return;
+        }
+
+        const data = json.data || {};
+
+        document.getElementById('code').textContent = `🪪 ${data.client_code || ''}`;
+        document.getElementById('full_name').textContent = data.full_name || '';
+        document.getElementById('phone').textContent = data.phone || '';
+        document.getElementById('address').textContent = data.address || '';
+
+        const pvz = [data.pvz_city, data.pvz_phone].filter(Boolean).join(' • ');
+        document.getElementById('pvz').textContent = pvz;
+
+        const managerUrl = managerUrlFromContact(data.manager_contact);
+        const btnManager = document.getElementById('btn_manager');
+        if (managerUrl) {
+          btnManager.href = managerUrl;
+          btnManager.style.display = 'inline-block';
+        }
+
+      } catch (e) {
+        showError('Ошибка сети. Попробуйте ещё раз.');
+      }
+    }
+
+    async function postJson(url, body) {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      const json = await resp.json().catch(() => ({}));
+      if (!resp.ok || !json.ok) throw new Error(json.error || 'bad_response');
+      return json.data || {};
+    }
+
+    function setActiveTab(key) {
+      document.querySelectorAll('.tab').forEach(el => {
+        el.classList.toggle('active', el.dataset.tab === key);
+      });
+      document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+      const sec = document.getElementById(`section_${key}`);
+      if (sec) sec.classList.add('active');
+    }
+
+    const __loadedTabs = {};
+
+    function getTabFromHash() {
+      const raw = (window.location.hash || '').replace('#', '').trim();
+      const allowed = ['profile', 'parcels', 'addresses', 'instructions', 'support'];
+      return allowed.includes(raw) ? raw : 'profile';
+    }
+
+    function setHashForTab(key) {
+      if (!key) return;
+      const next = `#${key}`;
+      if (window.location.hash !== next) window.location.hash = next;
+    }
+
+    async function loadTab(key) {
+      clearError();
+      setActiveTab(key);
+      setHashForTab(key);
+
+      if (__loadedTabs[key]) return;
+      if (!window.__tg_user_id) return;
+
+      try {
+        if (key === 'parcels') await loadParcels();
+        if (key === 'addresses') await loadAddresses();
+        if (key === 'instructions') await loadInstructions();
+        if (key === 'support') await loadSupport();
+        __loadedTabs[key] = true;
+      } catch (e) {
+        showError('Не удалось загрузить данные.');
+      }
+    }
+
+    async function loadParcels() {
+      const list = document.getElementById('parcels_list');
+      list.innerHTML = '';
+      const data = await postJson('/webapp/profile/parcels/', { telegram_user_id: window.__tg_user_id });
+      const items = (data.items || []);
+      if (!items.length) {
+        list.innerHTML = '<div class="item"><div class="t">У вас активных посылок нет.</div></div>';
+        return;
+      }
+      items.forEach(it => {
+        const el = document.createElement('div');
+        el.className = 'item';
+        el.innerHTML = `
+          <div class="t">📦 ${it.tracking_number || ''}</div>
+          <div class="s">Статус: ${it.status || ''}\nВес: ${it.weight_kg || ''}\nСумма: ${it.total_price || ''}</div>
+        `.trim();
+        list.appendChild(el);
+      });
+    }
+
+    async function loadAddresses() {
+      const data = await postJson('/webapp/profile/addresses/', { telegram_user_id: window.__tg_user_id });
+      document.getElementById('china_copy').textContent = data.copy_lines || '';
+      const pvz = [data.pvz_city, data.pvz_phone].filter(Boolean).join(' • ');
+      document.getElementById('addr_pvz').textContent = pvz || '';
+    }
+
+    async function loadInstructions() {
+      const list = document.getElementById('instr_list');
+      const detail = document.getElementById('instr_detail');
+      detail.style.display = 'none';
+      list.innerHTML = '';
+
+      const data = await postJson('/webapp/profile/instructions/', { telegram_user_id: window.__tg_user_id });
+      const items = data.items || [];
+      if (!items.length) {
+        list.innerHTML = '<div class="item"><div class="t">Инструкции пока не добавлены.</div></div>';
+        return;
+      }
+      items.forEach(it => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn secondary';
+        btn.style.borderRadius = '14px';
+        btn.style.boxShadow = 'none';
+        btn.style.padding = '12px 14px';
+        btn.textContent = it.title || 'Инструкция';
+        btn.addEventListener('click', async () => {
+          const d = await postJson(`/webapp/profile/instructions/${it.id}/`, { telegram_user_id: window.__tg_user_id });
+          document.getElementById('instr_title').textContent = d.title ? `📕 ${d.title}` : '📕 Инструкция';
+          document.getElementById('instr_text').textContent = d.text || '';
+
+          const actions = document.getElementById('instr_actions');
+          actions.innerHTML = '';
+          actions.style.display = 'none';
+
+          if (d.link_url) {
+            const a = document.createElement('a');
+            a.className = 'pill';
+            a.href = d.link_url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = '🔗 Ссылка';
+            actions.appendChild(a);
+          }
+          if (d.video_url) {
+            const a = document.createElement('a');
+            a.className = 'pill';
+            a.href = d.video_url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = '🎥 Видео';
+            actions.appendChild(a);
+          }
+          if (d.file_url) {
+            const a = document.createElement('a');
+            a.className = 'pill';
+            a.href = d.file_url;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = '📎 Файл';
+            actions.appendChild(a);
+          }
+          if (actions.children.length) {
+            actions.style.display = 'flex';
+          }
+
+          detail.style.display = 'block';
+          detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+        list.appendChild(btn);
+      });
+    }
+
+    async function loadSupport() {
+      const data = await postJson('/webapp/profile/support/', { telegram_user_id: window.__tg_user_id });
+      const lines = [
+        'Если у вас есть вопросы? Напишите нам',
+        '',
+        `📍 ПВЗ: ${data.pvz_city || '—'}`,
+        `📍 ПВЗ телефон: ${data.pvz_phone || '—'}`,
+        data.work_hours ? `🕒 Часы работы: ${data.work_hours}` : '🕒 Часы работы: —',
+      ];
+      document.getElementById('support_text').textContent = lines.join('\n');
+
+      const actions = document.getElementById('support_actions');
+      actions.innerHTML = '';
+
+      const managerUrl = managerUrlFromContact(data.manager_contact);
+      if (managerUrl) {
+        const a = document.createElement('a');
+        a.className = 'pill';
+        a.href = managerUrl;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Написать на WhatsApp';
+        actions.appendChild(a);
+      }
+      if ((data.pvz_location_url || '').startsWith('http')) {
+        const a = document.createElement('a');
+        a.className = 'pill';
+        a.href = data.pvz_location_url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Локация на карте';
+        actions.appendChild(a);
+      }
+      if ((data.instagram_url || '').startsWith('http')) {
+        const a = document.createElement('a');
+        a.className = 'pill';
+        a.href = data.instagram_url;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Наш instagram';
+        actions.appendChild(a);
+      }
+    }
+
+    document.querySelectorAll('.tab').forEach(el => {
+      el.addEventListener('click', async () => {
+        const key = el.dataset.tab;
+        await loadTab(key);
+      });
+    });
+
+    window.addEventListener('hashchange', async () => {
+      await loadTab(getTabFromHash());
+    });
+
+    document.getElementById('btn_copy').addEventListener('click', async () => {
+      const text = (document.getElementById('china_copy').textContent || '').trim();
+      if (!text) return;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch (e2) {}
+      }
+    });
+
+    document.getElementById('btn_close').addEventListener('click', () => {
+      if (tg) tg.close();
+      else window.close();
+    });
+
+    (async () => {
+      await loadProfile();
+      await loadTab(getTabFromHash());
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Посылки • Менеджер{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Посылки</h2>
+    <form method="get" class="form-row">
+      <div class="col-8">
+        <label>Поиск (трек / код клиента / ФИО / телефон)</label>
+        <input name="q" value="{{ q|default:'' }}" placeholder="Например: TRK123 или T1-1234" />
+      </div>
+      <div class="col-4">
+        <label>Статус</label>
+        <select name="status">
+          <option value="">Все</option>
+          {% for value,label in statuses %}
+            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12" style="display:flex; gap:10px;">
+        <button class="btn accent" type="submit">Фильтр</button>
+        <a class="btn" href="{% url 'manager_shipments' %}">Сбросить</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Трек</th>
+          <th>Клиент</th>
+          <th>Статус</th>
+          <th>Вес</th>
+          <th>Итого</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sh in shipments %}
+          <tr>
+            <td><b>{{ sh.tracking_number }}</b></td>
+            <td>
+              {{ sh.user.client_code|default:'—' }}
+              {% if sh.user.full_name %}<div class="muted">{{ sh.user.full_name }}</div>{% endif %}
+            </td>
+            <td>{{ sh.get_status_display }}</td>
+            <td class="muted">{{ sh.weight_kg }}</td>
+            <td class="muted">{{ sh.total_price }}</td>
+            <td class="row-actions">
+              <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">Посылки не найдены.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

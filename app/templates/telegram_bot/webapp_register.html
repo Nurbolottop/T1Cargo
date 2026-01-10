@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Регистрация</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --input-bg: #eef7e9;
+      --btn: #e0b13f;
+      --btn-text: #ffffff;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 420px;
+      margin: 0 auto;
+      padding: 18px 16px 26px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 18px;
+    }
+
+    .logo {
+      width: 180px;
+      height: 180px;
+      border-radius: 999px;
+      margin: 6px auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 6px solid #f6e7b5;
+      box-shadow: 0 8px 22px rgba(0,0,0,.08);
+      background: #fff;
+    }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .field { margin-top: 14px; }
+
+    .label {
+      font-size: 14px;
+      margin: 0 0 8px;
+      color: var(--text);
+    }
+
+    .label small {
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      outline: none;
+      font-size: 16px;
+    }
+
+    input::placeholder { color: #9ca3af; }
+
+    .btn {
+      width: 100%;
+      margin-top: 18px;
+      padding: 14px 14px;
+      border: none;
+      border-radius: 999px;
+      font-size: 16px;
+      font-weight: 600;
+      background: var(--btn);
+      color: var(--btn-text);
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(224, 177, 63, .28);
+    }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .error {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #fff1f2;
+      color: #9f1239;
+      display: none;
+    }
+
+    .success {
+      margin-top: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #ecfdf5;
+      color: #065f46;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="logo">
+        {% if settings and settings.logo %}
+          <img src="{{ settings.logo.url }}" alt="logo" />
+        {% else %}
+          <div style="font-weight:700;color:#d1a12f;">LOGO</div>
+        {% endif %}
+      </div>
+
+      <div class="field">
+        <div class="label">ФИО <small>(обязательно)</small></div>
+        <input id="full_name" placeholder="ФИО*" autocomplete="name" />
+      </div>
+
+      <div class="field">
+        <div class="label">Телефон <small>(обязательно WhatsApp)</small></div>
+        <input id="phone" placeholder="Тел. в международном формате*" autocomplete="tel" />
+      </div>
+
+      <div class="field">
+        <div class="label">Адрес проживания <small>(не обязательно)</small></div>
+        <input id="address" placeholder="Адрес" autocomplete="street-address" />
+      </div>
+
+      <button id="submit" class="btn">Зарегистрироваться</button>
+      <div class="hint">После отправки заявки менеджер выдаст ваш персональный код.</div>
+
+      <div id="error" class="error"></div>
+      <div id="success" class="success"></div>
+    </div>
+  </div>
+
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) {
+      tg.ready();
+      tg.expand();
+    }
+
+    function showError(text) {
+      const el = document.getElementById('error');
+      el.textContent = text;
+      el.style.display = 'block';
+      document.getElementById('success').style.display = 'none';
+    }
+
+    function showSuccess(text) {
+      const el = document.getElementById('success');
+      el.textContent = text;
+      el.style.display = 'block';
+      document.getElementById('error').style.display = 'none';
+    }
+
+    async function submitForm() {
+      const full_name = document.getElementById('full_name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+
+      if (!full_name) {
+        showError('Введите ФИО');
+        return;
+      }
+      if (!phone) {
+        showError('Введите номер телефона');
+        return;
+      }
+
+      const payload = {
+        full_name,
+        phone,
+        address,
+        telegram_user_id: tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null,
+        telegram_username: tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? (tg.initDataUnsafe.user.username || '') : ''
+      };
+
+      const btn = document.getElementById('submit');
+      btn.disabled = true;
+      btn.textContent = 'Отправка...';
+
+      try {
+        const resp = await fetch('/webapp/register/submit/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.ok) {
+          showError('Не удалось отправить. Попробуйте ещё раз.');
+          return;
+        }
+
+        showSuccess('Заявка отправлена. Спасибо!');
+        if (tg) {
+          setTimeout(() => tg.close(), 900);
+        }
+      } catch (e) {
+        showError('Ошибка сети. Попробуйте ещё раз.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Зарегистрироваться';
+      }
+    }
+
+    document.getElementById('submit').addEventListener('click', submitForm);
+  </script>
+</body>
+</html>

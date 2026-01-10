@@ -1,7 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.db.utils import OperationalError, ProgrammingError
 from django.utils.autoreload import run_with_reloader
-
 from apps.base.models import Settings
 from apps.telegram_bot.bot_main import start_bot
 

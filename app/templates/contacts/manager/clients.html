@@ -1,0 +1,46 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Клиенты • Менеджер{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Клиенты</h2>
+    <form method="get" class="form-row">
+      <div class="col-12">
+        <label>Поиск (код клиента / ФИО / телефон / Telegram ID)</label>
+        <input name="q" value="{{ q|default:'' }}" placeholder="Например: T1-1234" />
+      </div>
+      <div class="col-12" style="display:flex; gap:10px;">
+        <button class="btn accent" type="submit">Поиск</button>
+        <a class="btn" href="{% url 'manager_clients' %}">Сбросить</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Код</th>
+          <th>ФИО</th>
+          <th>Телефон</th>
+          <th>Telegram</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in clients %}
+          <tr>
+            <td><b>{{ u.client_code|default:'—' }}</b></td>
+            <td>{{ u.full_name|default:'—' }}</td>
+            <td>{{ u.phone|default:'—' }}</td>
+            <td class="muted">{{ u.telegram_id }}</td>
+            <td><a class="btn" href="{% url 'manager_client_detail' user_id=u.id %}">Открыть</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted">Клиенты не найдены.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

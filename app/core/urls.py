@@ -24,7 +24,7 @@ urlpatterns = [
     path('ckeditor/', include('ckeditor_uploader.urls')),
     path('', include('apps.contacts.urls')),
     path('', include('apps.base.urls')),
-    # path('', include('apps.telegram_bot.urls')),
+    path('', include('apps.telegram_bot.urls')),
 ]
 
 if settings.DEBUG:

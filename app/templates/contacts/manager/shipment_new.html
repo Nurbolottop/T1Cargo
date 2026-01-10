@@ -1,0 +1,63 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Добавить посылку • Менеджер{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Добавить посылку</h2>
+    <div class="muted">Клиент выбирается по <b>коду клиента</b> (например, T1-1234).</div>
+
+    {% if form.non_field_errors %}
+      <div class="error" style="margin-top:12px;">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="form-row">
+        <div class="col-6">
+          <label>{{ form.client_code.label }}</label>
+          {{ form.client_code }}
+          {% if form.client_code.errors %}<div class="error" style="margin-top:8px;">{{ form.client_code.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6">
+          <label>{{ form.tracking_number.label }}</label>
+          {{ form.tracking_number }}
+          {% if form.tracking_number.errors %}<div class="error" style="margin-top:8px;">{{ form.tracking_number.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-6">
+          <label>{{ form.status.label }}</label>
+          {{ form.status }}
+          {% if form.status.errors %}<div class="error" style="margin-top:8px;">{{ form.status.errors }}</div>{% endif %}
+        </div>
+        <div class="col-3">
+          <label>{{ form.weight_kg.label }}</label>
+          {{ form.weight_kg }}
+          {% if form.weight_kg.errors %}<div class="error" style="margin-top:8px;">{{ form.weight_kg.errors }}</div>{% endif %}
+        </div>
+        <div class="col-3">
+          <label>{{ form.price_per_kg.label }}</label>
+          {{ form.price_per_kg }}
+          {% if form.price_per_kg.errors %}<div class="error" style="margin-top:8px;">{{ form.price_per_kg.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-6">
+          <label>{{ form.total_price.label }}</label>
+          {{ form.total_price }}
+          {% if form.total_price.errors %}<div class="error" style="margin-top:8px;">{{ form.total_price.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6">
+          <label>{{ form.arrival_date.label }}</label>
+          {{ form.arrival_date }}
+          {% if form.arrival_date.errors %}<div class="error" style="margin-top:8px;">{{ form.arrival_date.errors }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <button class="btn accent" type="submit">Создать</button>
+        <a class="btn" href="{% url 'manager_shipments' %}">Отмена</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

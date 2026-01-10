@@ -1,0 +1,77 @@
+{% extends 'contacts/manager/base.html' %}
+{% load dict_extras %}
+
+{% block title %}Главная • Менеджер{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Главная</h2>
+    <div class="kpi">
+      <div class="box">
+        <div class="n">{{ total_shipments }}</div>
+        <div class="t">Всего посылок</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ new_clients_7d }}</div>
+        <div class="t">Новых клиентов (7 дней)</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ status_counts.created|default:0 }}</div>
+        <div class="t">Создано</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ status_counts.arrived|default:0 }}</div>
+        <div class="t">Прибыл</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3 class="h">Посылки по статусам</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Статус</th>
+          <th>Кол-во</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for value,label in statuses %}
+          <tr>
+            <td>{{ label }}</td>
+            <td>{{ status_counts|get_item:value|default:0 }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="muted" style="margin-top:10px;">*Если какие-то статусы не показываются — значит посылок в них пока нет.</div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3 class="h">Последние посылки</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Трек</th>
+          <th>Клиент</th>
+          <th>Статус</th>
+          <th>Создано</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sh in last_shipments %}
+          <tr>
+            <td>{{ sh.tracking_number }}</td>
+            <td>{{ sh.user.client_code }}{% if sh.user.full_name %}<div class="muted">{{ sh.user.full_name }}</div>{% endif %}</td>
+            <td>{{ sh.get_status_display }}</td>
+            <td class="muted">{{ sh.created_at }}</td>
+            <td><a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted">Пока нет посылок.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
