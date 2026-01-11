@@ -329,6 +329,8 @@ def webapp_register_submit(request):
             user_obj.address = address
             user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
             user_obj.filial = filial_obj
+            if not user_obj.client_type:
+                user_obj.client_type = tg_models.User.ClientType.INDIVIDUAL
             if reserved_user_obj and reserved_user_obj.id != user_obj.id:
                 user_obj.client_code = reserved_user_obj.client_code
                 user_obj.client_status = tg_models.User.ClientStatus.OLD
@@ -349,6 +351,8 @@ def webapp_register_submit(request):
                 user_obj.phone = phone
                 user_obj.address = address
                 user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
+                if not user_obj.client_type:
+                    user_obj.client_type = tg_models.User.ClientType.INDIVIDUAL
                 if filial_obj:
                     user_obj.filial = filial_obj
                 user_obj.client_status = tg_models.User.ClientStatus.OLD
@@ -368,6 +372,7 @@ def webapp_register_submit(request):
                     status=tg_models.User.Status.CLIENT_REGISTERED,
                     filial=locked_filial_obj or filial_obj,
                     client_code=code,
+                    client_type=tg_models.User.ClientType.INDIVIDUAL,
                     client_status=tg_models.User.ClientStatus.NEW,
                 )
 

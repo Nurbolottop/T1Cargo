@@ -19,7 +19,10 @@
       {% csrf_token %}
       <div class="col-6">
         <label>Код клиента</label>
-        <input name="client_code" value="{{ form.client_code.value|default:'' }}" placeholder="Например: T1-1234" />
+        {% if code_prefix %}
+          <div class="muted" style="margin-bottom:6px;">Префикс: {{ code_prefix }}</div>
+        {% endif %}
+        <input name="client_code" value="{{ form.client_code.value|default:'' }}" placeholder="Введите только цифры (например: 2050)" />
         {% if form.client_code.errors %}
           <div class="error" style="margin-top:8px;">{{ form.client_code.errors.0 }}</div>
         {% endif %}

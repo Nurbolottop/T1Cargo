@@ -46,6 +46,7 @@ class User(models.Model):
     client_type = models.CharField(
         max_length=16,
         choices=ClientType.choices,
+        default=ClientType.INDIVIDUAL,
         blank=True,
         null=True,
         verbose_name="Тип клиента",
@@ -84,28 +85,6 @@ class User(models.Model):
         if self.telegram_id is not None:
             return str(self.telegram_id)
         return str(self.id)
-
-
-class PreClient(models.Model):
-    client_code = models.CharField(max_length=32, unique=True, verbose_name="Код клиента")
-    phone = models.CharField(max_length=64, verbose_name="Телефон")
-    filial = models.ForeignKey(
-        base_models.Filial,
-        on_delete=models.PROTECT,
-        related_name="preclients",
-        verbose_name="Филиал",
-    )
-
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
-
-    class Meta:
-        verbose_name = "Преддобавленный клиент"
-        verbose_name_plural = "Преддобавленные клиенты"
-        ordering = ["-created_at"]
-
-    def __str__(self) -> str:
-        return self.client_code
 
 
 class Shipment(models.Model):
