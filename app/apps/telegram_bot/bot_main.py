@@ -361,7 +361,7 @@ def start_bot(token: str) -> None:
         )
 
 
-    @bot.message_handler(func=lambda m: m.text == "🛒 Оптовые товары")
+    @bot.message_handler(func=lambda m: (m.text or "").strip() in {"🛒 Расчет оптовых товаров", "🛒 Оптовые товары"})
     def wholesale_order(message):
         user_obj = _get_or_create_user(message)
         if not _is_registered(user_obj):
