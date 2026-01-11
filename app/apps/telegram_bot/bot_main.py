@@ -126,6 +126,24 @@ def start_bot(token: str) -> None:
 
     track_state: dict[int, str] = {}
 
+    def _is_registered(user_obj: tg_models.User | None) -> bool:
+        if not user_obj:
+            return False
+        if getattr(user_obj, "status", None) != tg_models.User.Status.CLIENT_REGISTERED:
+            return False
+        return bool((getattr(user_obj, "client_code", None) or "").strip())
+
+    def _send_registration_required(chat_id: int) -> None:
+        s = _get_settings()
+        if not s or not s.is_bot_enabled:
+            return
+        registration_webapp_url = getattr(s, "registration_webapp_url", "")
+        bot.send_message(
+            chat_id,
+            "Сначала пройдите регистрацию по кнопке ниже.",
+            reply_markup=_onboarding_keyboard(s.phone, registration_webapp_url),
+        )
+
     def _get_or_create_user(message) -> tg_models.User | None:
         try:
             from_user = message.from_user
@@ -190,12 +208,14 @@ def start_bot(token: str) -> None:
             pass
         bot.send_message(call.message.chat.id, "Пройдите регистрацию по кнопке (WebApp).")
 
-
     @bot.message_handler(func=lambda m: m.text == "👤 Профиль")
     def profile(message):
         user_obj = _get_or_create_user(message)
         if not user_obj:
             bot.send_message(message.chat.id, "Не удалось определить пользователя.", reply_markup=_main_menu_keyboard())
+            return
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
             return
 
         code = user_obj.client_code or ""
@@ -255,6 +275,9 @@ def start_bot(token: str) -> None:
         if not user_obj:
             bot.send_message(message.chat.id, "Не удалось определить пользователя.", reply_markup=_main_menu_keyboard())
             return
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
+            return
 
         qs = tg_models.Shipment.objects.filter(user=user_obj).order_by("-created_at")
         if not qs.exists():
@@ -286,6 +309,9 @@ def start_bot(token: str) -> None:
                 "Не удалось определить пользователя.",
                 reply_markup=_main_menu_keyboard()
             )
+            return
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
             return
 
         s = _get_settings()
@@ -340,6 +366,9 @@ def start_bot(token: str) -> None:
     @bot.message_handler(func=lambda m: m.text == "🛒 Оптовый заказ")
     def wholesale_order(message):
         user_obj = _get_or_create_user(message)
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
+            return
         filial_obj = getattr(user_obj, "filial", None) if user_obj else None
         raw = (getattr(filial_obj, "wholesale_order_text", "") or "") if filial_obj else ""
         text = _html_to_text(str(raw))
@@ -354,6 +383,10 @@ def start_bot(token: str) -> None:
 
     @bot.message_handler(func=lambda m: m.text == "⛔ Запрещенные товары")
     def prohibited(message):
+        user_obj = _get_or_create_user(message)
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
+            return
         s = _get_settings()
         raw = (getattr(s, "prohibited_goods_text", "") or "") if s else ""
         text = _html_to_text(str(raw))
@@ -368,12 +401,15 @@ def start_bot(token: str) -> None:
 
     @bot.message_handler(func=lambda m: m.text == "⚙ Поддержка")
     def support(message):
+        user_obj = _get_or_create_user(message)
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
+            return
         s = _get_settings()
         if not s:
             bot.send_message(message.chat.id, "Поддержка временно недоступна.", reply_markup=_main_menu_keyboard())
             return
 
-        user_obj = _get_or_create_user(message)
         filial_obj = getattr(user_obj, "filial", None) if user_obj else None
 
         if not filial_obj:
@@ -433,6 +469,9 @@ def start_bot(token: str) -> None:
         if not user_obj:
             bot.send_message(message.chat.id, "Не удалось определить пользователя.", reply_markup=_main_menu_keyboard())
             return
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
+            return
         track_state[message.chat.id] = "waiting_tracking"
         bot.send_message(
             message.chat.id,
@@ -442,15 +481,21 @@ def start_bot(token: str) -> None:
 
     @bot.message_handler(func=lambda m: track_state.get(m.chat.id) == "waiting_tracking", content_types=["text"])
     def add_track_submit(message):
+        user_obj = _get_or_create_user(message)
+        if not _is_registered(user_obj):
+            track_state.pop(message.chat.id, None)
+            _send_registration_required(message.chat.id)
+            return
         tracking = (message.text or "").strip()
         if not tracking or tracking.startswith("/"):
+            bot.send_message(
+                message.chat.id,
+                "Введите трек номер текстом (без команд).",
+                reply_markup=_main_menu_keyboard(),
+            )
             return
 
         track_state.pop(message.chat.id, None)
-        user_obj = _get_or_create_user(message)
-        if not user_obj:
-            bot.send_message(message.chat.id, "Не удалось определить пользователя.", reply_markup=_main_menu_keyboard())
-            return
 
         _, created = tg_models.Shipment.objects.get_or_create(
             user=user_obj,
@@ -474,6 +519,11 @@ def start_bot(token: str) -> None:
     @bot.message_handler(content_types=["text"])
     def fallback(message):
         if track_state.get(message.chat.id) == "waiting_tracking":
+            return
+
+        user_obj = _get_or_create_user(message)
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
             return
         bot.send_message(
             message.chat.id,
