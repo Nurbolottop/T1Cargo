@@ -72,8 +72,8 @@ def _onboarding_keyboard(manager_contact: str, registration_webapp_url: str) -> 
 def _main_menu_keyboard() -> types.ReplyKeyboardMarkup:
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("👤 Профиль", "🎁 Адреса", "📦 Мои посылки")
-    kb.row("🛒 Расчет оптовых товаров", "📊 График", "⚙ Поддержка")
-    kb.row("⛔ Запрещенные товары")
+    kb.row("📊 График", "⛔ Запрещенные товары", "⚙ Поддержка")
+    kb.row("🛒 Расчет оптовых товаров")
     return kb
 
 
