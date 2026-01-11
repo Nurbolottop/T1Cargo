@@ -1,4 +1,5 @@
 from django import forms
+import re
 
 from apps.telegram_bot import models as tg_models
 
@@ -50,6 +51,8 @@ class PreClientCreateForm(forms.Form):
         value = (self.cleaned_data.get("client_code") or "").strip()
         if not value:
             raise forms.ValidationError("Укажите код клиента")
+        if not value.isdigit():
+            raise forms.ValidationError("Код клиента должен содержать только цифры")
         exists = tg_models.PreClient.objects.filter(client_code__iexact=value).exists() or tg_models.User.objects.filter(
             client_code__iexact=value
         ).exists()
@@ -58,8 +61,13 @@ class PreClientCreateForm(forms.Form):
         return value
 
     def clean_phone(self):
-        value = (self.cleaned_data.get("phone") or "").strip()
-        if not value:
+        raw = (self.cleaned_data.get("phone") or "").strip()
+        if not raw:
             raise forms.ValidationError("Укажите телефон")
-        return value
+        digits = re.sub(r"\D+", "", raw)
+        if not digits:
+            raise forms.ValidationError("Укажите телефон")
+        if len(digits) < 5:
+            raise forms.ValidationError("Телефон слишком короткий")
+        return digits
 

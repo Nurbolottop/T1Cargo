@@ -7,6 +7,10 @@
     <h2 class="h">Добавить клиента</h2>
     <div class="muted" style="margin-bottom:10px;">Добавляет старого клиента (телефон + ранее выданный код). Филиал будет установлен автоматически (Ош, если есть).</div>
 
+    {% if saved %}
+      <div class="success" style="margin-bottom:12px;">Сохранено</div>
+    {% endif %}
+
     {% if error %}
       <div class="error" style="margin-bottom:12px;">{{ error }}</div>
     {% endif %}

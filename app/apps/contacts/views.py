@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.telegram_bot import models as tg_models
@@ -143,6 +144,7 @@ def manager_client_new(request):
         return denied
 
     error = None
+    saved = (request.GET.get("saved") or "").strip() == "1"
     if request.method == "POST":
         form = PreClientCreateForm(request.POST)
         if form.is_valid():
@@ -158,14 +160,14 @@ def manager_client_new(request):
                     phone=form.cleaned_data["phone"],
                     filial=filial_obj,
                 )
-                return redirect("manager_clients")
+                return redirect(reverse("manager_client_new") + "?saved=1")
     else:
         form = PreClientCreateForm()
 
     return render(
         request,
         "contacts/manager/client_new.html",
-        {"nav": "clients", "form": form, "error": error},
+        {"nav": "clients", "form": form, "error": error, "saved": saved},
     )
 
 
