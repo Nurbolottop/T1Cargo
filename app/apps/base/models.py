@@ -35,7 +35,7 @@ class Settings(models.Model):
     is_site_enabled = models.BooleanField(default=True, verbose_name="Сайт включен")
     is_bot_enabled = models.BooleanField(default=True, verbose_name="Бот включен")
 
-    prohibited_goods_text = RichTextField(verbose_name="Запрещенные товары (текст)", blank=True)
+    prohibited_goods_text = models.TextField(verbose_name="Запрещенные товары (текст)", blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -103,7 +103,7 @@ class Filial(models.Model):
         null=True,
     )
 
-    wholesale_order_text = RichTextField(verbose_name="Оптовый заказ (текст)", blank=True)
+    wholesale_order_text = models.TextField(verbose_name="Оптовый заказ (текст)", blank=True)
 
     client_code_prefix = models.CharField(
         max_length=16,
@@ -131,30 +131,3 @@ class Filial(models.Model):
 
     def __str__(self) -> str:
         return f"{self.city} — {self.name}"
-
-
-class Instruction(models.Model):
-    title = models.CharField(max_length=255, verbose_name="Заголовок")
-    text = RichTextField(verbose_name="Инструкция")
-    photo = ResizedImageField(
-        force_format="WEBP",
-        quality=100,
-        upload_to="instructions/",
-        verbose_name="Фото",
-        blank=True,
-        null=True,
-    )
-    video_url = models.URLField(verbose_name="Ссылка на видео", blank=True)
-    link_url = models.URLField(verbose_name="Ссылка", blank=True)
-    file = models.FileField(upload_to="instructions/", verbose_name="Файл", blank=True, null=True)
-
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
-
-    class Meta:
-        verbose_name = "3) Инструкция"
-        verbose_name_plural = "3) Инструкции"
-        ordering = ["-created_at"]
-
-    def __str__(self) -> str:
-        return self.title
