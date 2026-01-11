@@ -112,13 +112,6 @@ class UserAdmin(admin.ModelAdmin):
     )
 
 
-@admin.register(tg_models.PreClient)
-class PreClientAdmin(admin.ModelAdmin):
-    list_display = ("client_code", "phone", "filial", "created_at")
-    search_fields = ("client_code", "phone")
-    list_filter = ("filial", "created_at")
-    readonly_fields = ("created_at", "updated_at")
-
 @admin.register(tg_models.Shipment)
 class ShipmentAdmin(admin.ModelAdmin):
     inlines = (StoragePenaltyInline, PaymentInline)

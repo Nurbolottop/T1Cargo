@@ -53,9 +53,7 @@ class PreClientCreateForm(forms.Form):
             raise forms.ValidationError("Укажите код клиента")
         if not value.isdigit():
             raise forms.ValidationError("Код клиента должен содержать только цифры")
-        exists = tg_models.PreClient.objects.filter(client_code__iexact=value).exists() or tg_models.User.objects.filter(
-            client_code__iexact=value
-        ).exists()
+        exists = tg_models.User.objects.filter(client_code__iexact=value).exists()
         if exists:
             raise forms.ValidationError("Код уже используется")
         return value

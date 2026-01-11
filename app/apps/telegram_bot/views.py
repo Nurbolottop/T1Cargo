@@ -52,7 +52,11 @@ def webapp_register_preclient(request):
     if not code:
         return JsonResponse({"ok": False, "error": "validation"}, status=400)
 
-    pre = tg_models.PreClient.objects.select_related("filial").filter(client_code__iexact=code).first()
+    pre = (
+        tg_models.User.objects.select_related("filial")
+        .filter(client_code__iexact=code, telegram_id__isnull=True)
+        .first()
+    )
     if not pre:
         return JsonResponse({"ok": False, "error": "not_found"}, status=404)
 
@@ -303,11 +307,13 @@ def webapp_register_submit(request):
     if isinstance(telegram_user_id, int):
         user_obj = tg_models.User.objects.filter(telegram_id=telegram_user_id).first()
 
-        preclient_obj = None
+        reserved_user_obj = None
         if existing_client_code:
-            preclient_obj = tg_models.PreClient.objects.select_related("filial").filter(
-                client_code__iexact=existing_client_code
-            ).first()
+            reserved_user_obj = (
+                tg_models.User.objects.select_related("filial")
+                .filter(client_code__iexact=existing_client_code, telegram_id__isnull=True)
+                .first()
+            )
 
         selected_filial_id = filial_id if isinstance(filial_id, int) else None
         filial_obj = base_models.Filial.objects.filter(id=selected_filial_id, is_active=True).first() if selected_filial_id else None
@@ -323,8 +329,8 @@ def webapp_register_submit(request):
             user_obj.address = address
             user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
             user_obj.filial = filial_obj
-            if preclient_obj:
-                user_obj.client_code = preclient_obj.client_code
+            if reserved_user_obj and reserved_user_obj.id != user_obj.id:
+                user_obj.client_code = reserved_user_obj.client_code
                 user_obj.client_status = tg_models.User.ClientStatus.OLD
             elif not user_obj.client_code:
                 code, locked_filial_obj = _generate_client_code(filial_obj.id)
@@ -335,28 +341,35 @@ def webapp_register_submit(request):
                     user_obj.filial = locked_filial_obj
             user_obj.save()
         else:
-            locked_filial_obj = None
-            code = ""
-            client_status = tg_models.User.ClientStatus.NEW
-            if preclient_obj:
-                code = preclient_obj.client_code
-                client_status = tg_models.User.ClientStatus.OLD
+            if reserved_user_obj:
+                user_obj = reserved_user_obj
+                user_obj.telegram_id = telegram_user_id
+                user_obj.username = telegram_username
+                user_obj.full_name = full_name
+                user_obj.phone = phone
+                user_obj.address = address
+                user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
+                if filial_obj:
+                    user_obj.filial = filial_obj
+                user_obj.client_status = tg_models.User.ClientStatus.OLD
+                user_obj.save()
             else:
+                locked_filial_obj = None
                 code, locked_filial_obj = _generate_client_code(filial_obj.id)
                 if not code:
                     return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
 
-            user_obj = tg_models.User.objects.create(
-                telegram_id=telegram_user_id,
-                username=telegram_username,
-                full_name=full_name,
-                phone=phone,
-                address=address,
-                status=tg_models.User.Status.CLIENT_REGISTERED,
-                filial=locked_filial_obj or filial_obj,
-                client_code=code,
-                client_status=client_status,
-            )
+                user_obj = tg_models.User.objects.create(
+                    telegram_id=telegram_user_id,
+                    username=telegram_username,
+                    full_name=full_name,
+                    phone=phone,
+                    address=address,
+                    status=tg_models.User.Status.CLIENT_REGISTERED,
+                    filial=locked_filial_obj or filial_obj,
+                    client_code=code,
+                    client_status=tg_models.User.ClientStatus.NEW,
+                )
 
     settings_obj = base_models.Settings.objects.first()
     if settings_obj and settings_obj.is_bot_enabled and settings_obj.telegram_token:

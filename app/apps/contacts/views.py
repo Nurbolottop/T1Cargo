@@ -155,10 +155,13 @@ def manager_client_new(request):
             if filial_obj is None:
                 error = "Нет активных филиалов. Сначала создайте филиал." 
             else:
-                tg_models.PreClient.objects.create(
+                tg_models.User.objects.create(
+                    telegram_id=None,
                     client_code=form.cleaned_data["client_code"],
                     phone=form.cleaned_data["phone"],
                     filial=filial_obj,
+                    status=tg_models.User.Status.NEW,
+                    client_status=tg_models.User.ClientStatus.OLD,
                 )
                 return redirect(reverse("manager_client_new") + "?saved=1")
     else:

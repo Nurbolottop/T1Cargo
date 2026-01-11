@@ -17,7 +17,7 @@ class User(models.Model):
         NEW = "new", "Новый"
         OLD = "old", "Старый"
 
-    telegram_id = models.BigIntegerField(unique=True, verbose_name="Telegram ID")
+    telegram_id = models.BigIntegerField(unique=True, null=True, blank=True, verbose_name="Telegram ID")
     username = models.CharField(max_length=255, blank=True, default="", verbose_name="Username")
     first_name = models.CharField(max_length=255, blank=True, default="", verbose_name="Имя")
     last_name = models.CharField(max_length=255, blank=True, default="", verbose_name="Фамилия")
@@ -81,7 +81,9 @@ class User(models.Model):
     def __str__(self) -> str:
         if self.client_code:
             return self.client_code
-        return str(self.telegram_id)
+        if self.telegram_id is not None:
+            return str(self.telegram_id)
+        return str(self.id)
 
 
 class PreClient(models.Model):
