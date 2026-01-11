@@ -41,3 +41,25 @@ class ShipmentImportForm(forms.Form):
     status = forms.ChoiceField(label="Статус", choices=tg_models.Shipment.Status.choices)
     price_per_kg = forms.DecimalField(label="Цена за кг", required=False, decimal_places=2, max_digits=12)
 
+
+class PreClientCreateForm(forms.Form):
+    client_code = forms.CharField(label="Код клиента", max_length=32)
+    phone = forms.CharField(label="Телефон", max_length=64)
+
+    def clean_client_code(self):
+        value = (self.cleaned_data.get("client_code") or "").strip()
+        if not value:
+            raise forms.ValidationError("Укажите код клиента")
+        exists = tg_models.PreClient.objects.filter(client_code__iexact=value).exists() or tg_models.User.objects.filter(
+            client_code__iexact=value
+        ).exists()
+        if exists:
+            raise forms.ValidationError("Код уже используется")
+        return value
+
+    def clean_phone(self):
+        value = (self.cleaned_data.get("phone") or "").strip()
+        if not value:
+            raise forms.ValidationError("Укажите телефон")
+        return value
+

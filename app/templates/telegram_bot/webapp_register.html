@@ -151,6 +151,11 @@
       </div>
 
       <div class="field">
+        <div class="label">Код клиента <small>(если уже есть)</small></div>
+        <input id="client_code" placeholder="Например: T1-1234" autocomplete="off" />
+      </div>
+
+      <div class="field">
         <div class="label">Телефон <small>(обязательно WhatsApp)</small></div>
         <input id="phone" placeholder="Тел. в международном формате*" autocomplete="tel" />
       </div>
@@ -225,8 +230,29 @@
       }
     }
 
+    async function applyClientCode() {
+      const code = document.getElementById('client_code').value.trim();
+      if (!code) return;
+      try {
+        const resp = await fetch('/webapp/register/preclient/?code=' + encodeURIComponent(code));
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.ok || !data.data) {
+          return;
+        }
+        if (data.data.phone) {
+          document.getElementById('phone').value = String(data.data.phone);
+        }
+        if (data.data.filial_id) {
+          document.getElementById('filial_id').value = String(data.data.filial_id);
+        }
+      } catch (e) {
+        return;
+      }
+    }
+
     async function submitForm() {
       const full_name = document.getElementById('full_name').value.trim();
+      const client_code = document.getElementById('client_code').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const address = document.getElementById('address').value.trim();
       const filial_id_raw = document.getElementById('filial_id').value;
@@ -252,6 +278,7 @@
 
       const payload = {
         full_name,
+        client_code,
         phone,
         address,
         filial_id,
@@ -290,6 +317,7 @@
 
     loadFilials();
     document.getElementById('submit').addEventListener('click', submitForm);
+    document.getElementById('client_code').addEventListener('blur', applyClientCode);
   </script>
 </body>
 </html>

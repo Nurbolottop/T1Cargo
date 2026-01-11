@@ -55,6 +55,7 @@ class UserAdmin(admin.ModelAdmin):
         "username",
         "client_type",
         "status",
+        "client_status",
         "full_name",
         "phone",
         "total_debt",
@@ -70,7 +71,7 @@ class UserAdmin(admin.ModelAdmin):
         "full_name",
         "phone",
     )
-    list_filter = ("status", "client_type", "created_at")
+    list_filter = ("status", "client_status", "client_type", "created_at")
     list_select_related = False
     list_per_page = 50
     autocomplete_fields = ()
@@ -84,6 +85,7 @@ class UserAdmin(admin.ModelAdmin):
                     "client_code",
                     "client_type",
                     "status",
+                    "client_status",
                     "total_debt",
                 )
             },
@@ -108,6 +110,14 @@ class UserAdmin(admin.ModelAdmin):
             {"fields": ("created_at", "updated_at")},
         ),
     )
+
+
+@admin.register(tg_models.PreClient)
+class PreClientAdmin(admin.ModelAdmin):
+    list_display = ("client_code", "phone", "filial", "created_at")
+    search_fields = ("client_code", "phone")
+    list_filter = ("filial", "created_at")
+    readonly_fields = ("created_at", "updated_at")
 
 @admin.register(tg_models.Shipment)
 class ShipmentAdmin(admin.ModelAdmin):

@@ -394,6 +394,14 @@ def start_bot(token: str) -> None:
         user_obj = _get_or_create_user(message)
         filial_obj = getattr(user_obj, "filial", None) if user_obj else None
 
+        if not filial_obj:
+            bot.send_message(
+                message.chat.id,
+                "Чтобы увидеть контакты вашего ПВЗ, пожалуйста, пройдите регистрацию и выберите филиал.",
+                reply_markup=_onboarding_keyboard(getattr(s, "phone", ""), getattr(s, "registration_webapp_url", "")),
+            )
+            return
+
         manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
         manager_url = _manager_url(manager_contact)
 
@@ -404,17 +412,11 @@ def start_bot(token: str) -> None:
         pvz_title = ""
         pvz_address = ""
         pvz_phone = ""
-        if filial_obj:
-            city = (getattr(filial_obj, "city", "") or "").strip()
-            name = (getattr(filial_obj, "name", "") or "").strip()
-            pvz_title = " — ".join([v for v in [city, name] if v]).strip(" —")
-            pvz_address = (getattr(filial_obj, "address", "") or "").strip()
-            pvz_phone = (manager_contact or "").strip()
-        else:
-            wh = base_models.Warehouse.objects.order_by("name").first()
-            pvz_title = (getattr(wh, "name", "") or "").strip() if wh else ""
-            pvz_address = (getattr(wh, "address", "") or "").strip() if wh else ""
-            pvz_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip()
+        city = (getattr(filial_obj, "city", "") or "").strip()
+        name = (getattr(filial_obj, "name", "") or "").strip()
+        pvz_title = " — ".join([v for v in [city, name] if v]).strip(" —")
+        pvz_address = (getattr(filial_obj, "address", "") or "").strip()
+        pvz_phone = (manager_contact or "").strip()
 
         lines: list[str] = [
             "Если у вас есть вопросы? Напишите нам",

@@ -1,0 +1,38 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Добавить клиента • Менеджер{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Добавить клиента</h2>
+    <div class="muted" style="margin-bottom:10px;">Добавляет старого клиента (телефон + ранее выданный код). Филиал будет установлен автоматически (Ош, если есть).</div>
+
+    {% if error %}
+      <div class="error" style="margin-bottom:12px;">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" class="form-row">
+      {% csrf_token %}
+      <div class="col-6">
+        <label>Код клиента</label>
+        <input name="client_code" value="{{ form.client_code.value|default:'' }}" placeholder="Например: T1-1234" />
+        {% if form.client_code.errors %}
+          <div class="error" style="margin-top:8px;">{{ form.client_code.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="col-6">
+        <label>Телефон</label>
+        <input name="phone" value="{{ form.phone.value|default:'' }}" placeholder="Телефон (WhatsApp)" />
+        {% if form.phone.errors %}
+          <div class="error" style="margin-top:8px;">{{ form.phone.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="col-12 row-actions" style="margin-top:10px;">
+        <button class="btn accent" type="submit">Сохранить</button>
+        <a class="btn" href="{% url 'manager_clients' %}">Отмена</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

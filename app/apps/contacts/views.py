@@ -6,8 +6,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.telegram_bot import models as tg_models
+from apps.base import models as base_models
 
-from .forms import ShipmentCreateForm, ShipmentImportForm
+from .forms import ShipmentCreateForm, ShipmentImportForm, PreClientCreateForm
 
 try:
     from openpyxl import load_workbook
@@ -132,6 +133,39 @@ def manager_client_detail(request, user_id: int):
         request,
         "contacts/manager/client_detail.html",
         {"nav": "clients", "client": client, "shipments": shipments},
+    )
+
+
+@login_required(login_url="/manager/login/")
+def manager_client_new(request):
+    denied = _require_manager(request)
+    if denied is not None:
+        return denied
+
+    error = None
+    if request.method == "POST":
+        form = PreClientCreateForm(request.POST)
+        if form.is_valid():
+            filial_obj = (
+                base_models.Filial.objects.filter(is_active=True, city__iexact="Ош").order_by("name").first()
+                or base_models.Filial.objects.filter(is_active=True).order_by("city", "name").first()
+            )
+            if filial_obj is None:
+                error = "Нет активных филиалов. Сначала создайте филиал." 
+            else:
+                tg_models.PreClient.objects.create(
+                    client_code=form.cleaned_data["client_code"],
+                    phone=form.cleaned_data["phone"],
+                    filial=filial_obj,
+                )
+                return redirect("manager_clients")
+    else:
+        form = PreClientCreateForm()
+
+    return render(
+        request,
+        "contacts/manager/client_new.html",
+        {"nav": "clients", "form": form, "error": error},
     )
 
 

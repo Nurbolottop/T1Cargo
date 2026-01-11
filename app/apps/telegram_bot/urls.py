@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path('webapp/register/', views.webapp_register, name='webapp_register'),
     path('webapp/register/filials/', views.webapp_register_filials, name='webapp_register_filials'),
+    path('webapp/register/preclient/', views.webapp_register_preclient, name='webapp_register_preclient'),
     path('webapp/register/submit/', views.webapp_register_submit, name='webapp_register_submit'),
     path('webapp/profile/', views.webapp_profile, name='webapp_profile'),
     path('webapp/profile/data/', views.webapp_profile_data, name='webapp_profile_data'),

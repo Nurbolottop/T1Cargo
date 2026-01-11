@@ -13,6 +13,10 @@ class User(models.Model):
         NEW = "new", "Новый"
         CLIENT_REGISTERED = "client_registered", "Клиент (Зарегистрирован)"
 
+    class ClientStatus(models.TextChoices):
+        NEW = "new", "Новый"
+        OLD = "old", "Старый"
+
     telegram_id = models.BigIntegerField(unique=True, verbose_name="Telegram ID")
     username = models.CharField(max_length=255, blank=True, default="", verbose_name="Username")
     first_name = models.CharField(max_length=255, blank=True, default="", verbose_name="Имя")
@@ -59,6 +63,13 @@ class User(models.Model):
         verbose_name="Статус",
     )
 
+    client_status = models.CharField(
+        max_length=16,
+        choices=ClientStatus.choices,
+        default=ClientStatus.NEW,
+        verbose_name="Статус клиента",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
 
@@ -71,6 +82,28 @@ class User(models.Model):
         if self.client_code:
             return self.client_code
         return str(self.telegram_id)
+
+
+class PreClient(models.Model):
+    client_code = models.CharField(max_length=32, unique=True, verbose_name="Код клиента")
+    phone = models.CharField(max_length=64, verbose_name="Телефон")
+    filial = models.ForeignKey(
+        base_models.Filial,
+        on_delete=models.PROTECT,
+        related_name="preclients",
+        verbose_name="Филиал",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
+
+    class Meta:
+        verbose_name = "Преддобавленный клиент"
+        verbose_name_plural = "Преддобавленные клиенты"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.client_code
 
 
 class Shipment(models.Model):
