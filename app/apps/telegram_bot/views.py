@@ -1,10 +1,10 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 
 import json
 import re
-import secrets
 import urllib.parse
 import urllib.request
 
@@ -30,6 +30,18 @@ def webapp_profile(request):
         "telegram_bot/webapp_profile.html",
         {"settings": settings_obj},
     )
+
+
+def webapp_register_filials(request):
+    if request.method != "GET":
+        return JsonResponse({"ok": False, "error": "method_not_allowed"}, status=405)
+
+    items = list(
+        base_models.Filial.objects.filter(is_active=True)
+        .order_by("city", "name")
+        .values("id", "name", "city")
+    )
+    return JsonResponse({"ok": True, "data": items})
 
 
 def _html_to_text(value: str) -> str:
@@ -75,21 +87,20 @@ def webapp_profile_data(request):
         return JsonResponse({"ok": False, "error": "not_found"}, status=404)
 
     s = base_models.Settings.objects.first()
-    pvz_phone = (getattr(s, "phone", "") or "").strip() if s else ""
-    pvz_wh = (
-        base_models.Warehouse.objects.filter(country__icontains="кыргыз").order_by("city", "name").first()
-        or base_models.Warehouse.objects.filter(country__icontains="kyrgyz").order_by("city", "name").first()
-        or base_models.Warehouse.objects.order_by("country", "city", "name").first()
-    )
+    wh = base_models.Warehouse.objects.order_by("name").first()
+    pvz_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
+
+    filial_obj = getattr(user_obj, "filial", None)
+    manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
 
     data = {
         "client_code": user_obj.client_code or "",
         "full_name": user_obj.full_name or "",
         "phone": user_obj.phone or "",
         "address": user_obj.address or "",
-        "pvz_city": getattr(pvz_wh, "city", "") or "",
+        "pvz_city": "",
         "pvz_phone": pvz_phone,
-        "manager_contact": (getattr(s, "manager_contact", "") or "").strip() if s else "",
+        "manager_contact": manager_contact,
         "website": (getattr(s, "website", "") or "").strip() if s else "",
         "title": (getattr(s, "title", "") or "").strip() if s else "",
     }
@@ -138,93 +149,22 @@ def webapp_profile_addresses(request):
         return JsonResponse({"ok": False, "error": "not_found"}, status=404)
 
     s = base_models.Settings.objects.first()
-    pvz_phone = (getattr(s, "phone", "") or "").strip() if s else ""
+    wh = base_models.Warehouse.objects.order_by("name").first()
+    warehouse_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
+    pvz_phone = warehouse_phone
     pvz_city = ""
-    pvz_wh = (
-        base_models.Warehouse.objects.filter(country__icontains="кыргыз").order_by("city", "name").first()
-        or base_models.Warehouse.objects.filter(country__icontains="kyrgyz").order_by("city", "name").first()
-        or base_models.Warehouse.objects.order_by("country", "city", "name").first()
-    )
-    if pvz_wh:
-        pvz_city = getattr(pvz_wh, "city", "") or ""
-
-    china_wh = (
-        base_models.Warehouse.objects.filter(country__icontains="китай").order_by("city", "name").first()
-        or base_models.Warehouse.objects.filter(country__icontains="china").order_by("city", "name").first()
-    )
-    china_address = (getattr(china_wh, "address", "") or "").strip() if china_wh else ""
+    china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
     code_value = (user_obj.client_code or "—").strip()
-    tg_id_value = str(telegram_user_id)
-    copy_lines = "\n".join([code_value, tg_id_value, china_address or "—", code_value])
+    copy_lines = "\n".join([
+        f"阿{code_value}",
+        warehouse_phone or "—",
+        f"{(china_address or '—')}{code_value}",
+    ])
 
     data = {
         "copy_lines": copy_lines,
         "pvz_city": pvz_city,
         "pvz_phone": pvz_phone,
-    }
-    return JsonResponse({"ok": True, "data": data})
-
-
-@csrf_exempt
-def webapp_profile_instructions(request):
-    if request.method != "POST":
-        return JsonResponse({"ok": False, "error": "method_not_allowed"}, status=405)
-
-    payload = _parse_json_body(request)
-    if payload is None:
-        return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
-
-    _, user_obj = _get_user_by_payload(payload)
-    if not user_obj:
-        return JsonResponse({"ok": False, "error": "not_found"}, status=404)
-
-    qs = base_models.Instruction.objects.all().order_by("-created_at")
-    items = []
-    for instr in qs[:50]:
-        items.append({"id": instr.id, "title": (instr.title or "").strip()})
-    return JsonResponse({"ok": True, "data": {"items": items}})
-
-
-@csrf_exempt
-def webapp_profile_instruction_detail(request, instruction_id: int):
-    if request.method != "POST":
-        return JsonResponse({"ok": False, "error": "method_not_allowed"}, status=405)
-
-    payload = _parse_json_body(request)
-    if payload is None:
-        return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
-
-    _, user_obj = _get_user_by_payload(payload)
-    if not user_obj:
-        return JsonResponse({"ok": False, "error": "not_found"}, status=404)
-
-    instr = base_models.Instruction.objects.filter(id=instruction_id).first()
-    if not instr:
-        return JsonResponse({"ok": False, "error": "not_found"}, status=404)
-
-    photo_url = ""
-    try:
-        photo = getattr(instr, "photo", None)
-        if photo and getattr(photo, "url", None):
-            photo_url = photo.url
-    except Exception:
-        photo_url = ""
-
-    file_url = ""
-    try:
-        f = getattr(instr, "file", None)
-        if f and getattr(f, "url", None):
-            file_url = f.url
-    except Exception:
-        file_url = ""
-
-    data = {
-        "title": (instr.title or "").strip(),
-        "text": _html_to_text(str(instr.text or "")),
-        "video_url": (getattr(instr, "video_url", "") or "").strip(),
-        "link_url": (getattr(instr, "link_url", "") or "").strip(),
-        "photo_url": photo_url,
-        "file_url": file_url,
     }
     return JsonResponse({"ok": True, "data": data})
 
@@ -243,18 +183,15 @@ def webapp_profile_support(request):
         return JsonResponse({"ok": False, "error": "not_found"}, status=404)
 
     s = base_models.Settings.objects.first()
-    manager_contact = (getattr(s, "manager_contact", "") or "").strip() if s else ""
-    instagram_url = (getattr(s, "instagram_url", "") or "").strip() if s else ""
-    pvz_location_url = (getattr(s, "pvz_location_url", "") or "").strip() if s else ""
-    work_hours = (getattr(s, "work_hours", "") or "").strip() if s else ""
-    pvz_phone = (getattr(s, "phone", "") or "").strip() if s else ""
+    filial_obj = getattr(user_obj, "filial", None)
+    manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
+    instagram_url = (getattr(filial_obj, "instagram_url", "") or "").strip() if filial_obj else ""
+    pvz_location_url = (getattr(filial_obj, "pvz_location_url", "") or "").strip() if filial_obj else ""
+    work_hours = (getattr(filial_obj, "work_hours", "") or "").strip() if filial_obj else ""
+    wh = base_models.Warehouse.objects.order_by("name").first()
+    pvz_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
 
-    pvz_wh = (
-        base_models.Warehouse.objects.filter(country__icontains="кыргыз").order_by("city", "name").first()
-        or base_models.Warehouse.objects.filter(country__icontains="kyrgyz").order_by("city", "name").first()
-        or base_models.Warehouse.objects.order_by("country", "city", "name").first()
-    )
-    pvz_city = (getattr(pvz_wh, "city", "") or "").strip() if pvz_wh else ""
+    pvz_city = ""
 
     data = {
         "manager_contact": manager_contact,
@@ -272,11 +209,14 @@ def _send_telegram_message(
     text: str,
     reply_markup: dict | None = None,
     disable_web_page_preview: bool = True,
+    parse_mode: str | None = None,
 ) -> None:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload: dict = {"chat_id": chat_id, "text": text}
     if reply_markup is not None:
         payload["reply_markup"] = json.dumps(reply_markup, ensure_ascii=False)
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
     if disable_web_page_preview:
         payload["disable_web_page_preview"] = "true"
     data = urllib.parse.urlencode(payload).encode("utf-8")
@@ -285,17 +225,33 @@ def _send_telegram_message(
         return
 
 
-def _generate_client_code(prefix: str = "T1") -> str:
-    prefix = (prefix or "T1").strip().upper()
-    if not prefix:
-        prefix = "T1"
+def _generate_client_code(filial_id: int | None) -> tuple[str, base_models.Filial | None]:
+    with transaction.atomic():
+        filial_obj = None
+        if isinstance(filial_id, int):
+            filial_obj = base_models.Filial.objects.select_for_update().filter(id=filial_id, is_active=True).first()
 
-    for _ in range(50):
-        number = secrets.randbelow(9000) + 1000
-        candidate = f"{prefix}-{number}"
-        if not tg_models.User.objects.filter(client_code=candidate).exists():
-            return candidate
-    return f"{prefix}-{secrets.randbelow(900000) + 100000}"
+        if filial_obj is None:
+            filial_obj = base_models.Filial.objects.select_for_update().filter(is_active=True).order_by("city", "name").first()
+
+        if filial_obj is None:
+            return "", None
+
+        prefix = (getattr(filial_obj, "client_code_prefix", "T1") or "T1").strip().upper()
+        start_number = int(getattr(filial_obj, "client_code_start_number", 1000) or 1000)
+        last_number = getattr(filial_obj, "client_code_last_number", None)
+
+        if not prefix:
+            prefix = "T1"
+        if start_number < 1:
+            start_number = 1
+
+        next_number = start_number if last_number is None else max(int(last_number) + 1, start_number)
+
+        filial_obj.client_code_last_number = next_number
+        filial_obj.save(update_fields=["client_code_last_number", "updated_at"])
+
+    return f"{prefix}-{next_number}", filial_obj
 
 @csrf_exempt
 def webapp_register_submit(request):
@@ -310,6 +266,7 @@ def webapp_register_submit(request):
     full_name = (payload.get("full_name") or "").strip()
     phone = (payload.get("phone") or "").strip()
     address = (payload.get("address") or "").strip()
+    filial_id = payload.get("filial_id")
 
     telegram_user_id = payload.get("telegram_user_id")
     telegram_username = (payload.get("telegram_username") or "").strip()
@@ -319,20 +276,44 @@ def webapp_register_submit(request):
 
     user_obj = None
     if isinstance(telegram_user_id, int):
-        user_obj, _ = tg_models.User.objects.update_or_create(
-            telegram_id=telegram_user_id,
-            defaults={
-                "username": telegram_username,
-                "full_name": full_name,
-                "phone": phone,
-                "address": address,
-                "status": tg_models.User.Status.CLIENT_REGISTERED,
-            },
-        )
+        user_obj = tg_models.User.objects.filter(telegram_id=telegram_user_id).first()
 
-        if user_obj and not user_obj.client_code:
-            user_obj.client_code = _generate_client_code("T1")
-            user_obj.save(update_fields=["client_code", "updated_at"])
+        selected_filial_id = filial_id if isinstance(filial_id, int) else None
+        filial_obj = base_models.Filial.objects.filter(id=selected_filial_id, is_active=True).first() if selected_filial_id else None
+        if filial_obj is None:
+            filial_obj = base_models.Filial.objects.filter(is_active=True).order_by("city", "name").first()
+        if filial_obj is None:
+            return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+
+        if user_obj:
+            user_obj.username = telegram_username
+            user_obj.full_name = full_name
+            user_obj.phone = phone
+            user_obj.address = address
+            user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
+            user_obj.filial = filial_obj
+            if not user_obj.client_code:
+                code, locked_filial_obj = _generate_client_code(filial_obj.id)
+                if not code:
+                    return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+                user_obj.client_code = code
+                if locked_filial_obj:
+                    user_obj.filial = locked_filial_obj
+            user_obj.save()
+        else:
+            code, locked_filial_obj = _generate_client_code(filial_obj.id)
+            if not code:
+                return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+            user_obj = tg_models.User.objects.create(
+                telegram_id=telegram_user_id,
+                username=telegram_username,
+                full_name=full_name,
+                phone=phone,
+                address=address,
+                status=tg_models.User.Status.CLIENT_REGISTERED,
+                filial=locked_filial_obj or filial_obj,
+                client_code=code,
+            )
 
     settings_obj = base_models.Settings.objects.first()
     if settings_obj and settings_obj.is_bot_enabled and settings_obj.telegram_token:
@@ -340,14 +321,17 @@ def webapp_register_submit(request):
             menu_kb = {
                 "keyboard": [
                     ["👤 Профиль", "🎁 Адреса", "📦 Мои посылки"],
-                    ["📕 Инструкция", "⛔ Запрещенные товары", "⚙ Поддержка"],
+                    ["🛒 Оптовый заказ", "⛔ Запрещенные товары", "⚙ Поддержка"],
                     ["✅ Добавить трек"],
                 ],
                 "resize_keyboard": True,
             }
 
             manager_url = ""
-            manager_contact = (settings_obj.manager_contact or "").strip()
+            filial_obj = getattr(user_obj, "filial", None)
+            manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
+            if not manager_contact:
+                manager_contact = (settings_obj.phone or "").strip()
             if manager_contact:
                 if manager_contact.startswith("http://") or manager_contact.startswith("https://"):
                     manager_url = manager_contact
@@ -382,33 +366,58 @@ def webapp_register_submit(request):
             )
             try:
                 if inline_kb["inline_keyboard"]:
-                    _send_telegram_message(settings_obj.telegram_token, telegram_user_id, profile_text, reply_markup=inline_kb)
-                    _send_telegram_message(settings_obj.telegram_token, telegram_user_id, "Меню:", reply_markup=menu_kb)
+                    _send_telegram_message(
+                        settings_obj.telegram_token,
+                        telegram_user_id,
+                        profile_text,
+                        reply_markup=inline_kb,
+                    )
                 else:
-                    _send_telegram_message(settings_obj.telegram_token, telegram_user_id, profile_text, reply_markup=menu_kb)
+                    _send_telegram_message(settings_obj.telegram_token, telegram_user_id, profile_text)
             except Exception:
                 pass
 
-            china_wh = (
-                base_models.Warehouse.objects.filter(country__icontains="китай").order_by("city", "name").first()
-                or base_models.Warehouse.objects.filter(country__icontains="china").order_by("city", "name").first()
-            )
-            china_address = getattr(china_wh, "address", "").strip() if china_wh else ""
-            manager_phone = (settings_obj.phone or "").strip()
+            wh = base_models.Warehouse.objects.order_by("name").first()
+            china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
+            warehouse_phone = (getattr(wh, "phone", "") or "").strip() if wh else (settings_obj.phone or "").strip()
+            code_value = (user_obj.client_code or "—").strip()
 
-            address_text = (
-                "📩 Скопируйте ниже. Это адрес склада в Китае 🇨🇳\n\n"
-                f"{user_obj.client_code or '—'}\n"
-                f"{telegram_user_id}\n"
-                f"{china_address or '—'}\n"
-                f"{user_obj.client_code or '—'}\n\n"
-                "Чтобы ваши посылки не потерялись обязательно отправьте скрин заполненного адреса "
-                "и получите подтверждение от нашего менеджера\n\n"
-                f"📱 {manager_phone or '—'}\n\n"
+            address_text = "\n".join([
+                f"阿{code_value}",
+                warehouse_phone or "—",
+                f"{(china_address or '—')}{code_value}",
+            ])
+            try:
+                _send_telegram_message(
+                    settings_obj.telegram_token,
+                    telegram_user_id,
+                    f"`{address_text}`",
+                    reply_markup=menu_kb,
+                    parse_mode="Markdown",
+                )
+            except Exception:
+                pass
+
+            warning_text = (
+                "✅ *Важно*\n\n"
+                "Чтобы ваши посылки не потерялись, обязательно отправьте менеджеру *скрин* "
+                "заполненного адреса и получите *подтверждение* ✅\n\n"
+                f"📱 *Телефон*: {(settings_obj.phone or '').strip() or '—'}\n\n"
                 "❗❗❗ Только после подтверждения ✅ адреса Карго несет ответственность за ваши посылки 📦"
             )
+            warn_kb = {"inline_keyboard": []}
+            if manager_url:
+                warn_kb["inline_keyboard"].append([
+                    {"text": "WhatsApp менеджера", "url": manager_url}
+                ])
             try:
-                _send_telegram_message(settings_obj.telegram_token, telegram_user_id, address_text)
+                _send_telegram_message(
+                    settings_obj.telegram_token,
+                    telegram_user_id,
+                    warning_text,
+                    reply_markup=warn_kb if warn_kb["inline_keyboard"] else None,
+                    parse_mode="Markdown",
+                )
             except Exception:
                 pass
 

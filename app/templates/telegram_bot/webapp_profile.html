@@ -254,7 +254,6 @@
         <div class="tab active" data-tab="profile">Профиль</div>
         <div class="tab" data-tab="parcels">Посылки</div>
         <div class="tab" data-tab="addresses">Адреса</div>
-        <div class="tab" data-tab="instructions">Инструкции</div>
         <div class="tab" data-tab="support">Поддержка</div>
       </div>
 
@@ -317,18 +316,6 @@
           <div class="k">📍 ПВЗ</div>
           <div id="addr_pvz" class="v"><span class="skeleton" style="width:40%;"></span></div>
         </div>
-      </div>
-    </div>
-
-    <div id="section_instructions" class="section">
-      <div class="header">
-        <div class="title">📕 Инструкции</div>
-      </div>
-      <div id="instr_list" class="list"></div>
-      <div id="instr_detail" class="item" style="display:none;">
-        <div id="instr_title" class="t"></div>
-        <div id="instr_text" class="s"></div>
-        <div class="actions" id="instr_actions" style="display:none;"></div>
       </div>
     </div>
 
@@ -446,7 +433,7 @@
 
     function getTabFromHash() {
       const raw = (window.location.hash || '').replace('#', '').trim();
-      const allowed = ['profile', 'parcels', 'addresses', 'instructions', 'support'];
+      const allowed = ['profile', 'parcels', 'addresses', 'support'];
       return allowed.includes(raw) ? raw : 'profile';
     }
 
@@ -467,7 +454,6 @@
       try {
         if (key === 'parcels') await loadParcels();
         if (key === 'addresses') await loadAddresses();
-        if (key === 'instructions') await loadInstructions();
         if (key === 'support') await loadSupport();
         __loadedTabs[key] = true;
       } catch (e) {
@@ -500,73 +486,6 @@
       document.getElementById('china_copy').textContent = data.copy_lines || '';
       const pvz = [data.pvz_city, data.pvz_phone].filter(Boolean).join(' • ');
       document.getElementById('addr_pvz').textContent = pvz || '';
-    }
-
-    async function loadInstructions() {
-      const list = document.getElementById('instr_list');
-      const detail = document.getElementById('instr_detail');
-      detail.style.display = 'none';
-      list.innerHTML = '';
-
-      const data = await postJson('/webapp/profile/instructions/', { telegram_user_id: window.__tg_user_id });
-      const items = data.items || [];
-      if (!items.length) {
-        list.innerHTML = '<div class="item"><div class="t">Инструкции пока не добавлены.</div></div>';
-        return;
-      }
-      items.forEach(it => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'btn secondary';
-        btn.style.borderRadius = '14px';
-        btn.style.boxShadow = 'none';
-        btn.style.padding = '12px 14px';
-        btn.textContent = it.title || 'Инструкция';
-        btn.addEventListener('click', async () => {
-          const d = await postJson(`/webapp/profile/instructions/${it.id}/`, { telegram_user_id: window.__tg_user_id });
-          document.getElementById('instr_title').textContent = d.title ? `📕 ${d.title}` : '📕 Инструкция';
-          document.getElementById('instr_text').textContent = d.text || '';
-
-          const actions = document.getElementById('instr_actions');
-          actions.innerHTML = '';
-          actions.style.display = 'none';
-
-          if (d.link_url) {
-            const a = document.createElement('a');
-            a.className = 'pill';
-            a.href = d.link_url;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.textContent = '🔗 Ссылка';
-            actions.appendChild(a);
-          }
-          if (d.video_url) {
-            const a = document.createElement('a');
-            a.className = 'pill';
-            a.href = d.video_url;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.textContent = '🎥 Видео';
-            actions.appendChild(a);
-          }
-          if (d.file_url) {
-            const a = document.createElement('a');
-            a.className = 'pill';
-            a.href = d.file_url;
-            a.target = '_blank';
-            a.rel = 'noopener';
-            a.textContent = '📎 Файл';
-            actions.appendChild(a);
-          }
-          if (actions.children.length) {
-            actions.style.display = 'flex';
-          }
-
-          detail.style.display = 'block';
-          detail.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-        list.appendChild(btn);
-      });
     }
 
     async function loadSupport() {

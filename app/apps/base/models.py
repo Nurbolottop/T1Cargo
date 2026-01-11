@@ -9,12 +9,7 @@ except Exception:
 
 class Settings(models.Model):
     title = models.CharField(max_length=255, verbose_name="Название карго")
-    manager_contact = models.CharField(max_length=255, verbose_name="Контакт менеджера", blank=True)
-    instagram_url = models.URLField(verbose_name="Instagram URL", blank=True)
     phone = models.CharField(max_length=255, verbose_name="Телефон", blank=True)
-    work_hours = models.CharField(max_length=255, verbose_name="Режим работы", blank=True)
-    pvz_location_url = models.URLField(verbose_name="Локация ПВЗ (ссылка на карту)", blank=True)
-    email = models.EmailField(verbose_name="Email", blank=True)
     website = models.URLField(verbose_name="Сайт", blank=True)
     registration_webapp_url = models.URLField(verbose_name="Ссылка на регистрацию (Telegram WebApp)", blank=True)
     logo = ResizedImageField(
@@ -36,15 +31,6 @@ class Settings(models.Model):
 
     telegram_token = models.CharField(max_length=255, verbose_name="Токен телеграм", blank=True)
     telegram_bot_username = models.CharField(max_length=255, verbose_name="Username бота", blank=True)
-
-    currency = models.CharField(max_length=16, verbose_name="Валюта", blank=True, default="KGS")
-    default_price_per_kg = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        verbose_name="Цена по умолчанию за кг",
-        blank=True,
-        null=True,
-    )
 
     is_site_enabled = models.BooleanField(default=True, verbose_name="Сайт включен")
     is_bot_enabled = models.BooleanField(default=True, verbose_name="Бот включен")
@@ -81,8 +67,7 @@ class AdminId(models.Model):
 
 class Warehouse(models.Model):
     name = models.CharField(max_length=255, verbose_name="Название")
-    country = models.CharField(max_length=128, verbose_name="Страна")
-    city = models.CharField(max_length=128, verbose_name="Город")
+    phone = models.CharField(max_length=64, verbose_name="Телефон", blank=True, default="")
     address = models.CharField(max_length=512, verbose_name="Адрес")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
@@ -91,10 +76,61 @@ class Warehouse(models.Model):
     class Meta:
         verbose_name = "2) Склад"
         verbose_name_plural = "2) Склады"
-        ordering = ["name", "country", "city"]
+        ordering = ["name"]
 
     def __str__(self) -> str:
         return self.name
+
+
+class Filial(models.Model):
+    name = models.CharField(max_length=255, verbose_name="Название")
+    city = models.CharField(max_length=128, verbose_name="Город")
+    address = models.CharField(max_length=512, verbose_name="Адрес", blank=True, default="")
+    is_active = models.BooleanField(default=True, verbose_name="Активен")
+
+    manager_contact = models.CharField(max_length=255, verbose_name="Контакт менеджера", blank=True, default="")
+    instagram_url = models.URLField(verbose_name="Instagram URL", blank=True, default="")
+    email = models.EmailField(verbose_name="Email", blank=True, default="")
+    work_hours = models.CharField(max_length=255, verbose_name="Режим работы", blank=True, default="")
+    pvz_location_url = models.URLField(verbose_name="Локация ПВЗ (ссылка на карту)", blank=True, default="")
+
+    currency = models.CharField(max_length=16, verbose_name="Валюта", blank=True, default="KGS")
+    default_price_per_kg = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Цена по умолчанию за кг",
+        blank=True,
+        null=True,
+    )
+
+    wholesale_order_text = RichTextField(verbose_name="Оптовый заказ (текст)", blank=True)
+
+    client_code_prefix = models.CharField(
+        max_length=16,
+        verbose_name="Префикс кода клиента",
+        blank=True,
+        default="T1",
+    )
+    client_code_start_number = models.PositiveIntegerField(
+        verbose_name="Стартовый номер кода клиента",
+        default=1000,
+    )
+    client_code_last_number = models.PositiveIntegerField(
+        verbose_name="Последний выданный номер кода клиента",
+        blank=True,
+        null=True,
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
+
+    class Meta:
+        verbose_name = "4) Филиал"
+        verbose_name_plural = "4) Филиалы"
+        ordering = ["city", "name"]
+
+    def __str__(self) -> str:
+        return f"{self.city} — {self.name}"
 
 
 class Instruction(models.Model):

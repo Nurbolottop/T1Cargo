@@ -66,19 +66,19 @@ def _onboarding_keyboard(manager_contact: str, registration_webapp_url: str) -> 
     if registration_webapp_url and _is_https_url(registration_webapp_url):
         kb.add(
             types.InlineKeyboardButton(
-                "Пройти регистрацию",
+                "Получить код",
                 web_app=types.WebAppInfo(url=registration_webapp_url),
             )
         )
     else:
-        kb.add(types.InlineKeyboardButton("Пройти регистрацию", callback_data="register"))
+        kb.add(types.InlineKeyboardButton("Получить код", callback_data="register"))
     return kb
 
 
 def _main_menu_keyboard() -> types.ReplyKeyboardMarkup:
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("👤 Профиль", "🎁 Адреса", "📦 Мои посылки")
-    kb.row("📕 Инструкция", "⛔ Запрещенные товары", "⚙ Поддержка")
+    kb.row("🛒 Оптовый заказ", "⛔ Запрещенные товары", "⚙ Поддержка")
     kb.row("✅ Добавить трек")
     return kb
 
@@ -172,7 +172,7 @@ def start_bot(token: str) -> None:
             return
 
         company_name = s.title
-        manager_contact = s.manager_contact
+        manager_contact = s.phone
         registration_webapp_url = getattr(s, "registration_webapp_url", "")
         greeting = (
             "Пройдите регистрацию\n\n"
@@ -209,76 +209,6 @@ def start_bot(token: str) -> None:
         bot.send_message(call.message.chat.id, "Пройдите регистрацию по кнопке (WebApp).")
 
 
-    @bot.callback_query_handler(func=lambda c: isinstance(c.data, str) and c.data.startswith("instr:"))
-    def instruction_callback(call):
-        bot.answer_callback_query(call.id)
-
-        raw = call.data or ""
-        try:
-            instr_id = int(raw.split(":", 1)[1])
-        except Exception:
-            bot.send_message(call.message.chat.id, "Не удалось открыть инструкцию.", reply_markup=_main_menu_keyboard())
-            return
-
-        instr = base_models.Instruction.objects.filter(id=instr_id).first()
-        if not instr:
-            bot.send_message(call.message.chat.id, "Инструкция не найдена.", reply_markup=_main_menu_keyboard())
-            return
-
-        title = (instr.title or "").strip()
-        text = _html_to_text(str(instr.text or ""))
-
-        header = f"📕 {title}" if title else "📕 Инструкция"
-        body_parts: list[str] = [header]
-        if text:
-            body_parts.append("")
-            body_parts.append(str(text))
-
-        link_url = (getattr(instr, "link_url", "") or "").strip()
-        video_url = (getattr(instr, "video_url", "") or "").strip()
-        if link_url:
-            body_parts.append("")
-            body_parts.append(f"🔗 {link_url}")
-        if video_url:
-            body_parts.append(f"🎥 {video_url}")
-
-        message_text = "\n".join(body_parts).strip()
-
-        # Очерёдность: 1) фото, 2) текст, 3) файл
-        try:
-            photo = getattr(instr, "photo", None)
-            if photo:
-                if getattr(photo, "path", None):
-                    with open(photo.path, "rb") as fp:
-                        bot.send_photo(call.message.chat.id, fp, caption=header)
-                elif (getattr(photo, "url", "") or "").startswith("http"):
-                    bot.send_photo(call.message.chat.id, photo.url, caption=header)
-        except Exception:
-            pass
-
-        if message_text:
-            bot.send_message(
-                call.message.chat.id,
-                message_text,
-                reply_markup=_main_menu_keyboard(),
-                disable_web_page_preview=True,
-            )
-        else:
-            bot.send_message(
-                call.message.chat.id,
-                header,
-                reply_markup=_main_menu_keyboard(),
-                disable_web_page_preview=True,
-            )
-
-        try:
-            f = getattr(instr, "file", None)
-            if f and getattr(f, "path", None):
-                with open(f.path, "rb") as fp:
-                    bot.send_document(call.message.chat.id, fp)
-        except Exception:
-            pass
-
     @bot.message_handler(func=lambda m: m.text == "👤 Профиль")
     def profile(message):
         user_obj = _get_or_create_user(message)
@@ -292,17 +222,15 @@ def start_bot(token: str) -> None:
         address = user_obj.address or ""
 
         s = _get_settings()
-        pvz_phone = (getattr(s, "phone", "") or "").strip() if s else ""
-        pvz_wh = (
-            base_models.Warehouse.objects.filter(country__icontains="кыргыз").order_by("city", "name").first()
-            or base_models.Warehouse.objects.filter(country__icontains="kyrgyz").order_by("city", "name").first()
-            or base_models.Warehouse.objects.order_by("country", "city", "name").first()
-        )
-        pvz_city = pvz_wh.city if pvz_wh else ""
-        pvz_phone_line = pvz_phone or ""
+        wh = base_models.Warehouse.objects.order_by("name").first()
+        pvz_city = ""
+        pvz_phone_line = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
 
-        manager_contact = (getattr(s, "manager_contact", "") or "").strip() if s else ""
+        filial_obj = getattr(user_obj, "filial", None)
+        manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
         manager_url = _manager_url(manager_contact)
+        work_hours = (getattr(filial_obj, "work_hours", "") or "").strip() if filial_obj else ""
+        pvz_location_url = (getattr(filial_obj, "pvz_location_url", "") or "").strip() if filial_obj else ""
         cabinet_url = (getattr(s, "website", "") or "").strip() if s else ""
         profile_webapp_url = _build_profile_webapp_url(s)
 
@@ -316,8 +244,8 @@ def start_bot(token: str) -> None:
             "",
             f"📍 ПВЗ: {pvz_city}",
             f"📍 ПВЗ телефон: {pvz_phone_line}",
-            "🕒 Часы работы:",
-            "🗺 Локация на Карте:",
+            f"🕒 Часы работы: {work_hours or '—'}",
+            f"🗺 Локация на Карте: {pvz_location_url or '—'}",
         ]
 
         kb_inline = types.InlineKeyboardMarkup()
@@ -379,36 +307,25 @@ def start_bot(token: str) -> None:
             return
 
         s = _get_settings()
-        manager_contact = (getattr(s, "manager_contact", "") or "").strip() if s else ""
+        filial_obj = getattr(user_obj, "filial", None)
+        manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
         manager_url = _manager_url(manager_contact)
-
-        china_wh = (
-            base_models.Warehouse.objects.filter(country__icontains="китай").order_by("city", "name").first()
-            or base_models.Warehouse.objects.filter(country__icontains="china").order_by("city", "name").first()
-        )
-        china_address = (getattr(china_wh, "address", "") or "").strip() if china_wh else ""
-
         manager_phone = (getattr(s, "phone", "") or "").strip() if s else ""
 
+        wh = base_models.Warehouse.objects.order_by("name").first()
+        china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
+
+        wh_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
+
         code_value = (user_obj.client_code or "—").strip()
-        tg_id_value = str(user_obj.telegram_id or message.chat.id).strip()
         address_value = (china_address or "—").strip()
 
         copy_lines = "\n".join([
-            code_value,
-            tg_id_value,
-            address_value,
-            code_value
+            f"阿{code_value}",
+            wh_phone or "—",
+            f"{address_value}{code_value}",
         ])
 
-        # 1️⃣ Сообщение-инструкция
-        bot.send_message(
-            message.chat.id,
-            "📩 Скопируйте ниже. Это адрес склада в Китае 🇨🇳",
-            disable_web_page_preview=True,
-        )
-
-        # 2️⃣ Сообщение для копирования (code)
         bot.send_message(
             message.chat.id,
             f"`{copy_lines}`",
@@ -438,22 +355,19 @@ def start_bot(token: str) -> None:
         )
 
 
-    @bot.message_handler(func=lambda m: m.text == "📕 Инструкция")
-    def instruction(message):
-        qs = base_models.Instruction.objects.all().order_by("-created_at")
-        if not qs.exists():
-            bot.send_message(message.chat.id, "Инструкции пока не добавлены.", reply_markup=_main_menu_keyboard())
-            return
-
-        kb = types.InlineKeyboardMarkup()
-        for instr in qs[:10]:
-            title = (instr.title or "").strip() or "Инструкция"
-            kb.add(types.InlineKeyboardButton(title, callback_data=f"instr:{instr.id}"))
-
+    @bot.message_handler(func=lambda m: m.text == "🛒 Оптовый заказ")
+    def wholesale_order(message):
+        user_obj = _get_or_create_user(message)
+        filial_obj = getattr(user_obj, "filial", None) if user_obj else None
+        raw = (getattr(filial_obj, "wholesale_order_text", "") or "") if filial_obj else ""
+        text = _html_to_text(str(raw))
+        if not text:
+            text = "Оптовый заказ: пока не заполнено."
         bot.send_message(
             message.chat.id,
-            "Инструкция:\nВыберите тему ниже 👇",
-            reply_markup=kb,
+            text,
+            reply_markup=_main_menu_keyboard(),
+            disable_web_page_preview=True,
         )
 
     @bot.message_handler(func=lambda m: m.text == "⛔ Запрещенные товары")
@@ -477,26 +391,37 @@ def start_bot(token: str) -> None:
             bot.send_message(message.chat.id, "Поддержка временно недоступна.", reply_markup=_main_menu_keyboard())
             return
 
-        manager_contact = (s.manager_contact or "").strip()
+        user_obj = _get_or_create_user(message)
+        filial_obj = getattr(user_obj, "filial", None) if user_obj else None
+
+        manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
         manager_url = _manager_url(manager_contact)
 
-        instagram_url = (getattr(s, "instagram_url", "") or "").strip()
-        work_hours = (getattr(s, "work_hours", "") or "").strip()
-        pvz_location_url = (getattr(s, "pvz_location_url", "") or "").strip()
+        instagram_url = (getattr(filial_obj, "instagram_url", "") or "").strip() if filial_obj else ""
+        work_hours = (getattr(filial_obj, "work_hours", "") or "").strip() if filial_obj else ""
+        pvz_location_url = (getattr(filial_obj, "pvz_location_url", "") or "").strip() if filial_obj else ""
 
-        pvz_wh = (
-            base_models.Warehouse.objects.filter(country__icontains="кыргыз").order_by("city", "name").first()
-            or base_models.Warehouse.objects.filter(country__icontains="kyrgyz").order_by("city", "name").first()
-            or base_models.Warehouse.objects.order_by("country", "city", "name").first()
-        )
-        pvz_city = (getattr(pvz_wh, "city", "") or "").strip() if pvz_wh else ""
-        pvz_phone = (getattr(s, "phone", "") or "").strip()
+        pvz_title = ""
+        pvz_address = ""
+        pvz_phone = ""
+        if filial_obj:
+            city = (getattr(filial_obj, "city", "") or "").strip()
+            name = (getattr(filial_obj, "name", "") or "").strip()
+            pvz_title = " — ".join([v for v in [city, name] if v]).strip(" —")
+            pvz_address = (getattr(filial_obj, "address", "") or "").strip()
+            pvz_phone = (manager_contact or "").strip()
+        else:
+            wh = base_models.Warehouse.objects.order_by("name").first()
+            pvz_title = (getattr(wh, "name", "") or "").strip() if wh else ""
+            pvz_address = (getattr(wh, "address", "") or "").strip() if wh else ""
+            pvz_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip()
 
         lines: list[str] = [
             "Если у вас есть вопросы? Напишите нам",
             "",
-            f"📍 ПВЗ: {pvz_city or '—'}",
-            f"📍 ПВЗ телефон: {pvz_phone or '—'}",
+            f"📍 ПВЗ: {pvz_title or '—'}",
+            f"🏢 Адрес ПВЗ: {pvz_address or '—'}" if (pvz_address or "").strip() else "",
+            f"📞 Телефон менеджера: {pvz_phone or '—'}",
             f"🔗 WhatsApp: {manager_url}" if manager_url else "",
             f"🕒 Часы работы: {work_hours or '—'}",
             "🗺 Локация на Карте:",

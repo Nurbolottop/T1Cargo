@@ -17,21 +17,8 @@ class SettingsAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "title",
-                    "manager_contact",
-                    "instagram_url",
                     "phone",
-                    "email",
                     "website",
-                )
-            },
-        ),
-        (
-            "Поддержка/ПВЗ",
-            {
-                "classes": ("collapse",),
-                "fields": (
-                    "work_hours",
-                    "pvz_location_url",
                 )
             },
         ),
@@ -45,16 +32,6 @@ class SettingsAdmin(admin.ModelAdmin):
                     "is_bot_enabled",
                     "registration_webapp_url",
                     "prohibited_goods_text",
-                )
-            },
-        ),
-        (
-            "Финансы",
-            {
-                "classes": ("collapse",),
-                "fields": (
-                    "currency",
-                    "default_price_per_kg",
                 )
             },
         ),
@@ -105,9 +82,27 @@ class SettingsAdmin(admin.ModelAdmin):
 
 @admin.register(base_models.Warehouse)
 class WarehouseAdmin(admin.ModelAdmin):
-    list_display = ("name", "country", "city", "address", "created_at")
-    list_filter = ("country", "city", "created_at")
-    search_fields = ("name", "country", "city", "address")
+    list_display = ("name", "phone", "address", "created_at")
+    list_filter = ("created_at",)
+    search_fields = ("name", "phone", "address")
+    readonly_fields = ("created_at", "updated_at")
+
+@admin.register(base_models.Filial)
+class FilialAdmin(admin.ModelAdmin):
+    list_display = (
+        "city",
+        "name",
+        "is_active",
+        "manager_contact",
+        "currency",
+        "client_code_prefix",
+        "client_code_start_number",
+        "client_code_last_number",
+        "wholesale_order_text",
+        "created_at",
+    )
+    list_filter = ("city", "is_active", "created_at")
+    search_fields = ("name", "city", "address", "wholesale_order_text")
     readonly_fields = ("created_at", "updated_at")
 
 @admin.register(base_models.Instruction)

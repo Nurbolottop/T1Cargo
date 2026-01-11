@@ -81,6 +81,17 @@
       font-size: 16px;
     }
 
+    select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 14px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--input-bg);
+      outline: none;
+      font-size: 16px;
+    }
+
     input::placeholder { color: #9ca3af; }
 
     .btn {
@@ -149,6 +160,13 @@
         <input id="address" placeholder="Адрес" autocomplete="street-address" />
       </div>
 
+      <div class="field">
+        <div class="label">Филиал <small>(обязательно)</small></div>
+        <select id="filial_id">
+          <option value="">Загрузка...</option>
+        </select>
+      </div>
+
       <button id="submit" class="btn">Зарегистрироваться</button>
       <div class="hint">После отправки заявки менеджер выдаст ваш персональный код.</div>
 
@@ -178,10 +196,40 @@
       document.getElementById('error').style.display = 'none';
     }
 
+    async function loadFilials() {
+      const select = document.getElementById('filial_id');
+      select.innerHTML = '<option value="">Загрузка...</option>';
+      try {
+        const resp = await fetch('/webapp/register/filials/');
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || !data.ok || !Array.isArray(data.data)) {
+          select.innerHTML = '<option value="">Нет данных</option>';
+          return;
+        }
+        const items = data.data;
+        if (!items.length) {
+          select.innerHTML = '<option value="">Нет филиалов</option>';
+          return;
+        }
+        select.innerHTML = '<option value="">Выберите филиал</option>';
+        for (const it of items) {
+          const opt = document.createElement('option');
+          opt.value = String(it.id);
+          const city = (it.city || '').trim();
+          const name = (it.name || '').trim();
+          opt.textContent = city && name ? (city + ' — ' + name) : (name || city || String(it.id));
+          select.appendChild(opt);
+        }
+      } catch (e) {
+        select.innerHTML = '<option value="">Ошибка загрузки</option>';
+      }
+    }
+
     async function submitForm() {
       const full_name = document.getElementById('full_name').value.trim();
       const phone = document.getElementById('phone').value.trim();
       const address = document.getElementById('address').value.trim();
+      const filial_id_raw = document.getElementById('filial_id').value;
 
       if (!full_name) {
         showError('Введите ФИО');
@@ -191,11 +239,22 @@
         showError('Введите номер телефона');
         return;
       }
+      if (!filial_id_raw) {
+        showError('Выберите филиал');
+        return;
+      }
+
+      const filial_id = parseInt(filial_id_raw, 10);
+      if (!Number.isFinite(filial_id)) {
+        showError('Выберите филиал');
+        return;
+      }
 
       const payload = {
         full_name,
         phone,
         address,
+        filial_id,
         telegram_user_id: tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null,
         telegram_username: tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? (tg.initDataUnsafe.user.username || '') : ''
       };
@@ -229,6 +288,7 @@
       }
     }
 
+    loadFilials();
     document.getElementById('submit').addEventListener('click', submitForm);
   </script>
 </body>

@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User as AuthUser
 from django.db import models
 
+from apps.base import models as base_models
+
 
 class User(models.Model):
     class ClientType(models.TextChoices):
@@ -20,6 +22,15 @@ class User(models.Model):
     full_name = models.CharField(max_length=255, blank=True, default="", verbose_name="Полное имя")
     phone = models.CharField(max_length=64, blank=True, default="", verbose_name="Телефон")
     address = models.CharField(max_length=512, blank=True, default="", verbose_name="Адрес")
+
+    filial = models.ForeignKey(
+        base_models.Filial,
+        on_delete=models.SET_NULL,
+        related_name="clients",
+        blank=True,
+        null=True,
+        verbose_name="Филиал",
+    )
 
     client_code = models.CharField(
         max_length=32,
