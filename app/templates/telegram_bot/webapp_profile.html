@@ -276,11 +276,6 @@
           <div class="k">🏡 Адрес</div>
           <div id="address" class="v"><span class="skeleton" style="width:90%;"></span></div>
         </div>
-
-        <div class="row">
-          <div class="k">📍 ПВЗ</div>
-          <div id="pvz" class="v"><span class="skeleton" style="width:40%;"></span></div>
-        </div>
       </div>
 
       <div class="btns">
@@ -309,12 +304,7 @@
         <div id="china_copy" class="copybox"><span class="skeleton" style="width:90%;"></span></div>
         <div class="actions">
           <button id="btn_copy" class="pill light" type="button">Скопировать</button>
-        </div>
-      </div>
-      <div class="grid">
-        <div class="row">
-          <div class="k">📍 ПВЗ</div>
-          <div id="addr_pvz" class="v"><span class="skeleton" style="width:40%;"></span></div>
+          <a id="btn_addr_manager" class="pill" href="#" target="_blank" rel="noopener" style="display:none;">Обратиться к менеджеру</a>
         </div>
       </div>
     </div>
@@ -393,9 +383,6 @@
         document.getElementById('full_name').textContent = data.full_name || '';
         document.getElementById('phone').textContent = data.phone || '';
         document.getElementById('address').textContent = data.address || '';
-
-        const pvz = [data.pvz_city, data.pvz_phone].filter(Boolean).join(' • ');
-        document.getElementById('pvz').textContent = pvz;
 
         const managerUrl = managerUrlFromContact(data.manager_contact);
         const btnManager = document.getElementById('btn_manager');
@@ -484,32 +471,36 @@
     async function loadAddresses() {
       const data = await postJson('/webapp/profile/addresses/', { telegram_user_id: window.__tg_user_id });
       document.getElementById('china_copy').textContent = data.copy_lines || '';
-      const pvz = [data.pvz_city, data.pvz_phone].filter(Boolean).join(' • ');
-      document.getElementById('addr_pvz').textContent = pvz || '';
+
+      const btn = document.getElementById('btn_addr_manager');
+      const support = await postJson('/webapp/profile/support/', { telegram_user_id: window.__tg_user_id });
+      const managerUrl = (support.manager_url || managerUrlFromContact(support.manager_contact || '') || '').trim();
+      if (managerUrl) {
+        btn.href = managerUrl;
+        btn.style.display = 'inline-flex';
+      }
     }
 
     async function loadSupport() {
       const data = await postJson('/webapp/profile/support/', { telegram_user_id: window.__tg_user_id });
       const lines = [
-        'Если у вас есть вопросы? Напишите нам',
+        'Если у вас есть вопросы — напишите нам',
         '',
-        `📍 ПВЗ: ${data.pvz_city || '—'}`,
-        `📍 ПВЗ телефон: ${data.pvz_phone || '—'}`,
-        data.work_hours ? `🕒 Часы работы: ${data.work_hours}` : '🕒 Часы работы: —',
+        data.work_hours ? `🕒 График:\n${data.work_hours}` : '🕒 График: —',
       ];
       document.getElementById('support_text').textContent = lines.join('\n');
 
       const actions = document.getElementById('support_actions');
       actions.innerHTML = '';
 
-      const managerUrl = managerUrlFromContact(data.manager_contact);
+      const managerUrl = (data.manager_url || managerUrlFromContact(data.manager_contact) || '').trim();
       if (managerUrl) {
         const a = document.createElement('a');
         a.className = 'pill';
         a.href = managerUrl;
         a.target = '_blank';
         a.rel = 'noopener';
-        a.textContent = 'Написать на WhatsApp';
+        a.textContent = 'Обратиться к менеджеру';
         actions.appendChild(a);
       }
       if ((data.pvz_location_url || '').startsWith('http')) {

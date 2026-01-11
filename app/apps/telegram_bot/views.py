@@ -161,6 +161,18 @@ def webapp_profile_data(request):
 
     filial_obj = getattr(user_obj, "filial", None)
     manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
+    manager_url = ""
+    if manager_contact:
+        if manager_contact.startswith("http://") or manager_contact.startswith("https://"):
+            manager_url = manager_contact
+        elif manager_contact.startswith("@"):  # telegram
+            u = manager_contact[1:]
+            if u:
+                manager_url = f"https://t.me/{u}"
+        else:
+            normalized = "".join(ch for ch in manager_contact if ch.isdigit())
+            if normalized:
+                manager_url = f"https://wa.me/{normalized}"
 
     data = {
         "client_code": user_obj.client_code or "",
@@ -224,10 +236,13 @@ def webapp_profile_addresses(request):
     pvz_city = ""
     china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
     code_value = (user_obj.client_code or "—").strip()
+
+    client_phone_digits = "".join(ch for ch in (user_obj.phone or "") if ch.isdigit())
+    client_phone_suffix = f" ({client_phone_digits})" if client_phone_digits else ""
     copy_lines = "\n".join([
         f"阿{code_value}",
         warehouse_phone or "—",
-        f"{(china_address or '—')}{code_value}",
+        f"{(china_address or '—')}{code_value}{client_phone_suffix}",
     ])
 
     data = {
@@ -254,9 +269,22 @@ def webapp_profile_support(request):
     s = base_models.Settings.objects.first()
     filial_obj = getattr(user_obj, "filial", None)
     manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
+    manager_url = ""
+    if manager_contact:
+        if manager_contact.startswith("http://") or manager_contact.startswith("https://"):
+            manager_url = manager_contact
+        elif manager_contact.startswith("@"):  # telegram
+            u = manager_contact[1:]
+            if u:
+                manager_url = f"https://t.me/{u}"
+        else:
+            normalized = "".join(ch for ch in manager_contact if ch.isdigit())
+            if normalized:
+                manager_url = f"https://wa.me/{normalized}"
     instagram_url = (getattr(filial_obj, "instagram_url", "") or "").strip() if filial_obj else ""
     pvz_location_url = (getattr(filial_obj, "pvz_location_url", "") or "").strip() if filial_obj else ""
-    work_hours = (getattr(filial_obj, "work_hours", "") or "").strip() if filial_obj else ""
+    raw_hours = (getattr(filial_obj, "work_hours", "") or "") if filial_obj else ""
+    work_hours = _html_to_text(str(raw_hours))
     wh = base_models.Warehouse.objects.order_by("name").first()
     pvz_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
 
@@ -264,6 +292,7 @@ def webapp_profile_support(request):
 
     data = {
         "manager_contact": manager_contact,
+        "manager_url": manager_url,
         "instagram_url": instagram_url,
         "pvz_location_url": pvz_location_url,
         "work_hours": work_hours,
