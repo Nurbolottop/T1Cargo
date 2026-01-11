@@ -15,7 +15,6 @@ from core.project_settings.key import *
 from core.project_settings.installed_apps import *
 
 from core.project_settings.middleware import *
-from core.project_settings.cors import *
 
 ROOT_URLCONF = 'core.urls'
 
