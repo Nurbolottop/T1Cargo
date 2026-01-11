@@ -3,13 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Q
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils import timezone
 
 from apps.telegram_bot import models as tg_models
-from apps.base import models as base_models
-
-from .forms import ShipmentCreateForm, ShipmentImportForm, PreClientCreateForm
+from .forms import ShipmentCreateForm, ShipmentImportForm
 
 try:
     from openpyxl import load_workbook
@@ -134,56 +131,6 @@ def manager_client_detail(request, user_id: int):
         request,
         "contacts/manager/client_detail.html",
         {"nav": "clients", "client": client, "shipments": shipments},
-    )
-
-
-@login_required(login_url="/manager/login/")
-def manager_client_new(request):
-    denied = _require_manager(request)
-    if denied is not None:
-        return denied
-
-    error = None
-    saved = (request.GET.get("saved") or "").strip() == "1"
-
-    wh = base_models.Warehouse.objects.order_by("name").first()
-    code_prefix = ((getattr(wh, "name", "") or "").strip().upper() + "-") if wh and (getattr(wh, "name", "") or "").strip() else ""
-    if request.method == "POST":
-        form = PreClientCreateForm(request.POST)
-        if form.is_valid():
-            full_client_code = f"{code_prefix}{form.cleaned_data['client_code']}" if code_prefix else form.cleaned_data["client_code"]
-            if tg_models.User.objects.filter(client_code__iexact=full_client_code).exists():
-                error = "Код уже используется"
-                return render(
-                    request,
-                    "contacts/manager/client_new.html",
-                    {"nav": "clients", "form": form, "error": error, "saved": False, "code_prefix": code_prefix},
-                )
-
-            filial_obj = (
-                base_models.Filial.objects.filter(is_active=True, city__iexact="Ош").order_by("name").first()
-                or base_models.Filial.objects.filter(is_active=True).order_by("city", "name").first()
-            )
-            if filial_obj is None:
-                error = "Нет активных филиалов. Сначала создайте филиал." 
-            else:
-                tg_models.User.objects.create(
-                    telegram_id=None,
-                    client_code=full_client_code,
-                    phone=form.cleaned_data["phone"],
-                    filial=filial_obj,
-                    status=tg_models.User.Status.NEW,
-                    client_status=tg_models.User.ClientStatus.OLD,
-                    client_type=tg_models.User.ClientType.INDIVIDUAL,
-                )
-                return redirect(reverse("manager_client_new") + "?saved=1")
-    else:
-        form = PreClientCreateForm()
-
-    return render(
-        request,
-        "contacts/manager/client_new.html",
-        {"nav": "clients", "form": form, "error": error, "saved": saved, "code_prefix": code_prefix},
     )
 
 

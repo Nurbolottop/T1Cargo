@@ -146,13 +146,21 @@
       </div>
 
       <div class="field">
-        <div class="label">ФИО <small>(обязательно)</small></div>
-        <input id="full_name" placeholder="ФИО*" autocomplete="name" />
+        <div class="label">Филиал <small>(обязательно)</small></div>
+        <select id="filial_id">
+          <option value="">Загрузка...</option>
+        </select>
       </div>
 
       <div class="field">
         <div class="label">Код клиента <small>(если уже есть)</small></div>
-        <input id="client_code" placeholder="Например: T1-1234" autocomplete="off" />
+        <input id="client_code" placeholder="Введите код, если вам его выдавали раньше" autocomplete="off" />
+        <div class="hint">Если у вас нет кода — оставьте поле пустым. Не вводите случайные цифры.</div>
+      </div>
+
+      <div class="field">
+        <div class="label">ФИО <small>(обязательно)</small></div>
+        <input id="full_name" placeholder="ФИО*" autocomplete="name" />
       </div>
 
       <div class="field">
@@ -163,13 +171,6 @@
       <div class="field">
         <div class="label">Адрес проживания <small>(не обязательно)</small></div>
         <input id="address" placeholder="Адрес" autocomplete="street-address" />
-      </div>
-
-      <div class="field">
-        <div class="label">Филиал <small>(обязательно)</small></div>
-        <select id="filial_id">
-          <option value="">Загрузка...</option>
-        </select>
       </div>
 
       <button id="submit" class="btn">Зарегистрироваться</button>
@@ -253,9 +254,14 @@
     async function submitForm() {
       const full_name = document.getElementById('full_name').value.trim();
       const client_code = document.getElementById('client_code').value.trim();
-      const phone = document.getElementById('phone').value.trim();
+      const phone = normalizePhone(document.getElementById('phone').value);
       const address = document.getElementById('address').value.trim();
       const filial_id_raw = document.getElementById('filial_id').value;
+
+      if (!filial_id_raw) {
+        showError('Выберите филиал');
+        return;
+      }
 
       if (!full_name) {
         showError('Введите ФИО');
@@ -263,10 +269,6 @@
       }
       if (!phone) {
         showError('Введите номер телефона');
-        return;
-      }
-      if (!filial_id_raw) {
-        showError('Выберите филиал');
         return;
       }
 
@@ -299,7 +301,11 @@
 
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data.ok) {
-          showError('Не удалось отправить. Попробуйте ещё раз.');
+          if (data && data.error === 'code_taken') {
+            showError('Код занят');
+          } else {
+            showError('Не удалось отправить. Попробуйте ещё раз.');
+          }
           return;
         }
 
@@ -318,6 +324,27 @@
     loadFilials();
     document.getElementById('submit').addEventListener('click', submitForm);
     document.getElementById('client_code').addEventListener('blur', applyClientCode);
+    document.getElementById('phone').addEventListener('blur', () => {
+      const v = normalizePhone(document.getElementById('phone').value);
+      document.getElementById('phone').value = v;
+    });
+
+    function normalizePhone(raw) {
+      const s = String(raw || '').trim();
+      if (!s) return '';
+      const digits = s.replace(/\D+/g, '');
+      if (!digits) return '';
+
+      if (digits.startsWith('996')) return '+' + digits;
+      if (digits.length === 9) return '+996' + digits;
+      if (digits.length === 10 && digits.startsWith('0')) return '+996' + digits.slice(1);
+
+      if (digits.length === 11 && digits.startsWith('8')) return '+7' + digits.slice(1);
+      if (digits.length === 11 && digits.startsWith('7')) return '+' + digits;
+      if (digits.length === 10) return '+7' + digits;
+
+      return (s.startsWith('+') ? '+' : '+') + digits;
+    }
   </script>
 </body>
 </html>

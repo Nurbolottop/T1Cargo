@@ -1,5 +1,4 @@
 from django import forms
-import re
 
 from apps.telegram_bot import models as tg_models
 
@@ -41,28 +40,3 @@ class ShipmentImportForm(forms.Form):
     file = forms.FileField(label="Excel файл (.xlsx)")
     status = forms.ChoiceField(label="Статус", choices=tg_models.Shipment.Status.choices)
     price_per_kg = forms.DecimalField(label="Цена за кг", required=False, decimal_places=2, max_digits=12)
-
-
-class PreClientCreateForm(forms.Form):
-    client_code = forms.CharField(label="Код клиента", max_length=32)
-    phone = forms.CharField(label="Телефон", max_length=64)
-
-    def clean_client_code(self):
-        value = (self.cleaned_data.get("client_code") or "").strip()
-        if not value:
-            raise forms.ValidationError("Укажите код клиента")
-        if not value.isdigit():
-            raise forms.ValidationError("Код клиента должен содержать только цифры")
-        return value
-
-    def clean_phone(self):
-        raw = (self.cleaned_data.get("phone") or "").strip()
-        if not raw:
-            raise forms.ValidationError("Укажите телефон")
-        digits = re.sub(r"\D+", "", raw)
-        if not digits:
-            raise forms.ValidationError("Укажите телефон")
-        if len(digits) < 5:
-            raise forms.ValidationError("Телефон слишком короткий")
-        return digits
-

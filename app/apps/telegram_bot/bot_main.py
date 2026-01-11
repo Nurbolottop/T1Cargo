@@ -56,12 +56,6 @@ def _html_to_text(value: str) -> str:
 def _onboarding_keyboard(manager_contact: str, registration_webapp_url: str) -> types.InlineKeyboardMarkup:
     kb = types.InlineKeyboardMarkup()
 
-    manager_url = _manager_url(manager_contact)
-    if manager_url:
-        kb.add(types.InlineKeyboardButton("Написать менеджеру", url=manager_url))
-    else:
-        kb.add(types.InlineKeyboardButton("Написать менеджеру", callback_data="noop"))
-
     registration_webapp_url = (registration_webapp_url or "").strip()
     if registration_webapp_url and _is_https_url(registration_webapp_url):
         kb.add(
@@ -187,20 +181,8 @@ def start_bot(token: str) -> None:
             reply_markup=_onboarding_keyboard(manager_contact, registration_webapp_url),
         )
 
-    @bot.callback_query_handler(func=lambda c: c.data in {"register", "noop"})
+    @bot.callback_query_handler(func=lambda c: c.data in {"register"})
     def onboarding_callback(call):
-        if call.data == "noop":
-            _notify_admin(
-                "Системное: пользователь нажал 'Написать менеджеру', но manager_contact не настроен в Settings."
-            )
-            bot.answer_callback_query(call.id)
-            try:
-                bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)
-            except Exception:
-                pass
-            bot.send_message(call.message.chat.id, "Контакт менеджера временно недоступен.")
-            return
-
         bot.answer_callback_query(call.id)
         try:
             bot.edit_message_reply_markup(call.message.chat.id, call.message.message_id, reply_markup=None)

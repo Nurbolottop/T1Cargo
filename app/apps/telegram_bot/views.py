@@ -93,6 +93,35 @@ def _parse_json_body(request):
         return None
 
 
+def _normalize_phone(raw: str) -> str:
+    s = (raw or "").strip()
+    if not s:
+        return ""
+    digits = "".join(ch for ch in s if ch.isdigit())
+    if not digits:
+        return ""
+
+    # Kyrgyzstan
+    if digits.startswith("996"):
+        return "+" + digits
+    if len(digits) == 9:
+        return "+996" + digits
+    if len(digits) == 10 and digits.startswith("0"):
+        return "+996" + digits[1:]
+
+    # Russia
+    if len(digits) == 11 and digits.startswith("8"):
+        return "+7" + digits[1:]
+    if len(digits) == 11 and digits.startswith("7"):
+        return "+" + digits
+    if len(digits) == 10:
+        return "+7" + digits
+
+    if s.startswith("+"):
+        return "+" + digits
+    return "+" + digits
+
+
 def _get_user_by_payload(payload):
     telegram_user_id = payload.get("telegram_user_id") if isinstance(payload, dict) else None
     if not isinstance(telegram_user_id, int):
@@ -292,7 +321,7 @@ def webapp_register_submit(request):
         return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
 
     full_name = (payload.get("full_name") or "").strip()
-    phone = (payload.get("phone") or "").strip()
+    phone = _normalize_phone(payload.get("phone") or "")
     address = (payload.get("address") or "").strip()
     filial_id = payload.get("filial_id")
     existing_client_code = (payload.get("client_code") or "").strip()
@@ -315,6 +344,20 @@ def webapp_register_submit(request):
                 .first()
             )
 
+            # Code is considered "taken" if another registered user already has it.
+            # If there is a reserved record (telegram_id is null), we will attach to it.
+            if user_obj:
+                # Existing telegram user cannot take a code that belongs to someone else
+                if tg_models.User.objects.filter(client_code__iexact=existing_client_code).exclude(id=user_obj.id).exists():
+                    return JsonResponse({"ok": False, "error": "code_taken"}, status=400)
+            else:
+                taken_registered = tg_models.User.objects.filter(
+                    client_code__iexact=existing_client_code,
+                    telegram_id__isnull=False,
+                ).exists()
+                if taken_registered:
+                    return JsonResponse({"ok": False, "error": "code_taken"}, status=400)
+
         selected_filial_id = filial_id if isinstance(filial_id, int) else None
         filial_obj = base_models.Filial.objects.filter(id=selected_filial_id, is_active=True).first() if selected_filial_id else None
         if filial_obj is None:
@@ -331,19 +374,22 @@ def webapp_register_submit(request):
             user_obj.filial = filial_obj
             if not user_obj.client_type:
                 user_obj.client_type = tg_models.User.ClientType.INDIVIDUAL
-            if reserved_user_obj and reserved_user_obj.id != user_obj.id:
-                user_obj.client_code = reserved_user_obj.client_code
+
+            if existing_client_code:
+                user_obj.client_code = existing_client_code
                 user_obj.client_status = tg_models.User.ClientStatus.OLD
-            elif not user_obj.client_code:
-                code, locked_filial_obj = _generate_client_code(filial_obj.id)
-                if not code:
-                    return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
-                user_obj.client_code = code
-                if locked_filial_obj:
-                    user_obj.filial = locked_filial_obj
+            else:
+                user_obj.client_status = tg_models.User.ClientStatus.NEW
+                if not user_obj.client_code:
+                    code, locked_filial_obj = _generate_client_code(filial_obj.id)
+                    if not code:
+                        return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+                    user_obj.client_code = code
+                    if locked_filial_obj:
+                        user_obj.filial = locked_filial_obj
             user_obj.save()
         else:
-            if reserved_user_obj:
+            if existing_client_code and reserved_user_obj:
                 user_obj = reserved_user_obj
                 user_obj.telegram_id = telegram_user_id
                 user_obj.username = telegram_username
@@ -357,6 +403,19 @@ def webapp_register_submit(request):
                     user_obj.filial = filial_obj
                 user_obj.client_status = tg_models.User.ClientStatus.OLD
                 user_obj.save()
+            elif existing_client_code:
+                user_obj = tg_models.User.objects.create(
+                    telegram_id=telegram_user_id,
+                    username=telegram_username,
+                    full_name=full_name,
+                    phone=phone,
+                    address=address,
+                    status=tg_models.User.Status.CLIENT_REGISTERED,
+                    filial=filial_obj,
+                    client_code=existing_client_code,
+                    client_type=tg_models.User.ClientType.INDIVIDUAL,
+                    client_status=tg_models.User.ClientStatus.OLD,
+                )
             else:
                 locked_filial_obj = None
                 code, locked_filial_obj = _generate_client_code(filial_obj.id)

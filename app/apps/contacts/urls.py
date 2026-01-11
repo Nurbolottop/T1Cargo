@@ -7,7 +7,6 @@ urlpatterns = [
     path("manager/logout/", views.manager_logout, name="manager_logout"),
     path("manager/", views.manager_dashboard, name="manager_dashboard"),
     path("manager/clients/", views.manager_clients, name="manager_clients"),
-    path("manager/clients/new/", views.manager_client_new, name="manager_client_new"),
     path("manager/clients/<int:user_id>/", views.manager_client_detail, name="manager_client_detail"),
     path("manager/shipments/", views.manager_shipments, name="manager_shipments"),
     path("manager/shipments/import/", views.manager_shipments_import, name="manager_shipments_import"),
