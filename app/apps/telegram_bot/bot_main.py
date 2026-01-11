@@ -72,8 +72,8 @@ def _onboarding_keyboard(manager_contact: str, registration_webapp_url: str) -> 
 def _main_menu_keyboard() -> types.ReplyKeyboardMarkup:
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("👤 Профиль", "🎁 Адреса", "📦 Мои посылки")
-    kb.row("🛒 Оптовый заказ", "⛔ Запрещенные товары", "⚙ Поддержка")
-    kb.row("✅ Добавить трек")
+    kb.row("🛒 Расчет оптовых товаров", "📊 График", "⚙ Поддержка")
+    kb.row("⛔ Запрещенные товары")
     return kb
 
 
@@ -123,8 +123,6 @@ def start_bot(token: str) -> None:
             bot.send_message(admin_chat, text)
         except Exception:
             return
-
-    track_state: dict[int, str] = {}
 
     def _is_registered(user_obj: tg_models.User | None) -> bool:
         if not user_obj:
@@ -363,7 +361,7 @@ def start_bot(token: str) -> None:
         )
 
 
-    @bot.message_handler(func=lambda m: m.text == "🛒 Оптовый заказ")
+    @bot.message_handler(func=lambda m: m.text == "🛒 Оптовые товары")
     def wholesale_order(message):
         user_obj = _get_or_create_user(message)
         if not _is_registered(user_obj):
@@ -373,11 +371,62 @@ def start_bot(token: str) -> None:
         raw = (getattr(filial_obj, "wholesale_order_text", "") or "") if filial_obj else ""
         text = _html_to_text(str(raw))
         if not text:
-            text = "Оптовый заказ: пока не заполнено."
+            text = "Оптовые товары: пока не заполнено."
         bot.send_message(
             message.chat.id,
             text,
             reply_markup=_main_menu_keyboard(),
+            disable_web_page_preview=True,
+        )
+
+
+    @bot.message_handler(func=lambda m: m.text == "📊 График")
+    def schedule(message):
+        user_obj = _get_or_create_user(message)
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
+            return
+
+        filial_obj = getattr(user_obj, "filial", None) if user_obj else None
+        if not filial_obj:
+            bot.send_message(
+                message.chat.id,
+                "Филиал не выбран. Пройдите регистрацию и выберите филиал.",
+                reply_markup=_onboarding_keyboard("", getattr(_get_settings(), "registration_webapp_url", "")),
+            )
+            return
+
+        city = (getattr(filial_obj, "city", "") or "").strip()
+        name = (getattr(filial_obj, "name", "") or "").strip()
+        pvz_title = " — ".join([v for v in [city, name] if v]).strip(" —")
+
+        raw_hours = (getattr(filial_obj, "work_hours", "") or "")
+        work_hours = _html_to_text(str(raw_hours))
+        address = (getattr(filial_obj, "address", "") or "").strip()
+        pvz_location_url = (getattr(filial_obj, "pvz_location_url", "") or "").strip()
+
+        lines: list[str] = [
+            "📊 График",
+            "",
+            f"📍 ПВЗ: {pvz_title or '—'}",
+        ]
+        if work_hours:
+            lines.extend(["", work_hours])
+        else:
+            lines.append("🕒 Часы работы: —")
+        if address:
+            lines.append(f"🏢 Адрес: {address}")
+        if pvz_location_url:
+            lines.append(f"🗺 Локация: {pvz_location_url}")
+
+        kb = types.InlineKeyboardMarkup()
+        if pvz_location_url and pvz_location_url.startswith("http"):
+            kb.add(types.InlineKeyboardButton("Локация на карте", url=pvz_location_url))
+
+        bot.send_message(
+            message.chat.id,
+            "\n".join(lines).strip(),
+            reply_markup=kb if kb.keyboard else _main_menu_keyboard(),
             disable_web_page_preview=True,
         )
 
@@ -463,64 +512,8 @@ def start_bot(token: str) -> None:
             disable_web_page_preview=True,
         )
 
-    @bot.message_handler(func=lambda m: m.text == "✅ Добавить трек")
-    def add_track(message):
-        user_obj = _get_or_create_user(message)
-        if not user_obj:
-            bot.send_message(message.chat.id, "Не удалось определить пользователя.", reply_markup=_main_menu_keyboard())
-            return
-        if not _is_registered(user_obj):
-            _send_registration_required(message.chat.id)
-            return
-        track_state[message.chat.id] = "waiting_tracking"
-        bot.send_message(
-            message.chat.id,
-            "Отправьте трек-номер сообщением (например: LP123456789CN).",
-            reply_markup=_main_menu_keyboard(),
-        )
-
-    @bot.message_handler(func=lambda m: track_state.get(m.chat.id) == "waiting_tracking", content_types=["text"])
-    def add_track_submit(message):
-        user_obj = _get_or_create_user(message)
-        if not _is_registered(user_obj):
-            track_state.pop(message.chat.id, None)
-            _send_registration_required(message.chat.id)
-            return
-        tracking = (message.text or "").strip()
-        if not tracking or tracking.startswith("/"):
-            bot.send_message(
-                message.chat.id,
-                "Введите трек номер текстом (без команд).",
-                reply_markup=_main_menu_keyboard(),
-            )
-            return
-
-        track_state.pop(message.chat.id, None)
-
-        _, created = tg_models.Shipment.objects.get_or_create(
-            user=user_obj,
-            tracking_number=tracking,
-            defaults={"status": tg_models.Shipment.Status.CREATED},
-        )
-        if created:
-            bot.send_message(
-                message.chat.id,
-                "Трек добавлен ✅\n\nОператор проверит и добавит данные по весу/стоимости.",
-                reply_markup=_main_menu_keyboard(),
-            )
-            return
-
-        bot.send_message(
-            message.chat.id,
-            "Этот трек уже добавлен ранее.",
-            reply_markup=_main_menu_keyboard(),
-        )
-
     @bot.message_handler(content_types=["text"])
     def fallback(message):
-        if track_state.get(message.chat.id) == "waiting_tracking":
-            return
-
         user_obj = _get_or_create_user(message)
         if not _is_registered(user_obj):
             _send_registration_required(message.chat.id)
