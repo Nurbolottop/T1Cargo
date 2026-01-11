@@ -91,7 +91,7 @@ class Filial(models.Model):
     manager_contact = models.CharField(max_length=255, verbose_name="Контакт менеджера", blank=True, default="")
     instagram_url = models.URLField(verbose_name="Instagram URL", blank=True, default="")
     email = models.EmailField(verbose_name="Email", blank=True, default="")
-    work_hours = RichTextField(verbose_name="Режим работы", blank=True)
+    work_hours = models.TextField(verbose_name="Режим работы", blank=True)
     pvz_location_url = models.URLField(verbose_name="Локация ПВЗ (ссылка на карту)", blank=True, default="")
 
     currency = models.CharField(max_length=16, verbose_name="Валюта", blank=True, default="KGS")

@@ -477,36 +477,12 @@ def webapp_register_submit(request):
                     if normalized:
                         manager_url = f"https://wa.me/{normalized}"
 
-            inline_kb = {"inline_keyboard": []}
-            if manager_url:
-                inline_kb["inline_keyboard"].append([
-                    {"text": "WhatsApp менеджера", "url": manager_url}
-                ])
-            if (settings_obj.website or "").strip().startswith("http"):
-                inline_kb["inline_keyboard"].append([
-                    {"text": "Войти в личный кабинет", "url": settings_obj.website}
-                ])
-
-            code = user_obj.client_code or ""
-            profile_text = (
-                "🎉 Регистрация прошла успешно 🎉\n"
-                "Спасибо что подписались\n\n"
-                "📄 Ваш профиль 📄\n\n"
-                f"🪪 Персональный КОД: {code}\n"
-                f"👤 ФИО: {full_name or ''}\n"
-                f"📞 Номер: {phone or ''}\n"
-                f"🏡 Адрес: {address or ''}"
-            )
             try:
-                if inline_kb["inline_keyboard"]:
-                    _send_telegram_message(
-                        settings_obj.telegram_token,
-                        telegram_user_id,
-                        profile_text,
-                        reply_markup=inline_kb,
-                    )
-                else:
-                    _send_telegram_message(settings_obj.telegram_token, telegram_user_id, profile_text)
+                _send_telegram_message(
+                    settings_obj.telegram_token,
+                    telegram_user_id,
+                    "🎉 Регистрация прошла успешно 🎉\nСпасибо что подписались",
+                )
             except Exception:
                 pass
 

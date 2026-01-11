@@ -242,8 +242,6 @@ def start_bot(token: str) -> None:
             f"📞 Номер: {phone}",
             f"🏡 Адрес: {address}",
             "",
-            f"📍 ПВЗ: {pvz_city}",
-            f"📍 ПВЗ телефон: {pvz_phone_line}",
             f"🗺 Локация на Карте: {pvz_location_url or '—'}",
         ]
 
