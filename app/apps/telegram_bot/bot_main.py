@@ -480,19 +480,16 @@ def start_bot(token: str) -> None:
         pvz_address = ""
         pvz_phone = ""
         city = (getattr(filial_obj, "city", "") or "").strip()
-        name = (getattr(filial_obj, "name", "") or "").strip()
-        pvz_title = " — ".join([v for v in [city, name] if v]).strip(" —")
+        pvz_title = " — ".join([v for v in [city] if v]).strip(" —")
         pvz_address = (getattr(filial_obj, "address", "") or "").strip()
         pvz_phone = (manager_contact or "").strip()
 
         lines: list[str] = [
             "Если у вас есть вопросы? Напишите нам",
             "",
-            f"📍 ПВЗ: {pvz_title or '—'}",
-            f"🏢 Адрес ПВЗ: {pvz_address or '—'}" if (pvz_address or "").strip() else "",
+            f"📍 Филиал: {pvz_title or '—'}",
+            f"🏢 Адрес: {pvz_address or '—'}" if (pvz_address or "").strip() else "",
             f"📞 Телефон менеджера: {pvz_phone or '—'}",
-            f"🔗 WhatsApp: {manager_url}" if manager_url else "",
-            f"🕒 Часы работы: {work_hours or '—'}",
             "🗺 Локация на Карте:",
         ]
         text = "\n".join([ln for ln in lines if ln]).strip()
