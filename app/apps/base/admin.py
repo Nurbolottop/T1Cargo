@@ -99,8 +99,9 @@ class FilialAdmin(admin.ModelAdmin):
         "client_code_start_number",
         "client_code_last_number",
         "wholesale_order_text",
+        "wholesale_whatsapp_phone",
         "created_at",
     )
     list_filter = ("city", "is_active", "created_at")
-    search_fields = ("name", "city", "address", "wholesale_order_text")
+    search_fields = ("name", "city", "address", "wholesale_order_text", "wholesale_whatsapp_phone")
     readonly_fields = ("created_at", "updated_at")

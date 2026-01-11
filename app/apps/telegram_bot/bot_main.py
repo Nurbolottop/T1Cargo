@@ -244,7 +244,6 @@ def start_bot(token: str) -> None:
             "",
             f"📍 ПВЗ: {pvz_city}",
             f"📍 ПВЗ телефон: {pvz_phone_line}",
-            f"🕒 Часы работы: {work_hours or '—'}",
             f"🗺 Локация на Карте: {pvz_location_url or '—'}",
         ]
 
@@ -372,10 +371,18 @@ def start_bot(token: str) -> None:
         text = _html_to_text(str(raw))
         if not text:
             text = "Оптовые товары: пока не заполнено."
+
+        whatsapp_phone_raw = (getattr(filial_obj, "wholesale_whatsapp_phone", "") or "").strip() if filial_obj else ""
+        whatsapp_digits = "".join([ch for ch in whatsapp_phone_raw if ch.isdigit()])
+
+        kb = types.InlineKeyboardMarkup()
+        if whatsapp_digits:
+            kb.add(types.InlineKeyboardButton("🟢 Whatsapp номер", url=f"https://wa.me/{whatsapp_digits}"))
+
         bot.send_message(
             message.chat.id,
             text,
-            reply_markup=_main_menu_keyboard(),
+            reply_markup=kb if kb.keyboard else _main_menu_keyboard(),
             disable_web_page_preview=True,
         )
 

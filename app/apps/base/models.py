@@ -104,6 +104,12 @@ class Filial(models.Model):
     )
 
     wholesale_order_text = models.TextField(verbose_name="Оптовый заказ (текст)", blank=True)
+    wholesale_whatsapp_phone = models.CharField(
+        max_length=32,
+        verbose_name="WhatsApp (оптовые товары)",
+        blank=True,
+        default="",
+    )
 
     client_code_prefix = models.CharField(
         max_length=16,
