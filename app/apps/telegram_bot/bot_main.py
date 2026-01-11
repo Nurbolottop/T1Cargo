@@ -325,10 +325,13 @@ def start_bot(token: str) -> None:
         code_value = (user_obj.client_code or "—").strip()
         address_value = (china_address or "—").strip()
 
+        client_phone_digits = "".join(ch for ch in (getattr(user_obj, "phone", "") or "") if ch.isdigit())
+        client_phone_suffix = f" ({client_phone_digits})" if client_phone_digits else ""
+
         copy_lines = "\n".join([
             f"阿{code_value}",
             wh_phone or "—",
-            f"{address_value}{code_value}",
+            f"{address_value}{code_value}{client_phone_suffix}",
         ])
 
         bot.send_message(
