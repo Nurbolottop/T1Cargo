@@ -39,11 +39,4 @@ class ShipmentCreateForm(forms.ModelForm):
 class ShipmentImportForm(forms.Form):
     file = forms.FileField(label="Excel файл (.xlsx)")
     group_status = forms.ChoiceField(label="Статус группы", choices=tg_models.ShipmentGroup.Status.choices)
-    shipment_status = forms.ChoiceField(
-        label="Статус товаров",
-        choices=[
-            (tg_models.Shipment.Status.ON_THE_WAY, "В пути"),
-            (tg_models.Shipment.Status.WAREHOUSE, "На складе"),
-        ],
-    )
     price_per_kg = forms.DecimalField(label="Цена за кг", required=False, decimal_places=2, max_digits=12)

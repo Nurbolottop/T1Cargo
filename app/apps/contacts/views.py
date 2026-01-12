@@ -573,7 +573,6 @@ def manager_shipments_import(request):
             payload = request.session.get(preview_key) or {}
             rows = payload.get("rows") or []
             group_status = payload.get("group_status")
-            shipment_status = payload.get("shipment_status")
             price_per_kg = payload.get("price_per_kg")
 
             if not rows:
@@ -614,7 +613,7 @@ def manager_shipments_import(request):
                             user=user_obj,
                             group=group_obj,
                             tracking_number=tracking,
-                            status=shipment_status or tg_models.Shipment.Status.ON_THE_WAY,
+                            status=group_obj.status or tg_models.Shipment.Status.ON_THE_WAY,
                             client_code_raw=client_code,
                             import_status=import_status,
                         )
@@ -631,12 +630,11 @@ def manager_shipments_import(request):
 
                 request.session.pop(preview_key, None)
                 report = {"created": created, "skipped": skipped, "errors": errors, "group_name": group_obj.name}
-                form = ShipmentImportForm(initial={"group_status": group_status, "shipment_status": shipment_status, "price_per_kg": price_per_kg})
+                form = ShipmentImportForm(initial={"group_status": group_status, "price_per_kg": price_per_kg})
         else:
             form = ShipmentImportForm(request.POST, request.FILES)
             if form.is_valid():
                 group_status = form.cleaned_data.get("group_status")
-                shipment_status = form.cleaned_data.get("shipment_status")
                 price_per_kg = form.cleaned_data.get("price_per_kg")
                 f = form.cleaned_data.get("file")
 
@@ -687,7 +685,6 @@ def manager_shipments_import(request):
                 else:
                     request.session[preview_key] = {
                         "group_status": group_status,
-                        "shipment_status": shipment_status,
                         "price_per_kg": str(price_per_kg) if price_per_kg is not None else "",
                         "rows": rows,
                     }
