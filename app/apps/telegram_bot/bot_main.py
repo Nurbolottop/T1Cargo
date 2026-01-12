@@ -72,8 +72,8 @@ def _onboarding_keyboard(manager_contact: str, registration_webapp_url: str) -> 
 def _main_menu_keyboard() -> types.ReplyKeyboardMarkup:
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("👤 Профиль", "🎁 Адреса", "📦 Мои посылки")
-    kb.row("🛒 Оптовый заказ", "⛔ Запрещенные товары", "⚙ Поддержка")
-    kb.row("✅ Добавить трек")
+    kb.row("📊 График", "⛔ Запрещенные товары", "⚙ Поддержка")
+    kb.row("🛒 Расчет оптовых товаров")
     return kb
 
 
@@ -308,18 +308,6 @@ def start_bot(token: str) -> None:
             )
         bot.send_message(message.chat.id, "Мои посылки:\n\n" + "\n".join(lines), reply_markup=_main_menu_keyboard())
 
-    @bot.message_handler(func=lambda m: m.text == "✅ Добавить трек")
-    def add_track(message):
-        user_obj = _get_or_create_user(message)
-        if not _is_registered(user_obj):
-            _send_registration_required(message.chat.id)
-            return
-        bot.send_message(
-            message.chat.id,
-            "Отправьте трек-номер следующим сообщением.",
-            reply_markup=_main_menu_keyboard(),
-        )
-
     @bot.message_handler(func=lambda m: m.text == "🎁 Адреса")
     def warehouses(message):
         user_obj = _get_or_create_user(message)
@@ -386,7 +374,7 @@ def start_bot(token: str) -> None:
         )
 
 
-    @bot.message_handler(func=lambda m: (m.text or "").strip() in {"🛒 Оптовый заказ", "🛒 Расчет оптовых товаров", "🛒 Оптовые товары"})
+    @bot.message_handler(func=lambda m: (m.text or "").strip() in {"🛒 Расчет оптовых товаров", "🛒 Оптовые товары"})
     def wholesale_order(message):
         user_obj = _get_or_create_user(message)
         if not _is_registered(user_obj):
