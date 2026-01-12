@@ -562,6 +562,24 @@ def manager_shipments_import(request):
         except Exception:
             return
 
+    def _find_user_by_client_code(raw_code: str) -> tg_models.User | None:
+        code = (raw_code or "").strip()
+        if not code:
+            return None
+
+        user_obj = tg_models.User.objects.filter(client_code__iexact=code).first()
+        if user_obj:
+            return user_obj
+
+        if "-" in code:
+            return None
+
+        suffix = f"-{code}"
+        qs = tg_models.User.objects.filter(client_code__iendswith=suffix)
+        if qs.count() == 1:
+            return qs.first()
+        return None
+
     report = None
     preview_rows = None
     preview_summary = None
@@ -660,7 +678,7 @@ def manager_shipments_import(request):
                             })
                             continue
 
-                        user_obj = tg_models.User.objects.filter(client_code=client_code).first()
+                        user_obj = _find_user_by_client_code(client_code)
                         if not user_obj:
                             rows.append({
                                 "row": idx,
