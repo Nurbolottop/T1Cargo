@@ -103,6 +103,14 @@ class Filial(models.Model):
         null=True,
     )
 
+    storage_penalty_per_day = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        verbose_name="Штраф за хранение (в день)",
+        blank=True,
+        null=True,
+    )
+
     wholesale_order_text = models.TextField(verbose_name="Оптовый заказ (текст)", blank=True)
     wholesale_whatsapp_phone = models.CharField(
         max_length=32,

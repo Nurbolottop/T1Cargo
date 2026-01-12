@@ -1,0 +1,63 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Сортировка • {{ group.name }}{% endblock %}
+
+{% block page_title %}Сортировка — {{ group.name }}{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Сортировка</h2>
+    <div class="muted">Сканируйте/вставьте трек и нажмите Enter. Поиск выполняется только в этой группе.</div>
+
+    <form method="get" style="margin-top:12px; display:flex; gap:10px;">
+      <input name="q" value="{{ q|default:'' }}" placeholder="Трек" autofocus />
+      <button class="btn accent" type="submit">Найти</button>
+      <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
+    </form>
+
+    {% if message %}
+      <div class="muted" style="margin-top:12px;">{{ message }}</div>
+    {% endif %}
+
+    {% if error %}
+      <div class="error" style="margin-top:12px;">{{ error }}</div>
+    {% endif %}
+  </div>
+
+  {% if shipment %}
+    <div class="card" style="margin-top:12px;">
+      <h3 class="h">Товар</h3>
+      <div class="muted" style="margin-top:6px;">
+        Трек: <b>{{ shipment.tracking_number }}</b>
+        <br />
+        Клиент:
+        {% if shipment.user %}
+          <b>{{ shipment.user.client_code }}</b>
+          {% if shipment.user.full_name %} • {{ shipment.user.full_name }}{% endif %}
+        {% else %}
+          <b>{{ shipment.client_code_raw|default:'—' }}</b> • {{ shipment.get_import_status_display }}
+        {% endif %}
+      </div>
+
+      <form method="post" style="margin-top:12px;">
+        {% csrf_token %}
+        <input type="hidden" name="tracking_number" value="{{ shipment.tracking_number }}" />
+        <div class="form-row">
+          <div class="col-6">
+            <label>Вес (кг)</label>
+            <input name="weight_kg" value="{{ shipment.weight_kg }}" />
+          </div>
+          <div class="col-6">
+            <label>Цена за кг (по умолчанию)</label>
+            <input value="{{ default_price_per_kg|default:'—' }}" disabled />
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn accent" type="submit">Сохранить</button>
+          <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Очистить</a>
+        </div>
+      </form>
+    </div>
+  {% endif %}
+{% endblock %}

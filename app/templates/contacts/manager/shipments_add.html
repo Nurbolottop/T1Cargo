@@ -1,0 +1,21 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Добавить посылку • Менеджер{% endblock %}
+
+{% block page_title %}Добавить посылку{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Добавить посылку</h2>
+    <div class="muted">Выберите способ добавления.</div>
+
+    <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:12px; margin-top:12px;">
+      <a class="btn accent" href="{% url 'manager_shipment_new' %}" style="padding:16px; border-radius:16px;">Добавить одну</a>
+      <a class="btn" href="{% url 'manager_shipments_import' %}" style="padding:16px; border-radius:16px;">Импорт Excel</a>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:12px;">
+      <a class="btn" href="{% url 'manager_shipments' %}">Назад</a>
+    </div>
+  </div>
+{% endblock %}

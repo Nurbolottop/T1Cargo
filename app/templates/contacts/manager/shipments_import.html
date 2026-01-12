@@ -2,6 +2,8 @@
 
 {% block title %}Импорт Excel • Менеджер{% endblock %}
 
+{% block page_title %}Импорт Excel{% endblock %}
+
 {% block content %}
   <div class="card">
     <h2 class="h">Импорт посылок из Excel</h2>
@@ -20,11 +22,19 @@
     <form method="post" enctype="multipart/form-data" style="margin-top:12px;">
       {% csrf_token %}
 
+      <input type="hidden" name="action" value="preview" />
+
       <div class="form-row">
         <div class="col-6">
-          <label>{{ form.status.label }}</label>
-          {{ form.status }}
-          {% if form.status.errors %}<div class="error" style="margin-top:8px;">{{ form.status.errors }}</div>{% endif %}
+          <label>{{ form.group_status.label }}</label>
+          {{ form.group_status }}
+          {% if form.group_status.errors %}<div class="error" style="margin-top:8px;">{{ form.group_status.errors }}</div>{% endif %}
+        </div>
+
+        <div class="col-6">
+          <label>{{ form.shipment_status.label }}</label>
+          {{ form.shipment_status }}
+          {% if form.shipment_status.errors %}<div class="error" style="margin-top:8px;">{{ form.shipment_status.errors }}</div>{% endif %}
         </div>
 
         <div class="col-6">
@@ -34,7 +44,7 @@
           {% if form.price_per_kg.errors %}<div class="error" style="margin-top:8px;">{{ form.price_per_kg.errors }}</div>{% endif %}
         </div>
 
-        <div class="col-12">
+        <div class="col-6">
           <label>{{ form.file.label }}</label>
           {{ form.file }}
           {% if form.file.errors %}<div class="error" style="margin-top:8px;">{{ form.file.errors }}</div>{% endif %}
@@ -42,19 +52,100 @@
       </div>
 
       <div style="display:flex; gap:10px; margin-top:12px;">
-        <button class="btn accent" type="submit">Загрузить и обработать</button>
+        <button class="btn accent" type="submit">Проверить</button>
         <a class="btn" href="{% url 'manager_shipments' %}">Назад</a>
       </div>
     </form>
   </div>
 
-  {% if report and not report.error %}
+  {% if preview_rows %}
+    <div class="card" style="margin-top:12px;">
+      <h3 class="h">Проверка</h3>
+      <div class="muted">Проверьте список и нажмите «Сохранить», чтобы добавить все строки в базу.</div>
+
+      {% if preview_summary %}
+        <div class="kpi" style="margin-top:12px;">
+          <div class="box">
+            <div class="n">{{ preview_summary.total|default:0 }}</div>
+            <div class="t">Строк</div>
+          </div>
+          <div class="box">
+            <div class="n">{{ preview_summary.ok|default:0 }}</div>
+            <div class="t">ОК</div>
+          </div>
+          <div class="box">
+            <div class="n">{{ preview_summary.no_client_code|default:0 }}</div>
+            <div class="t">Неизвестный</div>
+          </div>
+          <div class="box">
+            <div class="n">{{ preview_summary.client_not_found|default:0 }}</div>
+            <div class="t">Не найден</div>
+          </div>
+        </div>
+      {% endif %}
+
+      <div style="margin-top:12px;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Трек</th>
+              <th>Код клиента</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in preview_rows %}
+              <tr>
+                <td class="muted">{{ r.row }}</td>
+                <td><b>{{ r.tracking|default:'—' }}</b></td>
+                <td>
+                  {{ r.client_code|default:'—' }}
+                  {% if r.user_name %}
+                    <div class="muted">{{ r.user_name }}</div>
+                  {% endif %}
+                </td>
+                <td class="muted">
+                  {% if r.import_status == 'ok' %}
+                    ОК
+                  {% elif r.import_status == 'no_client_code' %}
+                    Неизвестный клиент
+                  {% elif r.import_status == 'client_not_found' %}
+                    Клиент не найден
+                  {% else %}
+                    {{ r.import_status }}
+                  {% endif %}
+                </td>
+                <td style="text-align:right;">
+                  {% if r.import_status == 'ok' %}
+                    <span class="btn" style="padding:6px 10px; border-radius:999px; border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.10);">OK</span>
+                  {% else %}
+                    <span class="btn" style="padding:6px 10px; border-radius:999px; border-color: rgba(244,63,94,.35); background: rgba(244,63,94,.10);">!</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <form method="post" style="margin-top:12px; display:flex; gap:10px;">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="save" />
+        <button class="btn accent" type="submit">Сохранить</button>
+        <a class="btn" href="{% url 'manager_shipments_import' %}">Отмена</a>
+      </form>
+    </div>
+  {% endif %}
+
+  {% if report and not report.error and report.created %}
     <div class="card" style="margin-top:12px;">
       <h3 class="h">Результат</h3>
       <div class="kpi">
         <div class="box">
           <div class="n">{{ report.created|default:0 }}</div>
-          <div class="t">Создано</div>
+          <div class="t">Сохранено</div>
         </div>
         <div class="box">
           <div class="n">{{ report.skipped|default:0 }}</div>
@@ -65,37 +156,11 @@
           <div class="t">Ошибки</div>
         </div>
         <div class="box">
-          <div class="n">—</div>
-          <div class="t">Проверка дублей</div>
-          <div class="muted">Дубли по треку пропускаются для соответствующего клиента</div>
+          <div class="n">{{ report.group_name|default:'—' }}</div>
+          <div class="t">Группа</div>
+          <div class="muted">Создана автоматически при сохранении</div>
         </div>
       </div>
-
-      {% if report.errors and report.errors|length %}
-        <div style="margin-top:12px;">
-          <h4 class="h">Ошибки по строкам</h4>
-          <table>
-            <thead>
-              <tr>
-                <th>Строка</th>
-                <th>Трек</th>
-                <th>Код клиента</th>
-                <th>Ошибка</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for e in report.errors %}
-                <tr>
-                  <td>{{ e.row }}</td>
-                  <td>{{ e.tracking }}</td>
-                  <td>{{ e.client_code }}</td>
-                  <td class="muted">{{ e.error }}</td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      {% endif %}
     </div>
   {% endif %}
 {% endblock %}

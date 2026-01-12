@@ -6,55 +6,201 @@
   <title>{% block title %}Менеджер панель{% endblock %}</title>
   <style>
     :root { --bg:#0b1220; --card:#0f1a2e; --text:#e5e7eb; --muted:#9ca3af; --border:#22304a; --accent:#e0b13f; }
-    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text); }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background: var(--bg); color:var(--text); }
     a { color:inherit; text-decoration:none; }
-    .wrap { max-width: 1100px; margin: 0 auto; padding: 18px 16px 26px; }
-    .top { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
-    .brand { font-weight:900; letter-spacing:.2px; }
-    .nav { display:flex; flex-wrap:wrap; gap:10px; }
-    .pill { display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:999px; border:1px solid var(--border); background:rgba(255,255,255,.02); font-weight:800; }
-    .pill.active { background: rgba(224,177,63,.12); border-color: rgba(224,177,63,.4); color: #f8d778; }
-    .pill.accent { background: var(--accent); color:#111827; border-color: transparent; }
-    .grid { display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
-    .card { grid-column: span 12; background: rgba(255,255,255,.02); border:1px solid var(--border); border-radius:16px; padding:14px; }
-    .h { font-weight:900; margin:0 0 10px; }
+
+    .app {
+      min-height: 100vh;
+      display: flex;
+      background:
+        radial-gradient(900px 520px at 15% -10%, rgba(224,177,63,.12), transparent 55%),
+        radial-gradient(900px 520px at 90% 0%, rgba(59,130,246,.12), transparent 55%),
+        var(--bg);
+    }
+
+    .sidebar {
+      width: 280px;
+      padding: 18px 14px;
+      border-right: 1px solid rgba(255,255,255,.06);
+      background: rgba(15,26,46,.45);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow: auto;
+    }
+
+    .sb-title {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      padding: 10px 10px 14px;
+    }
+    .sb-title .name { font-weight: 950; letter-spacing: .2px; }
+    .sb-title .meta { color: var(--muted); font-weight: 900; font-size: 12px; }
+
+    .sb-nav { margin-top: 10px; display:flex; flex-direction:column; gap:8px; padding: 0 6px; }
+    .nav-link {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.03);
+      font-weight: 950;
+      transition: background .12s ease, border-color .12s ease, transform .12s ease;
+    }
+    .nav-link:hover { transform: translateY(-1px); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.12); }
+    .nav-link.active { background: rgba(224,177,63,.12); border-color: rgba(224,177,63,.32); color: #f8d778; }
+    .nav-link.primary { background: rgba(224,177,63,.92); color: #111827; border-color: transparent; }
+    .nav-link.primary:hover { background: rgba(236,195,92,.98); }
+    .nav-link.danger { background: rgba(255,255,255,.02); }
+
+    .main { flex: 1; min-width: 0; display:flex; flex-direction:column; }
+    .topbar {
+      height: 64px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 12px 18px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      background: rgba(15,26,46,.40);
+      backdrop-filter: blur(10px);
+    }
+    .topbar .title { font-weight: 950; }
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-weight: 950;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .badge b { color: var(--text); }
+
+    .content {
+      max-width: 1120px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 18px;
+    }
+
+    .card {
+      background: rgba(15,26,46,.55);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.28);
+    }
+    .h { font-weight: 950; margin: 0 0 10px; letter-spacing:.2px; }
     .muted { color: var(--muted); }
+
     .kpi { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:10px; }
-    .kpi .box { background: rgba(255,255,255,.02); border:1px solid var(--border); border-radius:14px; padding:12px; }
-    .kpi .n { font-size:22px; font-weight:950; }
-    .kpi .t { color:var(--muted); font-size:12px; font-weight:800; }
-    table { width:100%; border-collapse: collapse; }
-    th, td { padding:10px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top; }
-    th { color: var(--muted); font-size:12px; text-transform: uppercase; letter-spacing:.06em; }
-    .row-actions { display:flex; gap:8px; flex-wrap:wrap; }
-    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,.02); color: var(--text); font-weight:900; cursor:pointer; }
-    .btn.accent { background: var(--accent); color:#111827; border-color: transparent; }
-    input, select { width:100%; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background: rgba(255,255,255,.03); color: var(--text); box-sizing:border-box; }
-    label { display:block; font-size:12px; font-weight:900; color: var(--muted); margin:10px 0 6px; }
-    .form-row { display:grid; grid-template-columns: repeat(12, 1fr); gap:12px; }
+    .kpi .box { background: rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 12px; }
+    .kpi .n { font-size: 22px; font-weight: 950; }
+    .kpi .t { color: var(--muted); font-size: 12px; font-weight: 950; }
+
+    .btn {
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      font-weight: 950;
+      cursor: pointer;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+      white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.16); }
+    .btn.accent { background: rgba(224,177,63,.92); color:#111827; border-color: transparent; }
+    .btn.accent:hover { background: rgba(236,195,92,.98); }
+
+    input, select {
+      width:100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
+    }
+    input:focus, select:focus { outline: none; border-color: rgba(224,177,63,.55); box-shadow: 0 0 0 4px rgba(224,177,63,.12); background: rgba(255,255,255,.04); }
+    label { display:block; font-size:12px; font-weight: 950; color: var(--muted); margin: 10px 0 6px; }
+    .form-row { display:grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
     .col-6 { grid-column: span 6; }
     .col-4 { grid-column: span 4; }
     .col-3 { grid-column: span 3; }
     .col-12 { grid-column: span 12; }
-    .error { background: rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.35); color:#fecdd3; padding:10px 12px; border-radius:12px; font-weight:800; }
-    @media (max-width: 860px){ .kpi{grid-template-columns: repeat(2, minmax(0, 1fr));} .col-6,.col-4,.col-3{grid-column:span 12;} }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: middle; }
+    th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+    tbody tr:hover td { background: rgba(255,255,255,.03); }
+    th:last-child, td:last-child { width: 140px; text-align: right; white-space: nowrap; }
+
+    .error { background: rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.35); color:#fecdd3; padding:10px 12px; border-radius:12px; font-weight:900; }
+
+    @media (max-width: 980px){
+      .sidebar { display:none; }
+      .content { padding: 14px; }
+      .kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .col-6,.col-4,.col-3 { grid-column: span 12; }
+      th:last-child, td:last-child { width: 120px; }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="top">
-      <div class="brand">CargoBot • Менеджер</div>
-      <div class="nav">
-        <a class="pill {% if nav == 'dashboard' %}active{% endif %}" href="{% url 'manager_dashboard' %}">Главная</a>
-        <a class="pill {% if nav == 'clients' %}active{% endif %}" href="{% url 'manager_clients' %}">Клиенты</a>
-        <a class="pill {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments' %}">Посылки</a>
-        <a class="pill {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments_import' %}">Импорт Excel</a>
-        <a class="pill accent" href="{% url 'manager_shipment_new' %}">+ Добавить посылку</a>
-        <a class="pill" href="{% url 'manager_logout' %}">Выход</a>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="sb-title">
+        <div class="name">CargoBot</div>
+        <div class="meta">
+          <b>{{ request.user.username }}</b>
+          {% if is_director %}• Директор{% elif is_manager %}• Менеджер{% endif %}
+        </div>
       </div>
-    </div>
 
-    {% block content %}{% endblock %}
+      <nav class="sb-nav">
+        {% if is_director %}
+          <a class="nav-link {% if nav == 'dashboard' %}active{% endif %}" href="{% url 'manager_dashboard' %}">Главная</a>
+        {% endif %}
+        <a class="nav-link {% if nav == 'clients' %}active{% endif %}" href="{% url 'manager_clients' %}">Клиенты</a>
+        <a class="nav-link {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments' %}">Посылки</a>
+        <a class="nav-link" href="{% url 'manager_shipments_unknown' %}">↳ Неизвестный клиент</a>
+        <a class="nav-link" href="{% url 'manager_shipments_client_not_found' %}">↳ Клиент не найден</a>
+        <a class="nav-link {% if nav == 'groups' %}active{% endif %}" href="{% url 'manager_groups' %}">Группы</a>
+        {% if is_manager %}
+          <a class="nav-link primary" href="{% url 'manager_shipments_add' %}">+ Добавить посылку</a>
+        {% endif %}
+        <a class="nav-link danger" href="{% url 'manager_logout' %}">Выход</a>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="title">{% block page_title %}Панель{% endblock %}</div>
+        <div class="badge">
+          <span>Пользователь:</span>
+          <b>{{ request.user.username }}</b>
+          {% if is_director %}<span>• Директор</span>{% elif is_manager %}<span>• Менеджер</span>{% endif %}
+        </div>
+      </div>
+
+      <div class="content">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
   </div>
 </body>
 </html>

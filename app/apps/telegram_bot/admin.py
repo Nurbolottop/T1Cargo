@@ -1,4 +1,6 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import User as AuthUser
 from apps.telegram_bot import models as tg_models
 
 class ShipmentInline(admin.TabularInline):
@@ -16,39 +18,9 @@ class ShipmentInline(admin.TabularInline):
     readonly_fields = ("created_at",)
     show_change_link = True
 
-class PaymentInline(admin.TabularInline):
-    model = tg_models.Payment
-    extra = 0
-    fields = ("shipment", "amount", "method", "paid_at", "created_at")
-    readonly_fields = ("created_at",)
-    autocomplete_fields = ("shipment",)
-    show_change_link = True
-
-class NotificationInline(admin.TabularInline):
-    model = tg_models.Notification
-    extra = 0
-    fields = ("text", "is_read", "created_at")
-    readonly_fields = ("created_at",)
-    show_change_link = True
-
-class StoragePenaltyInline(admin.StackedInline):
-    model = tg_models.StoragePenalty
-    extra = 0
-    fields = (
-        "free_days",
-        "penalty_per_day",
-        "days_overdue",
-        "total_penalty",
-        "calculated_at",
-        "created_at",
-        "updated_at",
-    )
-    readonly_fields = ("created_at", "updated_at")
-    show_change_link = True
-
 @admin.register(tg_models.User)
 class UserAdmin(admin.ModelAdmin):
-    inlines = (ShipmentInline, PaymentInline, NotificationInline)
+    inlines = (ShipmentInline,)
     list_display = (
         "client_code",
         "telegram_id",
@@ -114,7 +86,7 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(tg_models.Shipment)
 class ShipmentAdmin(admin.ModelAdmin):
-    inlines = (StoragePenaltyInline, PaymentInline)
+    inlines = ()
     list_display = (
         "tracking_number",
         "user",
@@ -150,44 +122,46 @@ class ShipmentAdmin(admin.ModelAdmin):
         ),
     )
 
-@admin.register(tg_models.Payment)
-class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("paid_at", "user", "shipment", "amount", "method", "created_at")
-    list_filter = ("method", "paid_at", "created_at")
-    search_fields = (
-        "user__client_code",
-        "user__telegram_id",
-        "shipment__tracking_number",
-    )
-    autocomplete_fields = ("user", "shipment")
-    readonly_fields = ("created_at", "updated_at")
+@admin.register(tg_models.UsersSH)
+class UsersSHAdmin(DjangoUserAdmin):
+    model = tg_models.UsersSH
+    list_display = ("username", "first_name", "last_name", "role", "is_staff", "is_active")
+    list_filter = ("role", "is_staff", "is_active", "date_joined")
+    search_fields = ("username", "first_name", "last_name", "email")
 
-@admin.register(tg_models.StoragePenalty)
-class StoragePenaltyAdmin(admin.ModelAdmin):
-    list_display = (
-        "shipment",
-        "free_days",
-        "penalty_per_day",
-        "days_overdue",
-        "total_penalty",
-        "calculated_at",
-    )
-    list_filter = ("calculated_at",)
-    search_fields = ("shipment__tracking_number", "shipment__user__client_code")
-    autocomplete_fields = ("shipment",)
-    readonly_fields = ("created_at", "updated_at")
+    fieldsets = DjangoUserAdmin.fieldsets + (("Роль", {"fields": ("role",)}),)
+    add_fieldsets = DjangoUserAdmin.add_fieldsets + (("Роль", {"fields": ("role",)}),)
 
-@admin.register(tg_models.Staff)
-class StaffAdmin(admin.ModelAdmin):
-    list_display = ("user", "role", "created_at")
-    list_filter = ("role", "created_at")
-    search_fields = ("user__username", "user__first_name", "user__last_name")
-    autocomplete_fields = ("user",)
-    readonly_fields = ("created_at", "updated_at")
 
-@admin.register(tg_models.Notification)
-class NotificationAdmin(admin.ModelAdmin):
-    list_display = ("user", "is_read", "created_at")
-    list_filter = ("is_read", "created_at")
-    search_fields = ("user__client_code", "user__telegram_id", "text")
-    autocomplete_fields = ("user",)
+def _ensure_userssh(user: AuthUser, role: str):
+    if not user:
+        return
+    if hasattr(user, "userssh"):
+        prof = user.userssh
+        prof.role = role
+        prof.save(update_fields=["role"])
+        return
+    tg_models.UsersSH.objects.create(user_ptr=user, role=role)
+
+
+@admin.action(description="Сделать штатным: Менеджер")
+def make_userssh_manager(modeladmin, request, queryset):
+    for u in queryset:
+        _ensure_userssh(u, tg_models.UsersSH.Role.MANAGER)
+
+
+@admin.action(description="Сделать штатным: Директор")
+def make_userssh_director(modeladmin, request, queryset):
+    for u in queryset:
+        _ensure_userssh(u, tg_models.UsersSH.Role.DIRECTOR)
+
+
+try:
+    admin.site.unregister(AuthUser)
+except Exception:
+    pass
+
+
+@admin.register(AuthUser)
+class AuthUserAdmin(DjangoUserAdmin):
+    actions = [make_userssh_manager, make_userssh_director]

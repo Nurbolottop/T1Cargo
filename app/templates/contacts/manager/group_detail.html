@@ -1,0 +1,68 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}{{ group.name }} • Группа{% endblock %}
+
+{% block page_title %}{{ group.name }}{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+      <div>
+        <h2 class="h" style="margin:0;">{{ group.name }}</h2>
+        <div class="muted">Статус группы: <b>{{ group.get_status_display }}</b></div>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Сортировка</a>
+        {% if group.status != 'bishkek' %}
+          <form method="post" action="{% url 'manager_group_set_bishkek' group_id=group.id %}">
+            {% csrf_token %}
+            <button class="btn accent" type="submit">В Бишкеке</button>
+          </form>
+        {% endif %}
+        <a class="btn" href="{% url 'manager_groups' %}">Назад</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3 class="h">Посылки в группе</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Трек</th>
+          <th>Клиент</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sh in shipments %}
+          <tr>
+            <td><b>{{ sh.tracking_number }}</b></td>
+            <td>
+              {% if sh.user %}
+                {{ sh.user.client_code|default:'—' }}
+                {% if sh.user.full_name %}<div class="muted">{{ sh.user.full_name }}</div>{% endif %}
+              {% else %}
+                {{ sh.client_code_raw|default:'—' }}
+                <div class="muted">{{ sh.get_import_status_display }}</div>
+              {% endif %}
+            </td>
+            <td>{{ sh.get_status_display }}</td>
+            <td class="row-actions">
+              <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+              {% if sh.status != 'issued' %}
+                <form method="post" action="{% url 'manager_group_shipment_set_issued' group_id=group.id shipment_id=sh.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button class="btn accent" type="submit">Выдано</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">В группе пока нет посылок.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

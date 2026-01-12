@@ -1,8 +1,6 @@
 from django.contrib.auth.models import User as AuthUser
 from django.db import models
-
 from apps.base import models as base_models
-
 
 class User(models.Model):
     class ClientType(models.TextChoices):
@@ -87,21 +85,57 @@ class User(models.Model):
         return str(self.id)
 
 
+class ShipmentGroup(models.Model):
+    class Status(models.TextChoices):
+        ON_THE_WAY = "on_the_way", "В пути"
+        BISHKEK = "bishkek", "В Бишкеке"
+        WAREHOUSE = "warehouse", "На складе"
+        ISSUED = "issued", "Выдано"
+
+    name = models.CharField(max_length=64, unique=True, verbose_name="Название группы")
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.ON_THE_WAY, verbose_name="Статус группы")
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
+
+    class Meta:
+        verbose_name = "Группа"
+        verbose_name_plural = "Группы"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class Shipment(models.Model):
     class Status(models.TextChoices):
         CREATED = "created", "Создан"
         IN_CHINA = "in_china", "В Китае"
         ON_THE_WAY = "on_the_way", "В пути"
+        BISHKEK = "bishkek", "В Бишкеке"
+        WAREHOUSE = "warehouse", "На складе"
+        ISSUED = "issued", "Выдано"
         ARRIVED = "arrived", "Прибыл"
         DELIVERED = "delivered", "Доставлен"
         NOT_PICKED = "not_picked", "Не забрали"
 
-    user = models.ForeignKey(User,on_delete=models.CASCADE,related_name="shipments",verbose_name="Клиент")
+    class ImportStatus(models.TextChoices):
+        OK = "ok", "Ок"
+        NO_CLIENT_CODE = "no_client_code", "Неизвестный клиент"
+        CLIENT_NOT_FOUND = "client_not_found", "Клиент не найден"
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, related_name="shipments", blank=True, null=True, verbose_name="Клиент")
+    group = models.ForeignKey(ShipmentGroup, on_delete=models.SET_NULL, related_name="shipments", blank=True, null=True, verbose_name="Группа")
+    client_code_raw = models.CharField(max_length=32, blank=True, default="", verbose_name="Код клиента (из импорта)")
     tracking_number = models.CharField(max_length=128, verbose_name="Трек-номер")
-    weight_kg = models.DecimalField(max_digits=10,decimal_places=3,default=0,blank=True,verbose_name="Вес (кг)",)
-    price_per_kg = models.DecimalField(max_digits=12,decimal_places=2,default=0,blank=True,verbose_name="Цена за кг",)
-    total_price = models.DecimalField(max_digits=14,decimal_places=2,default=0,blank=True,verbose_name="Итоговая стоимость",)
-    status = models.CharField(max_length=32,choices=Status.choices,default=Status.CREATED,verbose_name="Статус",)
+    weight_kg = models.DecimalField(max_digits=10, decimal_places=3, default=0, blank=True, verbose_name="Вес (кг)")
+    price_per_kg = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, verbose_name="Цена за кг")
+    total_price = models.DecimalField(max_digits=14, decimal_places=2, default=0, blank=True, verbose_name="Итоговая стоимость")
+
+    storage_penalty_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, blank=True, verbose_name="Штраф за хранение (итого)")
+    storage_penalty_last_charged_date = models.DateField(blank=True, null=True, verbose_name="Дата последнего начисления штрафа")
+
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.CREATED, verbose_name="Статус")
+    import_status = models.CharField(max_length=32, choices=ImportStatus.choices, default=ImportStatus.OK, verbose_name="Статус импорта")
     arrival_date = models.DateField(blank=True, null=True, verbose_name="Дата прибытия")
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
@@ -116,112 +150,17 @@ class Shipment(models.Model):
         return self.tracking_number
 
 
-class Payment(models.Model):
-    class Method(models.TextChoices):
-        CASH = "cash", "Наличные"
-        TRANSFER = "transfer", "Перевод"
-
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="payments",
-        verbose_name="Клиент",
-    )
-    shipment = models.ForeignKey(
-        Shipment,
-        on_delete=models.CASCADE,
-        related_name="payments",
-        verbose_name="Посылка",
-    )
-    amount = models.DecimalField(max_digits=14, decimal_places=2, verbose_name="Сумма")
-    method = models.CharField(max_length=16, choices=Method.choices, verbose_name="Метод")
-    paid_at = models.DateTimeField(verbose_name="Оплачено")
-
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
-
-    class Meta:
-        verbose_name = "Оплата"
-        verbose_name_plural = "Оплаты"
-        ordering = ["-paid_at", "-created_at"]
-
-    def __str__(self) -> str:
-        return f"{self.amount}"
-
-
-class StoragePenalty(models.Model):
-    shipment = models.OneToOneField(
-        Shipment,
-        on_delete=models.CASCADE,
-        related_name="storage_penalty",
-        verbose_name="Посылка",
-    )
-    free_days = models.PositiveSmallIntegerField(default=3, verbose_name="Бесплатные дни")
-    penalty_per_day = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        verbose_name="Штраф за день",
-    )
-    days_overdue = models.PositiveIntegerField(verbose_name="Просрочено дней")
-    total_penalty = models.DecimalField(
-        max_digits=14,
-        decimal_places=2,
-        verbose_name="Итоговый штраф",
-    )
-    calculated_at = models.DateTimeField(verbose_name="Рассчитано")
-
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
-
-    class Meta:
-        verbose_name = "Штраф за хранение"
-        verbose_name_plural = "Штрафы за хранение"
-        ordering = ["-calculated_at", "-created_at"]
-
-    def __str__(self) -> str:
-        return f"{self.shipment}"
-
-class Staff(models.Model):
+class UsersSH(AuthUser):
     class Role(models.TextChoices):
-        ADMIN = "admin", "Админ"
-        OPERATOR = "operator", "Оператор"
         MANAGER = "manager", "Менеджер"
+        DIRECTOR = "director", "Директор"
 
-    user = models.OneToOneField(
-        AuthUser,
-        on_delete=models.CASCADE,
-        related_name="staff_profile",
-        verbose_name="Пользователь",
-    )
     role = models.CharField(max_length=16, choices=Role.choices, verbose_name="Роль")
 
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
-
     class Meta:
-        verbose_name = "Сотрудник"
-        verbose_name_plural = "Сотрудники"
-        ordering = ["role", "-created_at"]
+        verbose_name = "Штатный"
+        verbose_name_plural = "Штатные"
+        ordering = ["role", "-date_joined"]
 
     def __str__(self) -> str:
-        return f"{self.user}"
-
-
-class Notification(models.Model):
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name="notifications",
-        verbose_name="Клиент",
-    )
-    text = models.TextField(verbose_name="Текст")
-    is_read = models.BooleanField(default=False, verbose_name="Прочитано")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-
-    class Meta:
-        verbose_name = "Уведомление"
-        verbose_name_plural = "Уведомления"
-        ordering = ["-created_at"]
-
-    def __str__(self) -> str:
-        return f"{self.user}"
+        return f"{self.username}"

@@ -1,0 +1,41 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Неизвестный клиент • Посылки{% endblock %}
+
+{% block page_title %}Неизвестный клиент{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Неизвестный клиент</h2>
+    <div class="muted">Посылки, у которых в Excel не был указан код клиента.</div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Трек</th>
+          <th>Код клиента</th>
+          <th>Группа</th>
+          <th>Статус</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sh in shipments %}
+          <tr>
+            <td><b>{{ sh.tracking_number }}</b></td>
+            <td>{{ sh.client_code_raw|default:'—' }}</td>
+            <td class="muted">{% if sh.group %}{{ sh.group.name }}{% else %}—{% endif %}</td>
+            <td class="muted">{{ sh.get_status_display }}</td>
+            <td class="row-actions">
+              <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5" class="muted">Посылок не найдено.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
