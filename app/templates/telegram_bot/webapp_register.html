@@ -154,23 +154,23 @@
 
       <div class="field">
         <div class="label">ФИО <small>(обязательно)</small></div>
-        <input id="full_name" placeholder="ФИО*" autocomplete="name" />
+        <input id="full_name" placeholder="ФИО*" autocomplete="name" enterkeyhint="next" />
       </div>
 
       <div class="field">
         <div class="label">Телефон <small>(обязательно WhatsApp)</small></div>
-        <input id="phone" placeholder="Тел. в международном формате*" autocomplete="tel" />
+        <input id="phone" placeholder="Тел. в международном формате*" autocomplete="tel" inputmode="tel" enterkeyhint="next" />
       </div>
 
       <div class="field">
         <div class="label">Код клиента <small>(если уже есть)</small></div>
-        <input id="client_code" placeholder="Введите код, если вам его выдавали раньше" autocomplete="off" />
+        <input id="client_code" placeholder="Введите код, если вам его выдавали раньше" autocomplete="off" inputmode="numeric" enterkeyhint="next" />
         <div class="hint">Если у вас нет кода — оставьте поле пустым. Не вводите случайные цифры.</div>
       </div>
 
       <div class="field">
         <div class="label">Адрес проживания <small>(не обязательно)</small></div>
-        <input id="address" placeholder="Адрес" autocomplete="street-address" />
+        <input id="address" placeholder="Адрес" autocomplete="street-address" enterkeyhint="done" />
       </div>
 
       <button id="submit" class="btn">Зарегистрироваться</button>
@@ -200,6 +200,38 @@
       el.textContent = text;
       el.style.display = 'block';
       document.getElementById('error').style.display = 'none';
+    }
+
+    function getFocusableFields() {
+      return [
+        document.getElementById('filial_id'),
+        document.getElementById('full_name'),
+        document.getElementById('phone'),
+        document.getElementById('client_code'),
+        document.getElementById('address'),
+      ].filter(Boolean);
+    }
+
+    function focusNextField(currentEl) {
+      const fields = getFocusableFields();
+      const idx = fields.indexOf(currentEl);
+      const next = idx >= 0 ? fields[idx + 1] : null;
+      if (next) {
+        next.focus();
+        return true;
+      }
+      return false;
+    }
+
+    function scrollToField(el) {
+      if (!el || typeof el.scrollIntoView !== 'function') return;
+      setTimeout(() => {
+        try {
+          el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        } catch (e) {
+          try { el.scrollIntoView(true); } catch (e2) {}
+        }
+      }, 80);
     }
 
     async function loadFilials() {
@@ -252,6 +284,9 @@
     }
 
     async function submitForm() {
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
       const full_name = document.getElementById('full_name').value.trim();
       const client_code = document.getElementById('client_code').value.trim();
       const phone = normalizePhone(document.getElementById('phone').value);
@@ -342,6 +377,49 @@
       const v = normalizePhone(document.getElementById('phone').value);
       document.getElementById('phone').value = v;
     });
+
+    const fullNameEl = document.getElementById('full_name');
+    const phoneEl = document.getElementById('phone');
+    const codeEl = document.getElementById('client_code');
+    const addressEl = document.getElementById('address');
+    const filialEl = document.getElementById('filial_id');
+
+    if (filialEl) {
+      filialEl.addEventListener('change', () => {
+        focusNextField(filialEl);
+      });
+      filialEl.addEventListener('focus', () => scrollToField(filialEl));
+    }
+
+    for (const el of [fullNameEl, phoneEl, codeEl, addressEl]) {
+      if (!el) continue;
+      el.addEventListener('focus', () => scrollToField(el));
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const moved = focusNextField(el);
+          if (!moved) {
+            submitForm();
+          }
+        }
+      });
+    }
+
+    function maybeBlurOnOutside(e) {
+      const t = e && e.target ? e.target : null;
+      if (!t) return;
+      const tag = (t.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'select' || tag === 'button' || tag === 'textarea' || t.isContentEditable) {
+        return;
+      }
+      const active = document.activeElement;
+      if (active && (active.tagName || '').toLowerCase() === 'input') {
+        active.blur();
+      }
+    }
+
+    document.addEventListener('touchstart', maybeBlurOnOutside, { passive: true });
+    document.addEventListener('click', maybeBlurOnOutside);
 
     function normalizePhone(raw) {
       const s = String(raw || '').trim();
