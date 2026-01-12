@@ -72,8 +72,8 @@ def _onboarding_keyboard(manager_contact: str, registration_webapp_url: str) -> 
 def _main_menu_keyboard() -> types.ReplyKeyboardMarkup:
     kb = types.ReplyKeyboardMarkup(resize_keyboard=True)
     kb.row("👤 Профиль", "🎁 Адреса", "📦 Мои посылки")
-    kb.row("📊 График", "⛔ Запрещенные товары", "⚙ Поддержка")
-    kb.row("🛒 Расчет оптовых товаров")
+    kb.row("🛒 Оптовый заказ", "⛔ Запрещенные товары", "⚙ Поддержка")
+    kb.row("✅ Добавить трек")
     return kb
 
 
@@ -147,15 +147,28 @@ def start_bot(token: str) -> None:
             from_user = message.from_user
             if not from_user or not from_user.id:
                 return None
+            defaults = {
+                "first_name": (from_user.first_name or ""),
+                "last_name": (from_user.last_name or ""),
+                "language_code": (getattr(from_user, "language_code", "") or ""),
+            }
+            if from_user.username:
+                defaults["username"] = from_user.username
+
             user_obj, _ = tg_models.User.objects.update_or_create(
                 telegram_id=int(from_user.id),
-                defaults={
-                    "username": (from_user.username or ""),
-                    "first_name": (from_user.first_name or ""),
-                    "last_name": (from_user.last_name or ""),
-                    "language_code": (getattr(from_user, "language_code", "") or ""),
-                },
+                defaults=defaults,
             )
+
+            if not (getattr(user_obj, "full_name", "") or "").strip():
+                first = (from_user.first_name or "").strip()
+                last = (from_user.last_name or "").strip()
+                tg_name = " ".join([v for v in [first, last] if v]).strip()
+                if not tg_name:
+                    tg_name = (from_user.username or "").strip()
+                if tg_name:
+                    user_obj.full_name = tg_name
+                    user_obj.save(update_fields=["full_name", "updated_at"])
             return user_obj
         except Exception:
             return None
@@ -295,6 +308,18 @@ def start_bot(token: str) -> None:
             )
         bot.send_message(message.chat.id, "Мои посылки:\n\n" + "\n".join(lines), reply_markup=_main_menu_keyboard())
 
+    @bot.message_handler(func=lambda m: m.text == "✅ Добавить трек")
+    def add_track(message):
+        user_obj = _get_or_create_user(message)
+        if not _is_registered(user_obj):
+            _send_registration_required(message.chat.id)
+            return
+        bot.send_message(
+            message.chat.id,
+            "Отправьте трек-номер следующим сообщением.",
+            reply_markup=_main_menu_keyboard(),
+        )
+
     @bot.message_handler(func=lambda m: m.text == "🎁 Адреса")
     def warehouses(message):
         user_obj = _get_or_create_user(message)
@@ -361,7 +386,7 @@ def start_bot(token: str) -> None:
         )
 
 
-    @bot.message_handler(func=lambda m: (m.text or "").strip() in {"🛒 Расчет оптовых товаров", "🛒 Оптовые товары"})
+    @bot.message_handler(func=lambda m: (m.text or "").strip() in {"🛒 Оптовый заказ", "🛒 Расчет оптовых товаров", "🛒 Оптовые товары"})
     def wholesale_order(message):
         user_obj = _get_or_create_user(message)
         if not _is_registered(user_obj):

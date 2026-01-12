@@ -258,6 +258,8 @@
       const address = document.getElementById('address').value.trim();
       const filial_id_raw = document.getElementById('filial_id').value;
 
+      const telegram_user_id = tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null;
+
       if (!filial_id_raw) {
         showError('Выберите филиал');
         return;
@@ -269,6 +271,11 @@
       }
       if (!phone) {
         showError('Введите номер телефона');
+        return;
+      }
+
+      if (!telegram_user_id) {
+        showError('Откройте регистрацию через Telegram-бота (кнопка «Получить код»).');
         return;
       }
 
@@ -284,7 +291,7 @@
         phone,
         address,
         filial_id,
-        telegram_user_id: tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? tg.initDataUnsafe.user.id : null,
+        telegram_user_id,
         telegram_username: tg && tg.initDataUnsafe && tg.initDataUnsafe.user ? (tg.initDataUnsafe.user.username || '') : ''
       };
 
@@ -301,6 +308,9 @@
 
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || !data.ok) {
+          if (data && data.error === 'telegram_user_required') {
+            showError('Откройте регистрацию через Telegram-бота (кнопка «Получить код»).');
+          } else
           if (data && data.error === 'code_taken') {
             showError('Код занят');
           } else {
@@ -309,7 +319,11 @@
           return;
         }
 
-        showSuccess('Заявка отправлена. Спасибо!');
+        if (data && data.telegram_notified === false) {
+          showSuccess('Заявка отправлена. Если меню не появилось — откройте чат с ботом и нажмите /start.');
+        } else {
+          showSuccess('Заявка отправлена. Спасибо!');
+        }
         if (tg) {
           setTimeout(() => tg.close(), 900);
         }

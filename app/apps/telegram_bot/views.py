@@ -370,116 +370,127 @@ def webapp_register_submit(request):
     telegram_user_id = payload.get("telegram_user_id")
     telegram_username = (payload.get("telegram_username") or "").strip()
 
-    if not full_name or not phone:
+    if not isinstance(telegram_user_id, int):
+        return JsonResponse({"ok": False, "error": "telegram_user_required"}, status=400)
+
+    if not phone:
         return JsonResponse({"ok": False, "error": "validation"}, status=400)
 
-    user_obj = None
-    if isinstance(telegram_user_id, int):
-        user_obj = tg_models.User.objects.filter(telegram_id=telegram_user_id).first()
+    user_obj = tg_models.User.objects.filter(telegram_id=telegram_user_id).first()
 
-        selected_filial_id = filial_id if isinstance(filial_id, int) else None
-        filial_obj = base_models.Filial.objects.filter(id=selected_filial_id, is_active=True).first() if selected_filial_id else None
-        if filial_obj is None:
-            filial_obj = base_models.Filial.objects.filter(is_active=True).order_by("city", "name").first()
-        if filial_obj is None:
-            return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+    if not full_name:
+        tg_first = (getattr(user_obj, "first_name", "") or "").strip() if user_obj else ""
+        tg_last = (getattr(user_obj, "last_name", "") or "").strip() if user_obj else ""
+        full_name = " ".join([v for v in [tg_first, tg_last] if v]).strip()
+        if not full_name:
+            full_name = (getattr(user_obj, "username", "") or "").strip() if user_obj else ""
 
-        normalized_client_code = _normalize_client_code(existing_client_code, filial_obj)
+    selected_filial_id = filial_id if isinstance(filial_id, int) else None
+    filial_obj = base_models.Filial.objects.filter(id=selected_filial_id, is_active=True).first() if selected_filial_id else None
+    if filial_obj is None:
+        filial_obj = base_models.Filial.objects.filter(is_active=True).order_by("city", "name").first()
+    if filial_obj is None:
+        return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
 
-        reserved_user_obj = None
-        if normalized_client_code:
-            reserved_user_obj = (
-                tg_models.User.objects.select_related("filial")
-                .filter(client_code__iexact=normalized_client_code, telegram_id__isnull=True)
-                .first()
-            )
+    normalized_client_code = _normalize_client_code(existing_client_code, filial_obj)
 
-            # Code is considered "taken" if another registered user already has it.
-            # If there is a reserved record (telegram_id is null), we will attach to it.
-            if user_obj:
-                if tg_models.User.objects.filter(client_code__iexact=normalized_client_code).exclude(id=user_obj.id).exists():
-                    return JsonResponse({"ok": False, "error": "code_taken"}, status=400)
-            else:
-                taken_registered = tg_models.User.objects.filter(
-                    client_code__iexact=normalized_client_code,
-                    telegram_id__isnull=False,
-                ).exists()
-                if taken_registered:
-                    return JsonResponse({"ok": False, "error": "code_taken"}, status=400)
+    reserved_user_obj = None
+    if normalized_client_code:
+        reserved_user_obj = (
+            tg_models.User.objects.select_related("filial")
+            .filter(client_code__iexact=normalized_client_code, telegram_id__isnull=True)
+            .first()
+        )
 
+        # Code is considered "taken" if another registered user already has it.
+        # If there is a reserved record (telegram_id is null), we will attach to it.
         if user_obj:
+            if tg_models.User.objects.filter(client_code__iexact=normalized_client_code).exclude(id=user_obj.id).exists():
+                return JsonResponse({"ok": False, "error": "code_taken"}, status=400)
+        else:
+            taken_registered = tg_models.User.objects.filter(
+                client_code__iexact=normalized_client_code,
+                telegram_id__isnull=False,
+            ).exists()
+            if taken_registered:
+                return JsonResponse({"ok": False, "error": "code_taken"}, status=400)
+
+    if user_obj:
+        if telegram_username:
             user_obj.username = telegram_username
+        user_obj.full_name = full_name
+        user_obj.phone = phone
+        user_obj.address = address
+        user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
+        user_obj.filial = filial_obj
+        if not user_obj.client_type:
+            user_obj.client_type = tg_models.User.ClientType.INDIVIDUAL
+
+        if normalized_client_code:
+            user_obj.client_code = normalized_client_code
+            user_obj.client_status = tg_models.User.ClientStatus.OLD
+        else:
+            user_obj.client_status = tg_models.User.ClientStatus.NEW
+            if not user_obj.client_code:
+                code, locked_filial_obj = _generate_client_code(filial_obj.id)
+                if not code:
+                    return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+                user_obj.client_code = code
+                if locked_filial_obj:
+                    user_obj.filial = locked_filial_obj
+        user_obj.save()
+    else:
+        if normalized_client_code and reserved_user_obj:
+            user_obj = reserved_user_obj
+            user_obj.telegram_id = telegram_user_id
+            if telegram_username:
+                user_obj.username = telegram_username
             user_obj.full_name = full_name
             user_obj.phone = phone
             user_obj.address = address
             user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
-            user_obj.filial = filial_obj
             if not user_obj.client_type:
                 user_obj.client_type = tg_models.User.ClientType.INDIVIDUAL
-
-            if normalized_client_code:
-                user_obj.client_code = normalized_client_code
-                user_obj.client_status = tg_models.User.ClientStatus.OLD
-            else:
-                user_obj.client_status = tg_models.User.ClientStatus.NEW
-                if not user_obj.client_code:
-                    code, locked_filial_obj = _generate_client_code(filial_obj.id)
-                    if not code:
-                        return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
-                    user_obj.client_code = code
-                    if locked_filial_obj:
-                        user_obj.filial = locked_filial_obj
+            if filial_obj:
+                user_obj.filial = filial_obj
+            user_obj.client_status = tg_models.User.ClientStatus.OLD
             user_obj.save()
+        elif normalized_client_code:
+            user_obj = tg_models.User.objects.create(
+                telegram_id=telegram_user_id,
+                username=telegram_username,
+                full_name=full_name,
+                phone=phone,
+                address=address,
+                status=tg_models.User.Status.CLIENT_REGISTERED,
+                filial=filial_obj,
+                client_code=normalized_client_code,
+                client_type=tg_models.User.ClientType.INDIVIDUAL,
+                client_status=tg_models.User.ClientStatus.OLD,
+            )
         else:
-            if normalized_client_code and reserved_user_obj:
-                user_obj = reserved_user_obj
-                user_obj.telegram_id = telegram_user_id
-                user_obj.username = telegram_username
-                user_obj.full_name = full_name
-                user_obj.phone = phone
-                user_obj.address = address
-                user_obj.status = tg_models.User.Status.CLIENT_REGISTERED
-                if not user_obj.client_type:
-                    user_obj.client_type = tg_models.User.ClientType.INDIVIDUAL
-                if filial_obj:
-                    user_obj.filial = filial_obj
-                user_obj.client_status = tg_models.User.ClientStatus.OLD
-                user_obj.save()
-            elif normalized_client_code:
-                user_obj = tg_models.User.objects.create(
-                    telegram_id=telegram_user_id,
-                    username=telegram_username,
-                    full_name=full_name,
-                    phone=phone,
-                    address=address,
-                    status=tg_models.User.Status.CLIENT_REGISTERED,
-                    filial=filial_obj,
-                    client_code=normalized_client_code,
-                    client_type=tg_models.User.ClientType.INDIVIDUAL,
-                    client_status=tg_models.User.ClientStatus.OLD,
-                )
-            else:
-                locked_filial_obj = None
-                code, locked_filial_obj = _generate_client_code(filial_obj.id)
-                if not code:
-                    return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+            locked_filial_obj = None
+            code, locked_filial_obj = _generate_client_code(filial_obj.id)
+            if not code:
+                return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
 
-                user_obj = tg_models.User.objects.create(
-                    telegram_id=telegram_user_id,
-                    username=telegram_username,
-                    full_name=full_name,
-                    phone=phone,
-                    address=address,
-                    status=tg_models.User.Status.CLIENT_REGISTERED,
-                    filial=locked_filial_obj or filial_obj,
-                    client_code=code,
-                    client_type=tg_models.User.ClientType.INDIVIDUAL,
-                    client_status=tg_models.User.ClientStatus.NEW,
-                )
+            user_obj = tg_models.User.objects.create(
+                telegram_id=telegram_user_id,
+                username=telegram_username,
+                full_name=full_name,
+                phone=phone,
+                address=address,
+                status=tg_models.User.Status.CLIENT_REGISTERED,
+                filial=locked_filial_obj or filial_obj,
+                client_code=code,
+                client_type=tg_models.User.ClientType.INDIVIDUAL,
+                client_status=tg_models.User.ClientStatus.NEW,
+            )
 
     settings_obj = base_models.Settings.objects.first()
+    telegram_notified = False
     if settings_obj and settings_obj.is_bot_enabled and settings_obj.telegram_token:
-        if user_obj and isinstance(telegram_user_id, int):
+        if user_obj:
             menu_kb = {
                 "keyboard": [
                     ["👤 Профиль", "🎁 Адреса", "📦 Мои посылки"],
@@ -512,8 +523,9 @@ def webapp_register_submit(request):
                     telegram_user_id,
                     "🎉 Регистрация прошла успешно 🎉\nСпасибо что подписались",
                 )
+                telegram_notified = True
             except Exception:
-                pass
+                telegram_notified = False
 
             wh = base_models.Warehouse.objects.order_by("name").first()
             china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
@@ -536,8 +548,9 @@ def webapp_register_submit(request):
                     reply_markup=menu_kb,
                     parse_mode="Markdown",
                 )
+                telegram_notified = True
             except Exception:
-                pass
+                telegram_notified = False
 
             warning_text = (
                 "✅ *Важно*\n\n"
@@ -559,7 +572,8 @@ def webapp_register_submit(request):
                     reply_markup=warn_kb if warn_kb["inline_keyboard"] else None,
                     parse_mode="Markdown",
                 )
+                telegram_notified = True
             except Exception:
-                pass
+                telegram_notified = False
 
-    return JsonResponse({"ok": True})
+    return JsonResponse({"ok": True, "telegram_notified": telegram_notified})
