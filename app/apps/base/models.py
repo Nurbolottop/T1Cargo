@@ -65,23 +65,6 @@ class AdminId(models.Model):
         verbose_name_plural = "ID администраторов"
 
 
-class Warehouse(models.Model):
-    name = models.CharField(max_length=255, verbose_name="Название")
-    phone = models.CharField(max_length=64, verbose_name="Телефон", blank=True, default="")
-    address = models.CharField(max_length=512, verbose_name="Адрес")
-
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
-
-    class Meta:
-        verbose_name = "2) Склад"
-        verbose_name_plural = "2) Склады"
-        ordering = ["name"]
-
-    def __str__(self) -> str:
-        return self.name
-
-
 class Filial(models.Model):
     name = models.CharField(max_length=255, verbose_name="Название")
     city = models.CharField(max_length=128, verbose_name="Город")
@@ -93,6 +76,25 @@ class Filial(models.Model):
     email = models.EmailField(verbose_name="Email", blank=True, default="")
     work_hours = models.TextField(verbose_name="Режим работы", blank=True)
     pvz_location_url = models.URLField(verbose_name="Локация ПВЗ (ссылка на карту)", blank=True, default="")
+
+    china_warehouse_name = models.CharField(
+        max_length=255,
+        verbose_name="Склад в Китае (название)",
+        blank=True,
+        default="",
+    )
+    china_warehouse_phone = models.CharField(
+        max_length=64,
+        verbose_name="Склад в Китае (телефон)",
+        blank=True,
+        default="",
+    )
+    china_warehouse_address = models.CharField(
+        max_length=512,
+        verbose_name="Склад в Китае (адрес)",
+        blank=True,
+        default="",
+    )
 
     currency = models.CharField(max_length=16, verbose_name="Валюта", blank=True, default="KGS")
     default_price_per_kg = models.DecimalField(

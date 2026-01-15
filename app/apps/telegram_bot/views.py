@@ -234,9 +234,11 @@ def webapp_profile_addresses(request):
     pvz_city = (getattr(filial_obj, "city", "") or "").strip() if filial_obj else ""
 
     s = base_models.Settings.objects.first()
-    wh = base_models.Warehouse.objects.order_by("name").first()
-    warehouse_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
-    china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
+    warehouse_phone = (getattr(filial_obj, "china_warehouse_phone", "") or "").strip() if filial_obj else ""
+    if not warehouse_phone:
+        warehouse_phone = (getattr(s, "phone", "") or "").strip() if s else ""
+
+    china_address = (getattr(filial_obj, "china_warehouse_address", "") or "").strip() if filial_obj else ""
     code_value = (user_obj.client_code or "—").strip()
 
     china_prefix = (getattr(filial_obj, "china_client_code_prefix", "") or "").strip() if filial_obj else ""
@@ -531,9 +533,10 @@ def webapp_register_submit(request):
             except Exception:
                 telegram_notified = False
 
-            wh = base_models.Warehouse.objects.order_by("name").first()
-            china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
-            warehouse_phone = (getattr(wh, "phone", "") or "").strip() if wh else (settings_obj.phone or "").strip()
+            china_address = (getattr(filial_obj, "china_warehouse_address", "") or "").strip() if filial_obj else ""
+            warehouse_phone = (getattr(filial_obj, "china_warehouse_phone", "") or "").strip() if filial_obj else ""
+            if not warehouse_phone:
+                warehouse_phone = (settings_obj.phone or "").strip()
             code_value = (user_obj.client_code or "—").strip()
 
             filial_obj = getattr(user_obj, "filial", None)

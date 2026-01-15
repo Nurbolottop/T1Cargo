@@ -331,10 +331,11 @@ def start_bot(token: str) -> None:
         if not manager_phone:
             manager_phone = (getattr(s, "phone", "") or "").strip() if s else ""
 
-        wh = base_models.Warehouse.objects.order_by("name").first()
-        china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
+        china_address = (getattr(filial_obj, "china_warehouse_address", "") or "").strip() if filial_obj else ""
 
-        wh_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
+        wh_phone = (getattr(filial_obj, "china_warehouse_phone", "") or "").strip() if filial_obj else ""
+        if not wh_phone:
+            wh_phone = (getattr(s, "phone", "") or "").strip() if s else ""
 
         code_value = (user_obj.client_code or "—").strip()
         address_value = (china_address or "—").strip()

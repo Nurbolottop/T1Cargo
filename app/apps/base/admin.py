@@ -80,13 +80,6 @@ class SettingsAdmin(admin.ModelAdmin):
 
     icon_preview.short_description = "Превью иконки"
 
-@admin.register(base_models.Warehouse)
-class WarehouseAdmin(admin.ModelAdmin):
-    list_display = ("name", "phone", "address", "created_at")
-    list_filter = ("created_at",)
-    search_fields = ("name", "phone", "address")
-    readonly_fields = ("created_at", "updated_at")
-
 @admin.register(base_models.Filial)
 class FilialAdmin(admin.ModelAdmin):
     list_display = (
@@ -97,12 +90,95 @@ class FilialAdmin(admin.ModelAdmin):
         "currency",
         "client_code_prefix",
         "china_client_code_prefix",
-        "client_code_start_number",
-        "client_code_last_number",
-        "wholesale_order_text",
-        "wholesale_whatsapp_phone",
+        "storage_penalty_per_day",
         "created_at",
     )
     list_filter = ("city", "is_active", "created_at")
-    search_fields = ("name", "city", "address", "wholesale_order_text", "wholesale_whatsapp_phone")
+    search_fields = (
+        "name",
+        "city",
+        "address",
+        "manager_contact",
+        "china_warehouse_name",
+        "china_warehouse_phone",
+        "china_warehouse_address",
+        "wholesale_order_text",
+        "wholesale_whatsapp_phone",
+    )
     readonly_fields = ("created_at", "updated_at")
+
+    fieldsets = (
+        (
+            "Основное",
+            {
+                "fields": (
+                    "city",
+                    "name",
+                    "is_active",
+                    "currency",
+                )
+            },
+        ),
+        (
+            "ПВЗ / Офис",
+            {
+                "fields": (
+                    "address",
+                    "manager_contact",
+                    "pvz_location_url",
+                    "work_hours",
+                    "instagram_url",
+                    "email",
+                )
+            },
+        ),
+        (
+            "Склад в Китае",
+            {
+                "fields": (
+                    "china_warehouse_name",
+                    "china_warehouse_phone",
+                    "china_warehouse_address",
+                )
+            },
+        ),
+        (
+            "Код клиента",
+            {
+                "fields": (
+                    "client_code_prefix",
+                    "china_client_code_prefix",
+                    "client_code_start_number",
+                    "client_code_last_number",
+                )
+            },
+        ),
+        (
+            "Штрафы",
+            {
+                "fields": (
+                    "default_price_per_kg",
+                    "storage_penalty_per_day",
+                )
+            },
+        ),
+        (
+            "Оптовые товары",
+            {
+                "fields": (
+                    "wholesale_order_text",
+                    "wholesale_whatsapp_phone",
+                )
+            },
+        ),
+        (
+            "Служебное",
+            {
+                "classes": ("collapse",),
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
