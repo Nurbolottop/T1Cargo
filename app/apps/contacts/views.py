@@ -906,8 +906,10 @@ def manager_analytics(request):
     prev_month = (first_day - timezone.timedelta(days=1)).replace(day=1)
 
     dec0 = Value(Decimal("0.00"), output_field=DecimalField(max_digits=18, decimal_places=2))
+    delivery_expr = Coalesce(F("total_price"), dec0)
+    penalty_expr = Coalesce(F("storage_penalty_total"), dec0)
     amount_expr = ExpressionWrapper(
-        Coalesce(F("total_price"), dec0) + Coalesce(F("storage_penalty_total"), dec0),
+        delivery_expr + penalty_expr,
         output_field=DecimalField(max_digits=18, decimal_places=2),
     )
 
@@ -942,6 +944,27 @@ def manager_analytics(request):
         day_ops_qs = day_ops_qs.filter(filial=staff_filial)
     day_ops = day_ops_qs.annotate(amount=amount_expr).order_by("-updated_at")[:500]
 
+    selected_breakdown = day_ops_qs.aggregate(
+        delivery=Coalesce(Sum(delivery_expr, output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
+        penalty=Coalesce(Sum(penalty_expr, output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
+        total=Coalesce(Sum(amount_expr, output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
+        cnt=Count("id"),
+    )
+
+    office_qs = tg_models.Shipment.objects.select_related("user").filter(
+        status=tg_models.Shipment.Status.WAREHOUSE,
+    )
+    if staff_filial is not None:
+        office_qs = office_qs.filter(filial=staff_filial)
+
+    office_stats = office_qs.aggregate(
+        cnt=Count("id"),
+        clients=Count("user_id", distinct=True),
+        delivery=Coalesce(Sum(delivery_expr, output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
+        penalty=Coalesce(Sum(penalty_expr, output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
+        total=Coalesce(Sum(amount_expr, output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
+    )
+
     selected_meta = day_map.get(selected_day) or {"cnt": 0, "total": 0}
 
     calendar_cells = []
@@ -975,6 +998,13 @@ def manager_analytics(request):
             "selected_day": selected_day,
             "selected_cnt": selected_meta.get("cnt", 0),
             "selected_total": selected_meta.get("total", 0),
+            "selected_delivery": selected_breakdown.get("delivery", 0),
+            "selected_penalty": selected_breakdown.get("penalty", 0),
+            "office_cnt": office_stats.get("cnt", 0),
+            "office_clients": office_stats.get("clients", 0),
+            "office_delivery": office_stats.get("delivery", 0),
+            "office_penalty": office_stats.get("penalty", 0),
+            "office_total": office_stats.get("total", 0),
             "calendar_cells": calendar_cells,
             "day_ops": day_ops,
             **_role_ctx(request),

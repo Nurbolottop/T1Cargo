@@ -68,6 +68,17 @@
       </div>
     </div>
 
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+      <div class="badge"><span>Доставка:</span><b>{{ selected_delivery }}</b></div>
+      <div class="badge"><span>Штраф:</span><b>{{ selected_penalty }}</b></div>
+      <div class="badge"><span>Итого:</span><b>{{ selected_total }}</b></div>
+      <div class="badge"><span>В офисе осталось:</span><b>{{ office_cnt }}</b></div>
+      <div class="badge"><span>Клиентов не забрали:</span><b>{{ office_clients }}</b></div>
+      <div class="badge"><span>Остаток доставка:</span><b>{{ office_delivery }}</b></div>
+      <div class="badge"><span>Остаток штраф:</span><b>{{ office_penalty }}</b></div>
+      <div class="badge"><span>Остаток итого:</span><b>{{ office_total }}</b></div>
+    </div>
+
     <table style="margin-top:12px;">
       <thead>
         <tr>
