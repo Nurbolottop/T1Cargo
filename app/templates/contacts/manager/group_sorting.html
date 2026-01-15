@@ -9,8 +9,8 @@
     <h2 class="h">Сортировка</h2>
     <div class="muted">Сканируйте/вставьте трек и нажмите Enter. Поиск выполняется только в этой группе.</div>
 
-    <form method="get" style="margin-top:12px; display:flex; gap:10px;">
-      <input name="q" value="{{ q|default:'' }}" placeholder="Трек" autofocus />
+    <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="trackSearchForm">
+      <input name="q" value="{{ q|default:'' }}" placeholder="Трек" autofocus id="trackInput" />
       <button class="btn accent" type="submit">Найти</button>
       <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
     </form>
@@ -45,7 +45,7 @@
         <div class="form-row">
           <div class="col-6">
             <label>Вес (кг)</label>
-            <input name="weight_kg" value="{{ shipment.weight_kg }}" />
+            <input name="weight_kg" value="{{ shipment.weight_kg }}" {% if weight_locked %}disabled{% endif %} id="weightInput" />
           </div>
           <div class="col-6">
             <label>Цена за кг (по умолчанию)</label>
@@ -54,10 +54,42 @@
         </div>
 
         <div style="display:flex; gap:10px; margin-top:12px;">
-          <button class="btn accent" type="submit">Сохранить</button>
+          <button class="btn accent" type="submit" {% if weight_locked %}disabled{% endif %}>Сохранить</button>
           <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Очистить</a>
         </div>
       </form>
     </div>
   {% endif %}
+
+  <script>
+    (function () {
+      const trackInput = document.getElementById('trackInput');
+      const form = document.getElementById('trackSearchForm');
+      if (!trackInput || !form) return;
+
+      const weightInput = document.getElementById('weightInput');
+      if (weightInput && !weightInput.disabled) {
+        setTimeout(() => weightInput.focus(), 50);
+      }
+
+      let last = (trackInput.value || '').trim();
+      let t = null;
+
+      function shouldAutoSubmit(v) {
+        if (!v) return false;
+        if (v.length < 6) return false;
+        if (!/[0-9]/.test(v)) return false;
+        if (/[А-Яа-яЁё]/.test(v)) return false;
+        return true;
+      }
+
+      trackInput.addEventListener('input', function () {
+        const v = (trackInput.value || '').trim();
+        if (!shouldAutoSubmit(v) || v === last) return;
+        last = v;
+        if (t) clearTimeout(t);
+        t = setTimeout(() => form.submit(), 120);
+      });
+    })();
+  </script>
 {% endblock %}

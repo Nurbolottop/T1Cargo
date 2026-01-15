@@ -9,11 +9,17 @@
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
       <div>
         <h2 class="h" style="margin:0;">{{ group.name }}</h2>
-        <div class="muted">Статус группы: <b>{{ group.get_status_display }}</b></div>
+        <div class="muted">
+          Статус группы: <b>{{ group.get_status_display }}</b>
+          <span style="opacity:.55; padding:0 8px;">•</span>
+          Дата отправки: <b>{% if group.sent_date %}{{ group.sent_date|date:'d.m.Y' }}{% else %}—{% endif %}</b>
+        </div>
       </div>
       <div style="display:flex; gap:10px;">
-        <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Сортировка</a>
-        {% if group.status != 'bishkek' %}
+        {% if has_unsorted %}
+          <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Сортировка</a>
+        {% endif %}
+        {% if group.status != 'bishkek' and not group.bishkek_marked %}
           <form method="post" action="{% url 'manager_group_set_bishkek' group_id=group.id %}">
             {% csrf_token %}
             <button class="btn accent" type="submit">В Бишкеке</button>
@@ -51,7 +57,7 @@
             <td>{{ sh.get_status_display }}</td>
             <td class="row-actions">
               <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
-              {% if sh.status != 'issued' %}
+              {% if sh.status == 'warehouse' %}
                 <form method="post" action="{% url 'manager_group_shipment_set_issued' group_id=group.id shipment_id=sh.id %}" style="display:inline;">
                   {% csrf_token %}
                   <button class="btn accent" type="submit">Выдано</button>

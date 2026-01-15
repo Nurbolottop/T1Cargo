@@ -237,10 +237,15 @@ def webapp_profile_addresses(request):
     china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
     code_value = (user_obj.client_code or "—").strip()
 
+    filial_obj = getattr(user_obj, "filial", None)
+    china_prefix = (getattr(filial_obj, "china_client_code_prefix", "") or "").strip() if filial_obj else ""
+    if not china_prefix:
+        china_prefix = "阿"
+
     client_phone_digits = "".join(ch for ch in (user_obj.phone or "") if ch.isdigit())
     client_phone_suffix = f" ({client_phone_digits})" if client_phone_digits else ""
     copy_lines = "\n".join([
-        f"阿{code_value}",
+        f"{china_prefix}{code_value}",
         warehouse_phone or "—",
         f"{(china_address or '—')}{code_value}{client_phone_suffix}",
     ])
@@ -532,11 +537,16 @@ def webapp_register_submit(request):
             warehouse_phone = (getattr(wh, "phone", "") or "").strip() if wh else (settings_obj.phone or "").strip()
             code_value = (user_obj.client_code or "—").strip()
 
+            filial_obj = getattr(user_obj, "filial", None)
+            china_prefix = (getattr(filial_obj, "china_client_code_prefix", "") or "").strip() if filial_obj else ""
+            if not china_prefix:
+                china_prefix = "阿"
+
             client_phone_digits = "".join(ch for ch in (phone or "") if ch.isdigit())
             client_phone_suffix = f" ({client_phone_digits})" if client_phone_digits else ""
 
             address_text = "\n".join([
-                f"阿{code_value}",
+                f"{china_prefix}{code_value}",
                 warehouse_phone or "—",
                 f"{(china_address or '—')}{code_value}{client_phone_suffix}",
             ])

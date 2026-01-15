@@ -89,10 +89,20 @@ class ShipmentGroup(models.Model):
     class Status(models.TextChoices):
         ON_THE_WAY = "on_the_way", "В пути"
         BISHKEK = "bishkek", "В Бишкеке"
-        WAREHOUSE = "warehouse", "На складе"
+        WAREHOUSE = "warehouse", "Готов к выдаче"
         ISSUED = "issued", "Выдано"
 
+    filial = models.ForeignKey(
+        base_models.Filial,
+        on_delete=models.SET_NULL,
+        related_name="shipment_groups",
+        blank=True,
+        null=True,
+        verbose_name="Филиал",
+    )
     name = models.CharField(max_length=64, unique=True, verbose_name="Название группы")
+    sent_date = models.DateField(blank=True, null=True, verbose_name="Дата отправки")
+    bishkek_marked = models.BooleanField(default=False, verbose_name="Отмечено: В Бишкеке")
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.ON_THE_WAY, verbose_name="Статус группы")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
@@ -108,21 +118,24 @@ class ShipmentGroup(models.Model):
 
 class Shipment(models.Model):
     class Status(models.TextChoices):
-        CREATED = "created", "Создан"
-        IN_CHINA = "in_china", "В Китае"
         ON_THE_WAY = "on_the_way", "В пути"
         BISHKEK = "bishkek", "В Бишкеке"
-        WAREHOUSE = "warehouse", "На складе"
+        WAREHOUSE = "warehouse", "Готов к выдаче"
         ISSUED = "issued", "Выдано"
-        ARRIVED = "arrived", "Прибыл"
-        DELIVERED = "delivered", "Доставлен"
-        NOT_PICKED = "not_picked", "Не забрали"
 
     class ImportStatus(models.TextChoices):
         OK = "ok", "Ок"
         NO_CLIENT_CODE = "no_client_code", "Неизвестный клиент"
         CLIENT_NOT_FOUND = "client_not_found", "Клиент не найден"
 
+    filial = models.ForeignKey(
+        base_models.Filial,
+        on_delete=models.SET_NULL,
+        related_name="shipments",
+        blank=True,
+        null=True,
+        verbose_name="Филиал",
+    )
     user = models.ForeignKey(User, on_delete=models.SET_NULL, related_name="shipments", blank=True, null=True, verbose_name="Клиент")
     group = models.ForeignKey(ShipmentGroup, on_delete=models.SET_NULL, related_name="shipments", blank=True, null=True, verbose_name="Группа")
     client_code_raw = models.CharField(max_length=32, blank=True, default="", verbose_name="Код клиента (из импорта)")
@@ -134,7 +147,7 @@ class Shipment(models.Model):
     storage_penalty_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, blank=True, verbose_name="Штраф за хранение (итого)")
     storage_penalty_last_charged_date = models.DateField(blank=True, null=True, verbose_name="Дата последнего начисления штрафа")
 
-    status = models.CharField(max_length=32, choices=Status.choices, default=Status.CREATED, verbose_name="Статус")
+    status = models.CharField(max_length=32, choices=Status.choices, default=Status.ON_THE_WAY, verbose_name="Статус")
     import_status = models.CharField(max_length=32, choices=ImportStatus.choices, default=ImportStatus.OK, verbose_name="Статус импорта")
     arrival_date = models.DateField(blank=True, null=True, verbose_name="Дата прибытия")
 
@@ -156,6 +169,14 @@ class UsersSH(AuthUser):
         DIRECTOR = "director", "Директор"
 
     role = models.CharField(max_length=16, choices=Role.choices, verbose_name="Роль")
+    filial = models.ForeignKey(
+        base_models.Filial,
+        on_delete=models.SET_NULL,
+        related_name="staff",
+        blank=True,
+        null=True,
+        verbose_name="Филиал",
+    )
 
     class Meta:
         verbose_name = "Штатный"

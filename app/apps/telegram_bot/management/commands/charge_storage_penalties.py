@@ -73,6 +73,13 @@ class Command(BaseCommand):
             if per_day <= 0:
                 continue
 
+            try:
+                weight_kg = Decimal(sh.weight_kg or 0)
+            except Exception:
+                weight_kg = Decimal("0")
+            if weight_kg <= 0:
+                continue
+
             arrived = sh.arrival_date
             free_until = arrived + timezone.timedelta(days=free_days)
 
@@ -89,7 +96,7 @@ class Command(BaseCommand):
             if days_to_charge <= 0:
                 continue
 
-            amount = (Decimal(days_to_charge) * per_day).quantize(Decimal("0.01"))
+            amount = (Decimal(days_to_charge) * per_day * weight_kg).quantize(Decimal("0.01"))
             if amount <= 0:
                 continue
 
@@ -97,7 +104,7 @@ class Command(BaseCommand):
             total_amount += amount
 
             self.stdout.write(
-                f"Shipment #{sh.id} {sh.tracking_number}: +{amount} ({days_to_charge} days * {per_day})"
+                f"Shipment #{sh.id} {sh.tracking_number}: +{amount} ({days_to_charge} days * {per_day} * {weight_kg}kg)"
             )
 
             if dry_run:
@@ -121,6 +128,7 @@ class Command(BaseCommand):
                 text = (
                     "Начислен штраф за хранение.\n"
                     f"Трек: {sh.tracking_number}\n"
+                    f"Вес: {weight_kg} кг\n"
                     f"Штраф: {amount} {currency}\n"
                     f"Долг: {user_obj.total_debt} {currency}"
                 )

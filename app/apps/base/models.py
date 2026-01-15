@@ -125,6 +125,13 @@ class Filial(models.Model):
         blank=True,
         default="T1",
     )
+
+    china_client_code_prefix = models.CharField(
+        max_length=16,
+        verbose_name="Префикс кода клиента (Китай)",
+        blank=True,
+        default="阿",
+    )
     client_code_start_number = models.PositiveIntegerField(
         verbose_name="Стартовый номер кода клиента",
         default=1000,

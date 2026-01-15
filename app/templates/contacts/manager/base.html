@@ -29,6 +29,8 @@
       top: 0;
       height: 100vh;
       overflow: auto;
+      display: flex;
+      flex-direction: column;
     }
 
     .sb-title {
@@ -40,7 +42,8 @@
     .sb-title .name { font-weight: 950; letter-spacing: .2px; }
     .sb-title .meta { color: var(--muted); font-weight: 900; font-size: 12px; }
 
-    .sb-nav { margin-top: 10px; display:flex; flex-direction:column; gap:8px; padding: 0 6px; }
+    .sb-nav { margin-top: 10px; display:flex; flex-direction:column; gap:8px; padding: 0 6px; flex: 1; }
+    .sb-footer { padding: 12px 6px 6px; border-top: 1px solid rgba(255,255,255,.06); margin-top: 12px; }
     .nav-link {
       display:flex;
       align-items:center;
@@ -102,6 +105,40 @@
     .h { font-weight: 950; margin: 0 0 10px; letter-spacing:.2px; }
     .muted { color: var(--muted); }
 
+    .kv {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.06);
+      background: rgba(255,255,255,.02);
+    }
+    .kv-row {
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 18px;
+      padding: 12px 14px;
+      border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .kv-row:first-child { border-top: 0; }
+    .kv-k {
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: 11px;
+      font-weight: 950;
+      color: rgba(156,163,175,.95);
+      max-width: 48%;
+      line-height: 1.25;
+    }
+    .kv-v {
+      text-align: right;
+      font-weight: 900;
+      color: rgba(229,231,235,.98);
+      line-height: 1.25;
+      word-break: break-word;
+      max-width: 52%;
+    }
+    .kv-v strong { font-weight: 950; }
+
     .kpi { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:10px; }
     .kpi .box { background: rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 12px; }
     .kpi .n { font-size: 22px; font-weight: 950; }
@@ -136,6 +173,8 @@
       transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
     }
     input:focus, select:focus { outline: none; border-color: rgba(224,177,63,.55); box-shadow: 0 0 0 4px rgba(224,177,63,.12); background: rgba(255,255,255,.04); }
+    select { color-scheme: dark; }
+    option { background: #0f1a2e; color: var(--text); }
     label { display:block; font-size:12px; font-weight: 950; color: var(--muted); margin: 10px 0 6px; }
     .form-row { display:grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
     .col-6 { grid-column: span 6; }
@@ -175,22 +214,29 @@
         {% if is_director %}
           <a class="nav-link {% if nav == 'dashboard' %}active{% endif %}" href="{% url 'manager_dashboard' %}">Главная</a>
         {% endif %}
+        {% if is_manager %}
+          <a class="nav-link {% if nav == 'analytics' %}active{% endif %}" href="{% url 'manager_analytics' %}">Аналитика</a>
+        {% endif %}
         <a class="nav-link {% if nav == 'clients' %}active{% endif %}" href="{% url 'manager_clients' %}">Клиенты</a>
-        <a class="nav-link {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments' %}">Посылки</a>
         <a class="nav-link" href="{% url 'manager_shipments_unknown' %}">↳ Неизвестный клиент</a>
         <a class="nav-link" href="{% url 'manager_shipments_client_not_found' %}">↳ Клиент не найден</a>
-        <a class="nav-link {% if nav == 'groups' %}active{% endif %}" href="{% url 'manager_groups' %}">Группы</a>
+        <a class="nav-link {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments' %}">Посылки</a>
+        <a class="nav-link {% if nav == 'groups' %}active{% endif %}" href="{% url 'manager_groups' %}">Группы отправок</a>
         {% if is_manager %}
           <a class="nav-link primary" href="{% url 'manager_shipments_add' %}">+ Добавить посылку</a>
         {% endif %}
-        <a class="nav-link danger" href="{% url 'manager_logout' %}">Выход</a>
       </nav>
+
+      <div class="sb-footer">
+        <a class="nav-link danger" href="{% url 'manager_logout' %}">Выход</a>
+      </div>
     </aside>
 
     <main class="main">
       <div class="topbar">
         <div class="title">{% block page_title %}Панель{% endblock %}</div>
         <div class="badge">
+          {% if filial_display %}<span>Филиал:</span><b>{{ filial_display }}</b><span>•</span>{% endif %}
           <span>Пользователь:</span>
           <b>{{ request.user.username }}</b>
           {% if is_director %}<span>• Директор</span>{% elif is_manager %}<span>• Менеджер</span>{% endif %}

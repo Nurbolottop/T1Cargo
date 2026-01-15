@@ -5,32 +5,153 @@
 {% block content %}
   <div class="card">
     <h2 class="h">Клиент</h2>
-    <div class="grid">
-      <div class="card" style="grid-column:span 6;">
-        <div class="muted">Код клиента</div>
-        <div style="font-weight:950; font-size:20px;">{{ client.client_code|default:'—' }}</div>
-      </div>
-      <div class="card" style="grid-column:span 6;">
-        <div class="muted">Telegram ID</div>
-        <div style="font-weight:950; font-size:20px;">{{ client.telegram_id }}</div>
-      </div>
-      <div class="card" style="grid-column:span 6;">
-        <div class="muted">Долг</div>
-        <div style="font-weight:950; font-size:20px;">{{ client.total_debt }}</div>
-      </div>
-      <div class="card" style="grid-column:span 6;">
-        <div class="muted">ФИО</div>
-        <div style="font-weight:900;">{{ client.full_name|default:'—' }}</div>
-      </div>
-      <div class="card" style="grid-column:span 6;">
-        <div class="muted">Телефон</div>
-        <div style="font-weight:900;">{{ client.phone|default:'—' }}</div>
-      </div>
-      <div class="card" style="grid-column:span 12;">
-        <div class="muted">Адрес</div>
-        <div style="font-weight:900;">{{ client.address|default:'—' }}</div>
-      </div>
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      {% if is_manager or is_director %}
+        {% if edit_mode %}
+          <a class="btn" href="{% url 'manager_client_detail' user_id=client.id %}">Отмена</a>
+        {% else %}
+          <a class="btn accent" href="{% url 'manager_client_detail' user_id=client.id %}?edit=1">Редактировать</a>
+        {% endif %}
+      {% endif %}
+
+      {% if is_director %}
+        <form method="post" action="{% url 'manager_client_delete' user_id=client.id %}" onsubmit="return confirm('Удалить клиента?');" style="margin-left:auto;">
+          {% csrf_token %}
+          <button class="btn" type="submit">Удалить</button>
+        </form>
+      {% endif %}
     </div>
+
+    {% if edit_mode %}
+      {% if is_manager or is_director %}
+        <form method="post">
+          {% csrf_token %}
+          {% if form.errors %}
+            <div class="error" style="margin-bottom:10px;">Проверьте форму. Есть ошибки.</div>
+          {% endif %}
+          <div class="form-row">
+          <div class="col-6">
+            <label>Код клиента</label>
+            {{ form.client_code }}
+          </div>
+          <div class="col-6">
+            <label>ФИО</label>
+            {{ form.full_name }}
+          </div>
+          <div class="col-6">
+            <label>Телефон</label>
+            {{ form.phone }}
+          </div>
+          <div class="col-12">
+            <label>Адрес</label>
+            {{ form.address }}
+          </div>
+
+          {% if is_director %}
+            {% if form.telegram_id %}
+              <div class="col-6">
+                <label>Telegram ID</label>
+                {{ form.telegram_id }}
+              </div>
+            {% endif %}
+            {% if form.username %}
+              <div class="col-6">
+                <label>Username</label>
+                {{ form.username }}
+              </div>
+            {% endif %}
+            {% if form.first_name %}
+              <div class="col-6">
+                <label>Имя</label>
+                {{ form.first_name }}
+              </div>
+            {% endif %}
+            {% if form.last_name %}
+              <div class="col-6">
+                <label>Фамилия</label>
+                {{ form.last_name }}
+              </div>
+            {% endif %}
+            {% if form.language_code %}
+              <div class="col-6">
+                <label>Код языка</label>
+                {{ form.language_code }}
+              </div>
+            {% endif %}
+            {% if form.filial %}
+              <div class="col-6">
+                <label>Филиал</label>
+                {{ form.filial }}
+              </div>
+            {% endif %}
+            {% if form.client_type %}
+              <div class="col-6">
+                <label>Тип клиента</label>
+                {{ form.client_type }}
+              </div>
+            {% endif %}
+            {% if form.client_status %}
+              <div class="col-6">
+                <label>Статус клиента</label>
+                {{ form.client_status }}
+              </div>
+            {% endif %}
+            {% if form.status %}
+              <div class="col-6">
+                <label>Статус</label>
+                {{ form.status }}
+              </div>
+            {% endif %}
+            {% if form.total_debt %}
+              <div class="col-6">
+                <label>Долг</label>
+                {{ form.total_debt }}
+              </div>
+            {% endif %}
+          {% endif %}
+
+          <div class="col-12" style="display:flex; gap:10px;">
+            <button class="btn accent" type="submit">Сохранить</button>
+          </div>
+          </div>
+        </form>
+      {% endif %}
+    {% else %}
+      <div class="kv">
+        <div class="kv-row">
+          <div class="kv-k">Код клиента</div>
+          <div class="kv-v"><strong>{{ client.client_code|default:'—' }}</strong></div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">Telegram ID</div>
+          <div class="kv-v" style="font-weight:850; color: rgba(156,163,175,.98);">{{ client.telegram_id|default:'—' }}</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">Долг</div>
+          <div class="kv-v">{{ client.total_debt|default:'0' }}</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">Доставка к оплате</div>
+          <div class="kv-v">{{ delivery_due|default:'0' }}</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">Итого к оплате</div>
+          <div class="kv-v">{{ total_due|default:'0' }}</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">ФИО</div>
+          <div class="kv-v">{{ client.full_name|default:'—' }}</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">Телефон</div>
+          <div class="kv-v">{{ client.phone|default:'—' }}</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">Адрес</div>
+          <div class="kv-v">{{ client.address|default:'—' }}</div>
+        </div>
+      </div>
+    {% endif %}
   </div>
 
   <div class="card" style="margin-top:12px;">

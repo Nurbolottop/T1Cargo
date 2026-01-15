@@ -1,0 +1,100 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Аналитика • Менеджер{% endblock %}
+
+{% block page_title %}Аналитика{% endblock %}
+
+{% block content %}
+  <style>
+    .cal-grid { display:grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap:10px; }
+    .cal-dow { color: var(--muted); font-weight:950; font-size:12px; }
+    .cal-cell { padding:12px; border-radius:14px; min-height:86px; display:block; border: 1px solid rgba(255,255,255,.07); background: rgba(255,255,255,.02); }
+    .cal-cell.out { border-color: rgba(255,255,255,.04); background: rgba(255,255,255,.015); }
+    .cal-cell.sel { border-color: rgba(224,177,63,.55); background: rgba(224,177,63,.10); }
+    .cal-num { font-weight:950; }
+    .cal-cell.out .cal-num { opacity:.45; }
+    .cal-total { margin-top:10px; font-weight:950; font-size:14px; }
+    .cal-cell.out .cal-total { opacity:.45; }
+  </style>
+  <div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <h2 class="h" style="margin:0;">Аналитика</h2>
+      <div style="display:flex; gap:10px;">
+        <a class="btn" href="?month={{ prev_month|date:'Y-m' }}">← {{ prev_month|date:'m.Y' }}</a>
+        <div class="badge"><b>{{ month|date:'F Y' }}</b></div>
+        <a class="btn" href="?month={{ next_month|date:'Y-m' }}">{{ next_month|date:'m.Y' }} →</a>
+      </div>
+    </div>
+    <div class="muted" style="margin-top:8px;">Выберите день — снизу будет список операций и итог за выбранную дату.</div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <div class="muted" style="margin-bottom:10px;">Поступления считаются по выданным посылкам: <b>доставка + штраф</b>.</div>
+
+    <div class="cal-grid">
+      <div class="cal-dow">Пн</div>
+      <div class="cal-dow">Вт</div>
+      <div class="cal-dow">Ср</div>
+      <div class="cal-dow">Чт</div>
+      <div class="cal-dow">Пт</div>
+      <div class="cal-dow">Сб</div>
+      <div class="cal-dow">Вс</div>
+
+      {% for c in calendar_cells %}
+        <a
+          class="cal-cell{% if not c.in_month %} out{% endif %}{% if c.is_selected %} sel{% endif %}"
+          href="?month={{ month|date:'Y-m' }}&day={{ c.date|date:'Y-m-d' }}"
+        >
+          <div style="display:flex; justify-content:space-between; gap:10px;">
+            <div class="cal-num">{{ c.date|date:'d' }}</div>
+            {% if c.cnt %}
+              <div class="muted" style="font-weight:950; font-size:12px;">{{ c.cnt }} шт</div>
+            {% endif %}
+          </div>
+          <div class="cal-total">
+            {% if c.total %}{{ c.total }}{% else %}—{% endif %}
+          </div>
+        </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <h3 class="h" style="margin:0;">{{ selected_day|date:'d.m.Y' }}</h3>
+      <div style="display:flex; gap:10px;">
+        <div class="badge"><span>Выдано:</span><b>{{ selected_cnt }}</b></div>
+        <div class="badge"><span>Поступило:</span><b>{{ selected_total }}</b></div>
+      </div>
+    </div>
+
+    <table style="margin-top:12px;">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Клиент</th>
+          <th>Трек</th>
+          <th>Сумма (доставка + штраф)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sh in day_ops %}
+          <tr>
+            <td class="muted">{{ forloop.counter }}</td>
+            <td>
+              {% if sh.user %}
+                <b>{{ sh.user.client_code|default:'—' }}</b>
+              {% else %}
+                <b>{{ sh.client_code_raw|default:'—' }}</b>
+              {% endif %}
+            </td>
+            <td><b>{{ sh.tracking_number }}</b></td>
+            <td class="muted">{{ sh.amount|default:'0' }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="muted">За выбранную дату операций нет.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

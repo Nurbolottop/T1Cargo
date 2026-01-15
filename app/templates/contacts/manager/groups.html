@@ -15,6 +15,7 @@
       <thead>
         <tr>
           <th>Группа</th>
+          <th>Дата отправки</th>
           <th>Статус</th>
           <th>Создано</th>
           <th></th>
@@ -24,6 +25,7 @@
         {% for g in groups %}
           <tr>
             <td><b>{{ g.name }}</b></td>
+            <td class="muted">{% if g.sent_date %}{{ g.sent_date|date:'d.m.Y' }}{% else %}—{% endif %}</td>
             <td>{{ g.get_status_display }}</td>
             <td class="muted">{{ g.created_at }}</td>
             <td class="row-actions">
@@ -31,7 +33,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="4" class="muted">Группы не найдены.</td></tr>
+          <tr><td colspan="5" class="muted">Группы не найдены.</td></tr>
         {% endfor %}
       </tbody>
     </table>

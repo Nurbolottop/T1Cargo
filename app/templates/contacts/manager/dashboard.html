@@ -12,39 +12,71 @@
         <div class="t">Всего посылок</div>
       </div>
       <div class="box">
+        <div class="n">{{ shipments_today|default:0 }}</div>
+        <div class="t">Создано сегодня</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ shipments_7d|default:0 }}</div>
+        <div class="t">Создано за 7 дней</div>
+      </div>
+      <div class="box">
         <div class="n">{{ new_clients_7d }}</div>
         <div class="t">Новых клиентов (7 дней)</div>
       </div>
       <div class="box">
-        <div class="n">{{ status_counts.created|default:0 }}</div>
-        <div class="t">Создано</div>
+        <div class="n">{{ total_groups|default:0 }}</div>
+        <div class="t">Всего групп отправок</div>
       </div>
       <div class="box">
-        <div class="n">{{ status_counts.arrived|default:0 }}</div>
-        <div class="t">Прибыл</div>
+        <div class="n">{{ active_groups|default:0 }}</div>
+        <div class="t">Активных групп</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ status_counts.in_china|default:0 }}</div>
+        <div class="t">В Китае</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ status_counts.on_the_way|default:0 }}</div>
+        <div class="t">В пути</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ status_counts.warehouse|default:0 }}</div>
+        <div class="t">На складе</div>
+      </div>
+      <div class="box">
+        <div class="n">{{ status_counts.issued|default:0 }}</div>
+        <div class="t">Выдано</div>
       </div>
     </div>
   </div>
 
   <div class="card" style="margin-top:12px;">
     <h3 class="h">Посылки по статусам</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Статус</th>
-          <th>Кол-во</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for value,label in statuses %}
-          <tr>
-            <td>{{ label }}</td>
-            <td>{{ status_counts|get_item:value|default:0 }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div class="muted" style="margin-top:10px;">*Если какие-то статусы не показываются — значит посылок в них пока нет.</div>
+    <div style="display:grid; grid-template-columns: 360px 1fr; gap: 12px; align-items: start;">
+      <div style="background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 16px; padding: 12px;">
+        <div class="muted" style="font-weight: 950; font-size: 12px; margin-bottom: 8px;">Диаграмма</div>
+        <canvas id="statusChart" height="220" style="width:100%; height:220px;"></canvas>
+      </div>
+      <div>
+        <table>
+          <thead>
+            <tr>
+              <th>Статус</th>
+              <th>Кол-во</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for value,label in statuses %}
+              <tr>
+                <td>{{ label }}</td>
+                <td>{{ status_counts|get_item:value|default:0 }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="muted" style="margin-top:10px;">*Если какие-то статусы не показываются — значит посылок в них пока нет.</div>
+      </div>
+    </div>
   </div>
 
   <div class="card" style="margin-top:12px;">
@@ -74,4 +106,69 @@
       </tbody>
     </table>
   </div>
+
+  <script id="statusChartData" type="application/json">
+    {
+      "labels": [{% for value,label in statuses %}"{{ label|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+      "values": [{% for value,label in statuses %}{{ status_counts|get_item:value|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}]
+    }
+  </script>
+
+  <script>
+    (function(){
+      const canvas = document.getElementById('statusChart');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      const dataEl = document.getElementById('statusChartData');
+      let labels = [];
+      let values = [];
+      try {
+        const parsed = JSON.parse((dataEl && dataEl.textContent) ? dataEl.textContent : '{}');
+        labels = Array.isArray(parsed.labels) ? parsed.labels : [];
+        values = Array.isArray(parsed.values) ? parsed.values : [];
+      } catch (e) {
+        labels = [];
+        values = [];
+      }
+
+      const max = Math.max(1, ...values);
+      const W = canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
+      const H = canvas.height = 220 * (window.devicePixelRatio || 1);
+      ctx.scale((window.devicePixelRatio || 1), (window.devicePixelRatio || 1));
+
+      const w = canvas.clientWidth;
+      const h = 220;
+      ctx.clearRect(0, 0, w, h);
+
+      const padX = 10;
+      const padY = 10;
+      const barH = 14;
+      const gap = 8;
+      const rowH = barH + gap;
+
+      ctx.font = '12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+      ctx.textBaseline = 'middle';
+
+      for (let i = 0; i < labels.length; i++){
+        const y = padY + i * rowH;
+        if (y + barH > h - padY) break;
+
+        const v = values[i] || 0;
+        const bw = Math.round((w - 120 - padX*2) * (v / max));
+
+        ctx.fillStyle = 'rgba(255,255,255,.08)';
+        ctx.fillRect(120, y, (w - 120 - padX*2), barH);
+
+        ctx.fillStyle = 'rgba(224,177,63,.85)';
+        ctx.fillRect(120, y, bw, barH);
+
+        ctx.fillStyle = 'rgba(229,231,235,.95)';
+        ctx.fillText(labels[i], padX, y + barH/2);
+
+        ctx.fillStyle = 'rgba(156,163,175,.95)';
+        ctx.fillText(String(v), w - padX - 18, y + barH/2);
+      }
+    })();
+  </script>
 {% endblock %}

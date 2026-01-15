@@ -96,6 +96,7 @@ class FilialAdmin(admin.ModelAdmin):
         "manager_contact",
         "currency",
         "client_code_prefix",
+        "china_client_code_prefix",
         "client_code_start_number",
         "client_code_last_number",
         "wholesale_order_text",

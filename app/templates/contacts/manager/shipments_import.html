@@ -45,6 +45,12 @@
 
       <div class="form-row">
         <div class="col-6">
+          <label>{{ form.sent_date.label }}</label>
+          {{ form.sent_date }}
+          <div class="muted" style="margin-top:6px;">Дата отправки для этой группы (вводится вручную).</div>
+          {% if form.sent_date.errors %}<div class="error" style="margin-top:8px;">{{ form.sent_date.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6">
           <label>{{ form.group_status.label }}</label>
           {{ form.group_status }}
           <div class="muted" style="margin-top:6px;">Этот статус будет применён ко всем посылкам при импорте.</div>

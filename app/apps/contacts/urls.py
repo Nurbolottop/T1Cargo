@@ -6,8 +6,10 @@ urlpatterns = [
     path("manager/login/", views.manager_login, name="manager_login"),
     path("manager/logout/", views.manager_logout, name="manager_logout"),
     path("manager/", views.manager_dashboard, name="manager_dashboard"),
+    path("manager/analytics/", views.manager_analytics, name="manager_analytics"),
     path("manager/clients/", views.manager_clients, name="manager_clients"),
     path("manager/clients/<int:user_id>/", views.manager_client_detail, name="manager_client_detail"),
+    path("manager/clients/<int:user_id>/delete/", views.manager_client_delete, name="manager_client_delete"),
     path("manager/groups/", views.manager_groups, name="manager_groups"),
     path("manager/groups/<int:group_id>/", views.manager_group_detail, name="manager_group_detail"),
     path("manager/groups/<int:group_id>/bishkek/", views.manager_group_set_bishkek, name="manager_group_set_bishkek"),
@@ -20,4 +22,5 @@ urlpatterns = [
     path("manager/shipments/import/", views.manager_shipments_import, name="manager_shipments_import"),
     path("manager/shipments/new/", views.manager_shipment_new, name="manager_shipment_new"),
     path("manager/shipments/<int:shipment_id>/", views.manager_shipment_detail, name="manager_shipment_detail"),
+    path("manager/shipments/<int:shipment_id>/delete/", views.manager_shipment_delete, name="manager_shipment_delete"),
 ]

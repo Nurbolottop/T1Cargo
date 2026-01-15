@@ -6,24 +6,23 @@
   <div class="card">
     <h2 class="h">Посылки</h2>
     <form method="get" class="form-row">
-      <div class="col-8">
+      <div class="col-12">
         <label>Поиск (трек / код клиента / ФИО / телефон)</label>
         <input name="q" value="{{ q|default:'' }}" placeholder="Например: TRK123 или T1-1234" />
       </div>
-      <div class="col-4">
-        <label>Статус</label>
-        <select name="status">
-          <option value="">Все</option>
-          {% for value,label in statuses %}
-            <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12" style="display:flex; gap:10px;">
-        <button class="btn accent" type="submit">Фильтр</button>
-        <a class="btn" href="{% url 'manager_shipments' %}">Сбросить</a>
-      </div>
     </form>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+      {% for value,label in status_tabs %}
+        <a
+          class="btn {% if status == value %}accent{% endif %}"
+          href="{% url 'manager_shipments' %}{% if value or q %}?{% endif %}{% if value %}status={{ value }}{% endif %}{% if value and q %}&{% endif %}{% if q %}q={{ q|urlencode }}{% endif %}"
+        >
+          {{ label }}
+        </a>
+      {% endfor %}
+      <a class="btn" href="{% url 'manager_shipments' %}">Сбросить</a>
+    </div>
   </div>
 
   <div class="card" style="margin-top:12px;">

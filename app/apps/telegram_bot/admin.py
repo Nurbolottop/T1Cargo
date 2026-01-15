@@ -26,6 +26,7 @@ class UserAdmin(admin.ModelAdmin):
         "telegram_id",
         "username",
         "client_type",
+        "filial",
         "status",
         "client_status",
         "full_name",
@@ -59,6 +60,7 @@ class UserAdmin(admin.ModelAdmin):
                     "status",
                     "client_status",
                     "total_debt",
+                    "filial",
                 )
             },
         ),
@@ -129,8 +131,8 @@ class UsersSHAdmin(DjangoUserAdmin):
     list_filter = ("role", "is_staff", "is_active", "date_joined")
     search_fields = ("username", "first_name", "last_name", "email")
 
-    fieldsets = DjangoUserAdmin.fieldsets + (("Роль", {"fields": ("role",)}),)
-    add_fieldsets = DjangoUserAdmin.add_fieldsets + (("Роль", {"fields": ("role",)}),)
+    fieldsets = DjangoUserAdmin.fieldsets + (("Роль", {"fields": ("role", "filial")}),)
+    add_fieldsets = DjangoUserAdmin.add_fieldsets + (("Роль", {"fields": ("role", "filial")}),)
 
 
 def _ensure_userssh(user: AuthUser, role: str):
@@ -165,3 +167,30 @@ except Exception:
 @admin.register(AuthUser)
 class AuthUserAdmin(DjangoUserAdmin):
     actions = [make_userssh_manager, make_userssh_director]
+
+
+
+@admin.register(tg_models.ShipmentGroup)
+class ShipmentGroupAdmin(admin.ModelAdmin):
+    list_display = ("name", "status", "sent_date", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("name",)
+    fieldsets = (
+        (
+            "Основное",
+            {
+                "fields": (
+                    "name",
+                    "sent_date",
+                    "bishkek_marked",
+                    "status",
+                    "filial",
+                )
+            },
+        ),
+        (
+            "Служебное",
+            {"fields": ("created_at", "updated_at")},
+        ),
+    )
+

@@ -27,10 +27,11 @@
       </div>
     </div>
 
-    {% if is_manager or is_director %}
-      <form method="post" class="card" style="margin-top:12px;">
-        {% csrf_token %}
-        <h3 class="h">Редактировать</h3>
+    {% if is_director %}
+      <div class="card" style="margin-top:12px;">
+        <form method="post">
+          {% csrf_token %}
+          <h3 class="h">Редактировать</h3>
 
         <div class="form-row">
           <div class="col-6">
@@ -60,11 +61,19 @@
           </div>
         </div>
 
+          <div style="display:flex; gap:10px; margin-top:12px;">
+            <button class="btn accent" type="submit">Сохранить</button>
+            <a class="btn" href="{% url 'manager_shipments' %}">Назад</a>
+          </div>
+        </form>
+
         <div style="display:flex; gap:10px; margin-top:12px;">
-          <button class="btn accent" type="submit">Сохранить</button>
-          <a class="btn" href="{% url 'manager_shipments' %}">Назад</a>
+          <form method="post" action="{% url 'manager_shipment_delete' shipment_id=shipment.id %}" onsubmit="return confirm('Удалить посылку?');" style="margin-left:auto;">
+            {% csrf_token %}
+            <button class="btn" type="submit">Удалить</button>
+          </form>
         </div>
-      </form>
+      </div>
     {% else %}
       <div class="card" style="margin-top:12px;">
         <h3 class="h">Детали</h3>

@@ -336,11 +336,15 @@ def start_bot(token: str) -> None:
         code_value = (user_obj.client_code or "—").strip()
         address_value = (china_address or "—").strip()
 
+        china_prefix = (getattr(filial_obj, "china_client_code_prefix", "") or "").strip() if filial_obj else ""
+        if not china_prefix:
+            china_prefix = "阿"
+
         client_phone_digits = "".join(ch for ch in (getattr(user_obj, "phone", "") or "") if ch.isdigit())
         client_phone_suffix = f" ({client_phone_digits})" if client_phone_digits else ""
 
         copy_lines = "\n".join([
-            f"阿{code_value}",
+            f"{china_prefix}{code_value}",
             wh_phone or "—",
             f"{address_value}{code_value}{client_phone_suffix}",
         ])
