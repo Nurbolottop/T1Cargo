@@ -235,12 +235,13 @@ def start_bot(token: str) -> None:
         address = user_obj.address or ""
 
         s = _get_settings()
-        wh = base_models.Warehouse.objects.order_by("name").first()
-        pvz_city = ""
-        pvz_phone_line = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
 
         filial_obj = getattr(user_obj, "filial", None)
         manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
+        pvz_city = (getattr(filial_obj, "city", "") or "").strip() if filial_obj else ""
+        pvz_phone_line = manager_contact
+        if not pvz_phone_line:
+            pvz_phone_line = (getattr(s, "phone", "") or "").strip() if s else ""
         manager_url = _manager_url(manager_contact)
         work_hours = (getattr(filial_obj, "work_hours", "") or "").strip() if filial_obj else ""
         pvz_location_url = (getattr(filial_obj, "pvz_location_url", "") or "").strip() if filial_obj else ""
@@ -326,7 +327,9 @@ def start_bot(token: str) -> None:
         filial_obj = getattr(user_obj, "filial", None)
         manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
         manager_url = _manager_url(manager_contact)
-        manager_phone = (getattr(s, "phone", "") or "").strip() if s else ""
+        manager_phone = manager_contact
+        if not manager_phone:
+            manager_phone = (getattr(s, "phone", "") or "").strip() if s else ""
 
         wh = base_models.Warehouse.objects.order_by("name").first()
         china_address = (getattr(wh, "address", "") or "").strip() if wh else ""

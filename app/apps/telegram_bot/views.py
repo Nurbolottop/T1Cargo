@@ -155,12 +155,12 @@ def webapp_profile_data(request):
     if not user_obj:
         return JsonResponse({"ok": False, "error": "not_found"}, status=404)
 
-    s = base_models.Settings.objects.first()
-    wh = base_models.Warehouse.objects.order_by("name").first()
-    pvz_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
-
     filial_obj = getattr(user_obj, "filial", None)
     manager_contact = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
+    pvz_phone = manager_contact
+    pvz_city = (getattr(filial_obj, "city", "") or "").strip() if filial_obj else ""
+
+    s = base_models.Settings.objects.first()
     manager_url = ""
     if manager_contact:
         if manager_contact.startswith("http://") or manager_contact.startswith("https://"):
@@ -179,7 +179,7 @@ def webapp_profile_data(request):
         "full_name": user_obj.full_name or "",
         "phone": user_obj.phone or "",
         "address": user_obj.address or "",
-        "pvz_city": "",
+        "pvz_city": pvz_city,
         "pvz_phone": pvz_phone,
         "manager_contact": manager_contact,
         "website": (getattr(s, "website", "") or "").strip() if s else "",
@@ -229,15 +229,16 @@ def webapp_profile_addresses(request):
     if not user_obj:
         return JsonResponse({"ok": False, "error": "not_found"}, status=404)
 
+    filial_obj = getattr(user_obj, "filial", None)
+    pvz_phone = (getattr(filial_obj, "manager_contact", "") or "").strip() if filial_obj else ""
+    pvz_city = (getattr(filial_obj, "city", "") or "").strip() if filial_obj else ""
+
     s = base_models.Settings.objects.first()
     wh = base_models.Warehouse.objects.order_by("name").first()
     warehouse_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
-    pvz_phone = warehouse_phone
-    pvz_city = ""
     china_address = (getattr(wh, "address", "") or "").strip() if wh else ""
     code_value = (user_obj.client_code or "—").strip()
 
-    filial_obj = getattr(user_obj, "filial", None)
     china_prefix = (getattr(filial_obj, "china_client_code_prefix", "") or "").strip() if filial_obj else ""
     if not china_prefix:
         china_prefix = "阿"
@@ -290,10 +291,8 @@ def webapp_profile_support(request):
     pvz_location_url = (getattr(filial_obj, "pvz_location_url", "") or "").strip() if filial_obj else ""
     raw_hours = (getattr(filial_obj, "work_hours", "") or "") if filial_obj else ""
     work_hours = _html_to_text(str(raw_hours))
-    wh = base_models.Warehouse.objects.order_by("name").first()
-    pvz_phone = (getattr(wh, "phone", "") or "").strip() if wh else (getattr(s, "phone", "") or "").strip() if s else ""
-
-    pvz_city = ""
+    pvz_phone = manager_contact
+    pvz_city = (getattr(filial_obj, "city", "") or "").strip() if filial_obj else ""
 
     data = {
         "manager_contact": manager_contact,
@@ -566,7 +565,7 @@ def webapp_register_submit(request):
                 "✅ *Важно*\n\n"
                 "Чтобы ваши посылки не потерялись, обязательно отправьте менеджеру *скрин* "
                 "заполненного адреса и получите *подтверждение* ✅\n\n"
-                f"📱 *Телефон*: {(settings_obj.phone or '').strip() or '—'}\n\n"
+                f"📱 *Телефон*: {(manager_contact or '').strip() or '—'}\n\n"
                 "❗❗❗ Только после подтверждения ✅ адреса Карго несет ответственность за ваши посылки 📦"
             )
             warn_kb = {"inline_keyboard": []}
