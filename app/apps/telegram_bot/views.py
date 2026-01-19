@@ -493,6 +493,12 @@ def webapp_register_submit(request):
                 client_status=tg_models.User.ClientStatus.NEW,
             )
 
+    attached_shipments = 0
+    try:
+        attached_shipments = tg_models.attach_orphan_shipments_to_user(user_obj) if user_obj else 0
+    except Exception:
+        attached_shipments = 0
+
     settings_obj = base_models.Settings.objects.first()
     telegram_notified = False
     if settings_obj and settings_obj.is_bot_enabled and settings_obj.telegram_token:
@@ -588,4 +594,4 @@ def webapp_register_submit(request):
             except Exception:
                 telegram_notified = False
 
-    return JsonResponse({"ok": True, "telegram_notified": telegram_notified})
+    return JsonResponse({"ok": True, "telegram_notified": telegram_notified, "attached_shipments": attached_shipments})

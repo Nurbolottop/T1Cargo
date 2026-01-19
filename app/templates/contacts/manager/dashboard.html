@@ -5,7 +5,20 @@
 
 {% block content %}
   <div class="card">
-    <h2 class="h">Главная</h2>
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <h2 class="h" style="margin:0;">Главная</h2>
+      <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div style="padding:10px 12px; border-radius:14px; border: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.02); display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <div class="muted" style="font-weight:950; font-size:12px;">Филиал</div>
+          <select name="filial" onchange="this.form.submit()" style="min-width:220px;">
+            <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+            {% for f in filials %}
+              <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </form>
+    </div>
     <div class="kpi">
       <div class="box">
         <div class="n">{{ total_shipments }}</div>

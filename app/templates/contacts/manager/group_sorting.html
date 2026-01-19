@@ -43,6 +43,13 @@
         {% csrf_token %}
         <input type="hidden" name="tracking_number" value="{{ shipment.tracking_number }}" />
         <div class="form-row">
+          <div class="col-12">
+            <label>Способ расчёта</label>
+            <select name="pricing_mode" id="pricingMode" {% if weight_locked %}disabled{% endif %}>
+              <option value="kg" {% if shipment.pricing_mode == 'kg' or not shipment.pricing_mode %}selected{% endif %}>По кг</option>
+              <option value="gabarit" {% if shipment.pricing_mode == 'gabarit' %}selected{% endif %}>По габариту</option>
+            </select>
+          </div>
           <div class="col-6">
             <label>Вес (кг)</label>
             <input name="weight_kg" value="{{ shipment.weight_kg }}" {% if weight_locked %}disabled{% endif %} id="weightInput" />
@@ -50,6 +57,10 @@
           <div class="col-6">
             <label>Цена за кг (по умолчанию)</label>
             <input value="{{ default_price_per_kg|default:'—' }}" disabled />
+          </div>
+          <div class="col-6" id="totalPriceWrap" style="display:none;">
+            <label>Стоимость (итого)</label>
+            <input name="total_price" value="{{ shipment.total_price }}" {% if weight_locked %}disabled{% endif %} />
           </div>
         </div>
 
@@ -90,6 +101,24 @@
         if (t) clearTimeout(t);
         t = setTimeout(() => form.submit(), 120);
       });
+
+      const modeEl = document.getElementById('pricingMode');
+      const weightEl = document.getElementById('weightInput');
+      const totalWrap = document.getElementById('totalPriceWrap');
+
+      function syncMode() {
+        const mode = (modeEl && modeEl.value) ? modeEl.value : 'kg';
+        if (totalWrap) totalWrap.style.display = (mode === 'gabarit') ? '' : 'none';
+        if (weightEl) {
+          if (mode === 'gabarit') {
+            weightEl.placeholder = 'Необязательно';
+          } else {
+            weightEl.placeholder = '';
+          }
+        }
+      }
+      if (modeEl) modeEl.addEventListener('change', syncMode);
+      syncMode();
     })();
   </script>
 {% endblock %}

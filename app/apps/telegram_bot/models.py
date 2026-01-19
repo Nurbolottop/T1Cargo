@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User as AuthUser
 from django.db import models
+from django.db.models import Q
+
 from apps.base import models as base_models
 
 class User(models.Model):
@@ -54,6 +56,19 @@ class User(models.Model):
         decimal_places=2,
         default=0,
         verbose_name="Общий долг",
+    )
+
+    storage_penalty_total = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=0,
+        blank=True,
+        verbose_name="Штраф за хранение (итого)",
+    )
+    storage_penalty_last_charged_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name="Дата последнего начисления штрафа",
     )
     status = models.CharField(
         max_length=32,
@@ -117,6 +132,10 @@ class ShipmentGroup(models.Model):
 
 
 class Shipment(models.Model):
+    class PricingMode(models.TextChoices):
+        KG = "kg", "По кг"
+        GABARIT = "gabarit", "По габариту"
+
     class Status(models.TextChoices):
         ON_THE_WAY = "on_the_way", "В пути"
         BISHKEK = "bishkek", "В Бишкеке"
@@ -144,6 +163,13 @@ class Shipment(models.Model):
     price_per_kg = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, verbose_name="Цена за кг")
     total_price = models.DecimalField(max_digits=14, decimal_places=2, default=0, blank=True, verbose_name="Итоговая стоимость")
 
+    pricing_mode = models.CharField(
+        max_length=16,
+        choices=PricingMode.choices,
+        default=PricingMode.KG,
+        verbose_name="Способ расчёта",
+    )
+
     storage_penalty_total = models.DecimalField(max_digits=14, decimal_places=2, default=0, blank=True, verbose_name="Штраф за хранение (итого)")
     storage_penalty_last_charged_date = models.DateField(blank=True, null=True, verbose_name="Дата последнего начисления штрафа")
 
@@ -161,6 +187,35 @@ class Shipment(models.Model):
 
     def __str__(self) -> str:
         return self.tracking_number
+
+
+def attach_orphan_shipments_to_user(user_obj: "User") -> int:
+    user_id = getattr(user_obj, "id", None)
+    client_code = (getattr(user_obj, "client_code", "") or "").strip()
+    filial_id = getattr(getattr(user_obj, "filial", None), "id", None)
+    if not user_id or not client_code or not filial_id:
+        return 0
+
+    suffix = ""
+    if "-" in client_code:
+        try:
+            suffix = client_code.split("-", 1)[1].strip()
+        except Exception:
+            suffix = ""
+
+    qs = Shipment.objects.filter(
+        user__isnull=True,
+        import_status=Shipment.ImportStatus.CLIENT_NOT_FOUND,
+        filial_id=filial_id,
+    )
+
+    code_match = Q(client_code_raw__iexact=client_code)
+    if suffix:
+        code_match = code_match | Q(client_code_raw__iexact=suffix)
+    qs = qs.filter(code_match)
+
+    updated = qs.update(user_id=user_id, import_status=Shipment.ImportStatus.OK)
+    return int(updated or 0)
 
 
 class UsersSH(AuthUser):

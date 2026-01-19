@@ -15,16 +15,31 @@
     .cal-cell.out .cal-num { opacity:.45; }
     .cal-total { margin-top:10px; font-weight:950; font-size:14px; }
     .cal-cell.out .cal-total { opacity:.45; }
+    details > summary { list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
   </style>
   <div class="card">
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
       <h2 class="h" style="margin:0;">Аналитика</h2>
       <div style="display:flex; gap:10px;">
-        <a class="btn" href="?month={{ prev_month|date:'Y-m' }}">← {{ prev_month|date:'m.Y' }}</a>
+        <a class="btn" href="?month={{ prev_month|date:'Y-m' }}{% if selected_filial %}&filial={{ selected_filial.id }}{% endif %}">← {{ prev_month|date:'m.Y' }}</a>
         <div class="badge"><b>{{ month|date:'F Y' }}</b></div>
-        <a class="btn" href="?month={{ next_month|date:'Y-m' }}">{{ next_month|date:'m.Y' }} →</a>
+        <a class="btn" href="?month={{ next_month|date:'Y-m' }}{% if selected_filial %}&filial={{ selected_filial.id }}{% endif %}">{{ next_month|date:'m.Y' }} →</a>
       </div>
     </div>
+    {% if is_director and filials %}
+      <form method="get" style="margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input type="hidden" name="month" value="{{ month|date:'Y-m' }}" />
+        <input type="hidden" name="day" value="{{ selected_day|date:'Y-m-d' }}" />
+        <div class="muted" style="font-weight:950; font-size:12px;">Филиал</div>
+        <select name="filial" class="btn" onchange="this.form.submit()" style="padding:10px 12px;">
+          <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+          {% for f in filials %}
+            <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
     <div class="muted" style="margin-top:8px;">Выберите день — снизу будет список операций и итог за выбранную дату.</div>
   </div>
 
@@ -43,7 +58,7 @@
       {% for c in calendar_cells %}
         <a
           class="cal-cell{% if not c.in_month %} out{% endif %}{% if c.is_selected %} sel{% endif %}"
-          href="?month={{ month|date:'Y-m' }}&day={{ c.date|date:'Y-m-d' }}"
+          href="?month={{ month|date:'Y-m' }}&day={{ c.date|date:'Y-m-d' }}{% if selected_filial %}&filial={{ selected_filial.id }}{% endif %}"
         >
           <div style="display:flex; justify-content:space-between; gap:10px;">
             <div class="cal-num">{{ c.date|date:'d' }}</div>
@@ -63,20 +78,10 @@
     <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
       <h3 class="h" style="margin:0;">{{ selected_day|date:'d.m.Y' }}</h3>
       <div style="display:flex; gap:10px;">
-        <div class="badge"><span>Выдано:</span><b>{{ selected_cnt }}</b></div>
-        <div class="badge"><span>Поступило:</span><b>{{ selected_total }}</b></div>
+        <div class="badge"><span>Забрали:</span><b>{{ selected_cnt }}</b></div>
+        <div class="badge"><span>Сумма за день:</span><b>{{ selected_total }}</b></div>
+        <div class="badge"><span>Осталось на складе:</span><b>{{ office_cnt }}</b></div>
       </div>
-    </div>
-
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-      <div class="badge"><span>Доставка:</span><b>{{ selected_delivery }}</b></div>
-      <div class="badge"><span>Штраф:</span><b>{{ selected_penalty }}</b></div>
-      <div class="badge"><span>Итого:</span><b>{{ selected_total }}</b></div>
-      <div class="badge"><span>В офисе осталось:</span><b>{{ office_cnt }}</b></div>
-      <div class="badge"><span>Клиентов не забрали:</span><b>{{ office_clients }}</b></div>
-      <div class="badge"><span>Остаток доставка:</span><b>{{ office_delivery }}</b></div>
-      <div class="badge"><span>Остаток штраф:</span><b>{{ office_penalty }}</b></div>
-      <div class="badge"><span>Остаток итого:</span><b>{{ office_total }}</b></div>
     </div>
 
     <table style="margin-top:12px;">

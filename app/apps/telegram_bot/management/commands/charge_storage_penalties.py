@@ -49,14 +49,16 @@ class Command(BaseCommand):
             .exclude(arrival_date__isnull=True)
         )
 
-        total_shipments = 0
-        charged_shipments = 0
+        total_clients = 0
+        charged_clients = 0
         total_amount = Decimal("0")
 
+        candidates = {}
         for sh in qs.iterator():
-            total_shipments += 1
-
             user_obj = sh.user
+            if not user_obj:
+                continue
+
             filial_obj = getattr(user_obj, "filial", None)
             if filial_obj is None:
                 continue
@@ -64,31 +66,32 @@ class Command(BaseCommand):
             per_day = getattr(filial_obj, "storage_penalty_per_day", None)
             if per_day is None:
                 continue
-
             try:
                 per_day = Decimal(per_day)
             except Exception:
                 continue
-
             if per_day <= 0:
-                continue
-
-            try:
-                weight_kg = Decimal(sh.weight_kg or 0)
-            except Exception:
-                weight_kg = Decimal("0")
-            if weight_kg <= 0:
                 continue
 
             arrived = sh.arrival_date
             free_until = arrived + timezone.timedelta(days=free_days)
-
             if today <= free_until:
                 continue
 
-            last = sh.storage_penalty_last_charged_date
-            start_date = max(last or free_until, free_until)
+            existing = candidates.get(user_obj.id)
+            if not existing or free_until < existing["free_until"]:
+                candidates[user_obj.id] = {"user": user_obj, "filial": filial_obj, "per_day": per_day, "free_until": free_until}
 
+        for item in candidates.values():
+            user_obj = item["user"]
+            filial_obj = item["filial"]
+            per_day = item["per_day"]
+            free_until = item["free_until"]
+
+            total_clients += 1
+
+            last = getattr(user_obj, "storage_penalty_last_charged_date", None)
+            start_date = max(last or free_until, free_until)
             if start_date >= today:
                 continue
 
@@ -96,27 +99,25 @@ class Command(BaseCommand):
             if days_to_charge <= 0:
                 continue
 
-            amount = (Decimal(days_to_charge) * per_day * weight_kg).quantize(Decimal("0.01"))
+            amount = (Decimal(days_to_charge) * per_day).quantize(Decimal("0.01"))
             if amount <= 0:
                 continue
 
-            charged_shipments += 1
+            charged_clients += 1
             total_amount += amount
 
             self.stdout.write(
-                f"Shipment #{sh.id} {sh.tracking_number}: +{amount} ({days_to_charge} days * {per_day} * {weight_kg}kg)"
+                f"Client #{user_obj.id} {user_obj.client_code}: +{amount} ({days_to_charge} days * {per_day})"
             )
 
             if dry_run:
                 continue
 
             with transaction.atomic():
-                sh.storage_penalty_total = (Decimal(sh.storage_penalty_total or 0) + amount).quantize(Decimal("0.01"))
-                sh.storage_penalty_last_charged_date = today
-                sh.save(update_fields=["storage_penalty_total", "storage_penalty_last_charged_date", "updated_at"])
-
+                user_obj.storage_penalty_total = (Decimal(getattr(user_obj, "storage_penalty_total", 0) or 0) + amount).quantize(Decimal("0.01"))
+                user_obj.storage_penalty_last_charged_date = today
                 user_obj.total_debt = (Decimal(user_obj.total_debt or 0) + amount).quantize(Decimal("0.01"))
-                user_obj.save(update_fields=["total_debt", "updated_at"])
+                user_obj.save(update_fields=["storage_penalty_total", "storage_penalty_last_charged_date", "total_debt", "updated_at"])
 
             if token and getattr(user_obj, "telegram_id", None):
                 currency = "KGS"
@@ -127,9 +128,7 @@ class Command(BaseCommand):
 
                 text = (
                     "Начислен штраф за хранение.\n"
-                    f"Трек: {sh.tracking_number}\n"
-                    f"Вес: {weight_kg} кг\n"
-                    f"Штраф: {amount} {currency}\n"
+                    f"Сумма: {amount} {currency}\n"
                     f"Долг: {user_obj.total_debt} {currency}"
                 )
                 try:
@@ -139,6 +138,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Checked: {total_shipments}, charged: {charged_shipments}, total: {total_amount}"
+                f"Checked clients: {total_clients}, charged clients: {charged_clients}, total: {total_amount}"
             )
         )

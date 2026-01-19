@@ -214,15 +214,16 @@
         {% if is_director %}
           <a class="nav-link {% if nav == 'dashboard' %}active{% endif %}" href="{% url 'manager_dashboard' %}">Главная</a>
         {% endif %}
-        {% if is_manager %}
+        {% if is_manager or is_director %}
           <a class="nav-link {% if nav == 'analytics' %}active{% endif %}" href="{% url 'manager_analytics' %}">Аналитика</a>
+          <a class="nav-link {% if nav == 'penalties' %}active{% endif %}" href="{% url 'manager_penalties' %}">Штрафы</a>
         {% endif %}
         <a class="nav-link {% if nav == 'clients' %}active{% endif %}" href="{% url 'manager_clients' %}">Клиенты</a>
         <a class="nav-link" href="{% url 'manager_shipments_unknown' %}">↳ Неизвестный клиент</a>
         <a class="nav-link" href="{% url 'manager_shipments_client_not_found' %}">↳ Клиент не найден</a>
         <a class="nav-link {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments' %}">Посылки</a>
         <a class="nav-link {% if nav == 'groups' %}active{% endif %}" href="{% url 'manager_groups' %}">Группы отправок</a>
-        {% if is_manager %}
+        {% if is_manager or is_director %}
           <a class="nav-link primary" href="{% url 'manager_shipments_add' %}">+ Добавить посылку</a>
         {% endif %}
       </nav>

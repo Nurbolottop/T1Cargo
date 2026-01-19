@@ -1,0 +1,64 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Штрафы • Менеджер{% endblock %}
+
+{% block page_title %}Штрафы{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <h2 class="h" style="margin:0;">Штрафы за хранение</h2>
+      <div class="badge"><span>Сегодня:</span><b>{{ today|date:'d.m.Y' }}</b></div>
+    </div>
+
+    <div class="muted" style="margin-top:8px;">
+      Бесплатное хранение — <b>{{ free_days }}</b> дня. Далее начисляется: <b>штраф_в_день * вес</b> за каждый день.
+    </div>
+
+    {% if is_director and filials %}
+      <form method="get" style="margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="muted" style="font-weight:950; font-size:12px;">Филиал</div>
+        <select name="filial" class="btn" onchange="this.form.submit()" style="padding:10px 12px;">
+          <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+          {% for f in filials %}
+            <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>Клиент</th>
+          <th>Филиал</th>
+          <th>Дней просрочки</th>
+          <th>Последнее начисление</th>
+          <th>К начислению</th>
+          <th>Начислено (итого)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+          <tr>
+            <td>
+              {% if r.user %}
+                <b>{{ r.user.client_code|default:'—' }}</b>
+                {% if r.user.full_name %}<div class="muted">{{ r.user.full_name }}</div>{% endif %}
+              {% endif %}
+            </td>
+            <td class="muted">{{ r.filial|default:'—' }}</td>
+            <td class="muted">{{ r.days_overdue }}</td>
+            <td class="muted">{% if r.storage_penalty_last_charged_date %}{{ r.storage_penalty_last_charged_date|date:'d.m.Y' }}{% else %}—{% endif %}</td>
+            <td class="muted">{{ r.to_charge }}</td>
+            <td class="muted">{{ r.storage_penalty_total }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" class="muted">Сейчас нет клиентов, по которым начисляется штраф.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
