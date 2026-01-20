@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from decimal import Decimal, InvalidOperation
+import logging
 import os
 import tempfile
 import uuid
@@ -21,6 +22,7 @@ from apps.base import models as base_models
 from apps.telegram_bot.views import _send_telegram_message
 from .forms import ClientEditDirectorForm, ClientEditManagerForm, ShipmentCreateForm, ShipmentImportForm
 
+logger = logging.getLogger(__name__)
 
 def _shipment_notify_text_in_transit(tracking: str) -> str:
     tracking = (tracking or "—").strip() or "—"
@@ -1388,7 +1390,8 @@ def manager_shipments_import(request):
             text = _shipment_notify_text_bishkek(tracking=tracking)
         try:
             _send_telegram_message(token=token, chat_id=int(chat_id), text=text)
-        except Exception:
+        except Exception as e:
+            logger.exception("Notify user arrival failed (user_id=%s, tracking=%s): %s", getattr(user_obj, "id", None), tracking, e)
             return
 
     def _looks_like_tracking(value: str) -> bool:
@@ -1604,7 +1607,15 @@ def manager_shipments_import(request):
                                 _flush(group_obj)
 
                             if user_obj is not None and import_status == tg_models.Shipment.ImportStatus.OK and notify_count < MAX_NOTIFY:
-                                _notify_user_arrival(user_obj=user_obj, tracking=tracking, shipment_status=sh.status)
+                                try:
+                                    _notify_user_arrival(user_obj=user_obj, tracking=tracking, shipment_status=sh.status)
+                                except Exception as e:
+                                    logger.exception(
+                                        "Notify user arrival failed during Excel import (user_id=%s, tracking=%s): %s",
+                                        getattr(user_obj, "id", None),
+                                        tracking,
+                                        e,
+                                    )
                                 notify_count += 1
 
                         _flush(group_obj)

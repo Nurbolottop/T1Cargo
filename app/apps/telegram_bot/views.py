@@ -4,12 +4,16 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction
 
 import json
+import logging
 import re
 import urllib.parse
+import urllib.error
 import urllib.request
 
 from apps.base import models as base_models
 from apps.telegram_bot import models as tg_models
+
+logger = logging.getLogger(__name__)
 
 # Create your views here.
 
@@ -307,6 +311,7 @@ def webapp_profile_support(request):
     }
     return JsonResponse({"ok": True, "data": data})
 
+
 def _send_telegram_message(
     token: str,
     chat_id: int,
@@ -314,7 +319,7 @@ def _send_telegram_message(
     reply_markup: dict | None = None,
     disable_web_page_preview: bool = True,
     parse_mode: str | None = None,
-) -> None:
+) -> bool:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload: dict = {"chat_id": chat_id, "text": text}
     if reply_markup is not None:
@@ -325,8 +330,13 @@ def _send_telegram_message(
         payload["disable_web_page_preview"] = "true"
     data = urllib.parse.urlencode(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
-    with urllib.request.urlopen(req, timeout=10):
-        return
+    try:
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            resp.read()
+    except (urllib.error.URLError, TimeoutError, Exception) as e:
+        logger.exception("Telegram send failed (chat_id=%s): %s", chat_id, e)
+        return False
+    return True
 
 
 def _generate_client_code(filial_id: int | None) -> tuple[str, base_models.Filial | None]:
