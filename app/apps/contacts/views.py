@@ -1452,6 +1452,14 @@ def manager_shipments_import(request):
     BULK_SIZE = 500
     MAX_NOTIFY = 200
 
+    send_notifications_on_import = (os.environ.get("SEND_NOTIFICATIONS_ON_IMPORT") or "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "y",
+        "on",
+    }
+
     def _cleanup_tmp(path_value: str | None) -> None:
         p = (path_value or "").strip()
         if not p:
@@ -1606,7 +1614,7 @@ def manager_shipments_import(request):
                             if len(to_create) >= BULK_SIZE:
                                 _flush(group_obj)
 
-                            if user_obj is not None and import_status == tg_models.Shipment.ImportStatus.OK and notify_count < MAX_NOTIFY:
+                            if send_notifications_on_import and user_obj is not None and import_status == tg_models.Shipment.ImportStatus.OK and notify_count < MAX_NOTIFY:
                                 try:
                                     _notify_user_arrival(user_obj=user_obj, tracking=tracking, shipment_status=sh.status)
                                 except Exception as e:

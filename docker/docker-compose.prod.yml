@@ -27,7 +27,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: django_web_cargo
-    command: sh -c "/entrypoint.sh && gunicorn core.wsgi:application --bind 0.0.0.0:8000"
+    command: sh -c "/entrypoint.sh && gunicorn core.wsgi:application --bind 0.0.0.0:8000 --timeout 300 --graceful-timeout 60"
     volumes:
       - ../app:/app
       - static_cargo:/app/core/staticfiles
