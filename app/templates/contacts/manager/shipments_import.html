@@ -85,7 +85,16 @@
         Проверьте список и нажмите «Сохранить», чтобы добавить все строки в базу.
         {% if preview_summary and preview_summary.preview_limit %}
           <br />
-          Показаны первые {{ preview_summary.preview_limit }} строк.
+          <b style="color: rgba(229,231,235,.98);">Важно:</b>
+          в таблице показано <b style="color: rgba(229,231,235,.98);">{{ preview_summary.preview_limit }}</b>
+          из <b style="color: rgba(229,231,235,.98);">{{ preview_summary.total|default:0 }}</b> строк файла.
+          {% if preview_summary.total and preview_summary.preview_limit_max and preview_summary.total > preview_summary.preview_limit_max %}
+            <br />
+            Для очень больших файлов предпросмотр ограничен ({{ preview_summary.preview_limit_max }} строк),
+            но при нажатии «Сохранить» будет импортирован <b style="color: rgba(229,231,235,.98);">весь файл</b>.
+          {% else %}
+            При нажатии «Сохранить» будет импортирован <b style="color: rgba(229,231,235,.98);">весь файл</b>.
+          {% endif %}
         {% endif %}
       </div>
 

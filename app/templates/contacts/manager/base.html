@@ -63,7 +63,6 @@
 
     .main { flex: 1; min-width: 0; display:flex; flex-direction:column; }
     .topbar {
-      height: 64px;
       display:flex;
       align-items:center;
       justify-content:space-between;
@@ -71,6 +70,10 @@
       border-bottom: 1px solid rgba(255,255,255,.06);
       background: rgba(15,26,46,.40);
       backdrop-filter: blur(10px);
+      min-height: 64px;
+      height: auto;
+      gap: 10px;
+      flex-wrap: wrap;
     }
     .topbar .title { font-weight: 950; }
     .badge {
@@ -190,6 +193,12 @@
 
     .error { background: rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.35); color:#fecdd3; padding:10px 12px; border-radius:12px; font-weight:900; }
 
+    .msg { padding: 10px 12px; border-radius: 12px; font-weight: 950; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
+    .msg.success { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.10); color: rgba(229,231,235,.98); }
+    .msg.error { border-color: rgba(244,63,94,.35); background: rgba(244,63,94,.12); color: #fecdd3; }
+    .msg.info { border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.10); color: rgba(229,231,235,.98); }
+    .msg.warning { border-color: rgba(224,177,63,.45); background: rgba(224,177,63,.12); color: rgba(229,231,235,.98); }
+
     @media (max-width: 980px){
       .sidebar { display:none; }
       .content { padding: 14px; }
@@ -236,15 +245,37 @@
     <main class="main">
       <div class="topbar">
         <div class="title">{% block page_title %}Панель{% endblock %}</div>
-        <div class="badge">
-          {% if filial_display %}<span>Филиал:</span><b>{{ filial_display }}</b><span>•</span>{% endif %}
-          <span>Пользователь:</span>
-          <b>{{ request.user.username }}</b>
-          {% if is_director %}<span>• Директор</span>{% elif is_manager %}<span>• Менеджер</span>{% endif %}
+        <div style="display:flex; align-items:center; gap:10px; margin-left:auto; flex-wrap:wrap; justify-content:flex-end;">
+          <div class="badge">
+            {% if nav != 'dashboard' and filial_display %}<span>Филиал:</span><b>{{ filial_display }}</b><span>•</span>{% endif %}
+            <span>Пользователь:</span>
+            <b>{{ request.user.username }}</b>
+            {% if is_director %}<span>• Директор</span>{% elif is_manager %}<span>• Менеджер</span>{% endif %}
+          </div>
+          {% if nav == 'dashboard' and is_director and filials %}
+            <div class="badge">
+              <form method="get" style="margin:0; display:inline-flex; align-items:center; gap:8px;">
+                <span>Филиал:</span>
+                <select name="filial" onchange="this.form.submit()" style="width:auto; min-width:190px; max-width:260px; padding:6px 10px; border-radius:999px;">
+                  <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+                  {% for f in filials %}
+                    <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            </div>
+          {% endif %}
         </div>
       </div>
 
       <div class="content">
+        {% if messages %}
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom: 12px;">
+            {% for message in messages %}
+              <div class="msg {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
         {% block content %}{% endblock %}
       </div>
     </main>

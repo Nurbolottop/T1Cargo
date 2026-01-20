@@ -1,5 +1,6 @@
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from decimal import Decimal, InvalidOperation
 import os
 import tempfile
@@ -292,17 +293,51 @@ def manager_dashboard(request):
     status_map = {row["status"]: row["c"] for row in counts}
     total_shipments = sum(status_map.values())
 
-    since = timezone.now() - timezone.timedelta(days=7)
-    new_clients_7d = users_qs.filter(created_at__gte=since).count()
+    registered_clients = users_qs.exclude(client_code__isnull=True).exclude(client_code="").count()
+    unregistered_clients = users_qs.filter(Q(client_code__isnull=True) | Q(client_code="")).count()
 
-    shipments_7d = shipments_qs.filter(created_at__gte=since).count()
-    today = timezone.localdate()
-    shipments_today = shipments_qs.filter(created_at__date=today).count()
+    day_labels: list[str] = []
+    day_values: list[int] = []
+    today_label = ""
+    month_title = ""
+    try:
+        today = timezone.localdate()
+        today_label = today.strftime("%d")
+        month_title = today.strftime("%m.%Y")
+        start_month = today.replace(day=1)
+        start_dt = timezone.make_aware(timezone.datetime.combine(start_month, timezone.datetime.min.time()))
+        end_dt = timezone.make_aware(
+            timezone.datetime.combine(today + timezone.timedelta(days=1), timezone.datetime.min.time())
+        )
 
-    total_groups = groups_qs.count()
-    active_groups = groups_qs.exclude(status=tg_models.ShipmentGroup.Status.ISSUED).count()
+        day_qs = (
+            users_qs.filter(created_at__gte=start_dt, created_at__lt=end_dt)
+            .annotate(d=TruncDate("created_at"))
+            .values("d")
+            .annotate(c=Count("id"))
+            .order_by("d")
+        )
+        d_map = {
+            (row["d"].date() if hasattr(row["d"], "date") else row["d"]): int(row["c"] or 0)
+            for row in day_qs
+        }
 
-    last_shipments = shipments_qs.select_related("user").order_by("-created_at")[:10]
+        cur = start_month
+        while cur <= today:
+            day_labels.append(cur.strftime("%d"))
+            day_values.append(int(d_map.get(cur, 0)))
+            cur = cur + timezone.timedelta(days=1)
+    except Exception:
+        day_labels = []
+        day_values = []
+        today_label = ""
+        month_title = ""
+
+    warehouse_sum = shipments_qs.filter(status=tg_models.Shipment.Status.WAREHOUSE).aggregate(
+        s=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2))
+    ).get("s")
+    if warehouse_sum is None:
+        warehouse_sum = Decimal("0")
     return render(
         request,
         "contacts/manager/dashboard.html",
@@ -310,12 +345,13 @@ def manager_dashboard(request):
             "nav": "dashboard",
             "total_shipments": total_shipments,
             "status_counts": status_map,
-            "new_clients_7d": new_clients_7d,
-            "shipments_7d": shipments_7d,
-            "shipments_today": shipments_today,
-            "total_groups": total_groups,
-            "active_groups": active_groups,
-            "last_shipments": last_shipments,
+            "registered_clients": registered_clients,
+            "unregistered_clients": unregistered_clients,
+            "warehouse_sum": warehouse_sum,
+            "client_day_labels": day_labels,
+            "client_day_values": day_values,
+            "client_day_today_label": today_label,
+            "client_day_month_title": month_title,
             "statuses": tg_models.Shipment.Status.choices,
             "filials": base_models.Filial.objects.filter(is_active=True).order_by("city", "name"),
             "selected_filial": selected_filial,
@@ -594,11 +630,33 @@ def manager_group_detail(request, group_id: int):
         shipments_qs = shipments_qs.filter(filial=staff_filial)
     shipments = shipments_qs
 
+    agg_all = shipments_qs.aggregate(
+        total_cnt=Count("id"),
+        total_sum=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
+    )
+    agg_issued = shipments_qs.filter(status=tg_models.Shipment.Status.ISSUED).aggregate(
+        issued_cnt=Count("id"),
+        issued_sum=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
+    )
+    group_kpi = {
+        "total_cnt": int(agg_all.get("total_cnt") or 0),
+        "issued_cnt": int(agg_issued.get("issued_cnt") or 0),
+        "total_sum": agg_all.get("total_sum") or Decimal("0"),
+        "issued_sum": agg_issued.get("issued_sum") or Decimal("0"),
+    }
+
     has_unsorted = shipments_qs.exclude(status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED]).exists()
     return render(
         request,
         "contacts/manager/group_detail.html",
-        {"nav": "groups", "group": group, "shipments": shipments, "has_unsorted": has_unsorted, **_role_ctx(request)},
+        {
+            "nav": "groups",
+            "group": group,
+            "shipments": shipments,
+            "has_unsorted": has_unsorted,
+            "group_kpi": group_kpi,
+            **_role_ctx(request),
+        },
     )
 
 
@@ -1387,6 +1445,7 @@ def manager_shipments_import(request):
     preview_key = "manager_shipments_import_preview"
 
     PREVIEW_LIMIT = 200
+    PREVIEW_SHOW_ALL_MAX = 5000
     BULK_SIZE = 500
     MAX_NOTIFY = 200
 
@@ -1410,6 +1469,7 @@ def manager_shipments_import(request):
             tmp_path = (payload.get("tmp_path") or "").strip()
             group_status = payload.get("group_status")
             sent_date_raw = (payload.get("sent_date") or "").strip()
+            total_rows_from_preview = payload.get("total_rows")
             sent_date = None
             if sent_date_raw:
                 try:
@@ -1425,6 +1485,7 @@ def manager_shipments_import(request):
                 created = 0
                 skipped = 0
                 errors: list[dict] = []
+                total_rows_in_file = None
 
                 notify_count = 0
                 to_create: list[tg_models.Shipment] = []
@@ -1496,6 +1557,10 @@ def manager_shipments_import(request):
                     try:
                         wb = load_workbook(filename=tmp_path, read_only=True, data_only=True)
                         ws = wb.active
+                        try:
+                            total_rows_in_file = int(getattr(ws, "max_row", 0) or 0)
+                        except Exception:
+                            total_rows_in_file = None
                         for idx, row in enumerate(ws.iter_rows(min_row=1, values_only=True), start=1):
                             tracking = str((row[0] if len(row) > 0 else "") or "").strip()
                             raw_code = str((row[1] if len(row) > 1 else "") or "").strip()
@@ -1548,6 +1613,11 @@ def manager_shipments_import(request):
 
                 _cleanup_tmp(tmp_path)
                 request.session.pop(preview_key, None)
+                total_n = total_rows_in_file or total_rows_from_preview
+                if total_n is not None:
+                    messages.success(request, f"Импорт завершён: добавлено {created}, пропущено {skipped}, всего строк в файле {int(total_n)}")
+                else:
+                    messages.success(request, f"Импорт завершён: добавлено {created}, пропущено {skipped}")
                 return redirect("manager_group_detail", group_id=group_obj.id)
         else:
             form = ShipmentImportForm(request.POST, request.FILES)
@@ -1571,10 +1641,24 @@ def manager_shipments_import(request):
                     ok_cnt = 0
                     no_client_code_cnt = 0
                     client_not_found_cnt = 0
+                    shown_cnt = 0
 
                     try:
                         wb = load_workbook(filename=tmp_path, read_only=True, data_only=True)
                         ws = wb.active
+                        total_rows_in_file = None
+                        try:
+                            total_rows_in_file = int(getattr(ws, "max_row", 0) or 0)
+                        except Exception:
+                            total_rows_in_file = None
+
+                        preview_limit_effective = PREVIEW_LIMIT
+                        if total_rows_in_file is not None and total_rows_in_file > 0:
+                            if total_rows_in_file <= PREVIEW_SHOW_ALL_MAX:
+                                preview_limit_effective = total_rows_in_file
+                        else:
+                            preview_limit_effective = PREVIEW_SHOW_ALL_MAX
+
                         for idx, row in enumerate(ws.iter_rows(min_row=1, values_only=True), start=1):
                             tracking = str((row[0] if len(row) > 0 else "") or "").strip()
                             client_code = str((row[1] if len(row) > 1 else "") or "").strip()
@@ -1583,44 +1667,52 @@ def manager_shipments_import(request):
                             if tracking and not _looks_like_tracking(tracking):
                                 continue
 
-                            if len(rows) >= PREVIEW_LIMIT:
-                                continue
+                            # summary counts should be for the whole file
 
                             if not client_code:
                                 no_client_code_cnt += 1
-                                rows.append({
-                                    "row": idx,
-                                    "tracking": tracking,
-                                    "client_code": "",
-                                    "user_id": None,
-                                    "user_name": "",
-                                    "import_status": tg_models.Shipment.ImportStatus.NO_CLIENT_CODE,
-                                })
+
+                                if shown_cnt < preview_limit_effective:
+                                    rows.append({
+                                        "row": idx,
+                                        "tracking": tracking,
+                                        "client_code": "",
+                                        "user_id": None,
+                                        "user_name": "",
+                                        "import_status": tg_models.Shipment.ImportStatus.NO_CLIENT_CODE,
+                                    })
+                                    shown_cnt += 1
                                 continue
 
                             normalized_code = _normalize_import_client_code(client_code)
                             user_obj = _find_user_by_client_code(client_code)
                             if not user_obj:
                                 client_not_found_cnt += 1
+
+                                if shown_cnt < preview_limit_effective:
+                                    rows.append({
+                                        "row": idx,
+                                        "tracking": tracking,
+                                        "client_code": normalized_code or client_code,
+                                        "user_id": None,
+                                        "user_name": "",
+                                        "import_status": tg_models.Shipment.ImportStatus.CLIENT_NOT_FOUND,
+                                    })
+                                    shown_cnt += 1
+                                continue
+
+                            ok_cnt += 1
+
+                            if shown_cnt < preview_limit_effective:
                                 rows.append({
                                     "row": idx,
                                     "tracking": tracking,
                                     "client_code": normalized_code or client_code,
-                                    "user_id": None,
-                                    "user_name": "",
-                                    "import_status": tg_models.Shipment.ImportStatus.CLIENT_NOT_FOUND,
+                                    "user_id": user_obj.id,
+                                    "user_name": getattr(user_obj, "full_name", "") or getattr(user_obj, "client_code", ""),
+                                    "import_status": tg_models.Shipment.ImportStatus.OK,
                                 })
-                                continue
-
-                            ok_cnt += 1
-                            rows.append({
-                                "row": idx,
-                                "tracking": tracking,
-                                "client_code": normalized_code or client_code,
-                                "user_id": user_obj.id,
-                                "user_name": getattr(user_obj, "full_name", "") or getattr(user_obj, "client_code", ""),
-                                "import_status": tg_models.Shipment.ImportStatus.OK,
-                            })
+                                shown_cnt += 1
                     except Exception as e:
                         _cleanup_tmp(tmp_path)
                         report = {"error": str(e)}
@@ -1630,14 +1722,16 @@ def manager_shipments_import(request):
                             "group_status": group_status,
                             "price_per_kg": str(price_per_kg) if price_per_kg is not None else "",
                             "tmp_path": tmp_path,
+                            "total_rows": int(total_rows_in_file or 0) or None,
                         }
                         preview_rows = rows
                         preview_summary = {
-                            "total": len(rows),
+                            "total": total_rows_in_file or len(rows),
                             "ok": ok_cnt,
                             "no_client_code": no_client_code_cnt,
                             "client_not_found": client_not_found_cnt,
-                            "preview_limit": PREVIEW_LIMIT,
+                            "preview_limit": shown_cnt,
+                            "preview_limit_max": PREVIEW_SHOW_ALL_MAX,
                         }
                         report = {"errors": []}
             else:

@@ -5,60 +5,23 @@
 
 {% block content %}
   <div class="card">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
-      <h2 class="h" style="margin:0;">Главная</h2>
-      <form method="get" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-        <div style="padding:10px 12px; border-radius:14px; border: 1px solid rgba(255,255,255,.06); background: rgba(255,255,255,.02); display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-          <div class="muted" style="font-weight:950; font-size:12px;">Филиал</div>
-          <select name="filial" onchange="this.form.submit()" style="min-width:220px;">
-            <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
-            {% for f in filials %}
-              <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </form>
-    </div>
+    <h2 class="h" style="margin:0;">Главная</h2>
     <div class="kpi">
       <div class="box">
         <div class="n">{{ total_shipments }}</div>
         <div class="t">Всего посылок</div>
       </div>
       <div class="box">
-        <div class="n">{{ shipments_today|default:0 }}</div>
-        <div class="t">Создано сегодня</div>
+        <div class="n">{{ warehouse_sum|default:0 }}</div>
+        <div class="t">Сумма на складе</div>
       </div>
       <div class="box">
-        <div class="n">{{ shipments_7d|default:0 }}</div>
-        <div class="t">Создано за 7 дней</div>
+        <div class="n">{{ registered_clients|default:0 }}</div>
+        <div class="t">Клиенты (с кодом)</div>
       </div>
       <div class="box">
-        <div class="n">{{ new_clients_7d }}</div>
-        <div class="t">Новых клиентов (7 дней)</div>
-      </div>
-      <div class="box">
-        <div class="n">{{ total_groups|default:0 }}</div>
-        <div class="t">Всего групп отправок</div>
-      </div>
-      <div class="box">
-        <div class="n">{{ active_groups|default:0 }}</div>
-        <div class="t">Активных групп</div>
-      </div>
-      <div class="box">
-        <div class="n">{{ status_counts.in_china|default:0 }}</div>
-        <div class="t">В Китае</div>
-      </div>
-      <div class="box">
-        <div class="n">{{ status_counts.on_the_way|default:0 }}</div>
-        <div class="t">В пути</div>
-      </div>
-      <div class="box">
-        <div class="n">{{ status_counts.warehouse|default:0 }}</div>
-        <div class="t">На складе</div>
-      </div>
-      <div class="box">
-        <div class="n">{{ status_counts.issued|default:0 }}</div>
-        <div class="t">Выдано</div>
+        <div class="n">{{ unregistered_clients|default:0 }}</div>
+        <div class="t">Не зарегистрированы</div>
       </div>
     </div>
   </div>
@@ -68,7 +31,10 @@
     <div style="display:grid; grid-template-columns: 360px 1fr; gap: 12px; align-items: start;">
       <div style="background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 16px; padding: 12px;">
         <div class="muted" style="font-weight: 950; font-size: 12px; margin-bottom: 8px;">Диаграмма</div>
-        <canvas id="statusChart" height="220" style="width:100%; height:220px;"></canvas>
+        <div style="display:flex; justify-content:center;">
+          <canvas id="statusChart" style="width:240px; height:240px;"></canvas>
+        </div>
+        <div id="statusLegend" style="margin-top:10px;"></div>
       </div>
       <div>
         <table>
@@ -93,31 +59,11 @@
   </div>
 
   <div class="card" style="margin-top:12px;">
-    <h3 class="h">Последние посылки</h3>
-    <table>
-      <thead>
-        <tr>
-          <th>Трек</th>
-          <th>Клиент</th>
-          <th>Статус</th>
-          <th>Создано</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for sh in last_shipments %}
-          <tr>
-            <td>{{ sh.tracking_number }}</td>
-            <td>{{ sh.user.client_code }}{% if sh.user.full_name %}<div class="muted">{{ sh.user.full_name }}</div>{% endif %}</td>
-            <td>{{ sh.get_status_display }}</td>
-            <td class="muted">{{ sh.created_at }}</td>
-            <td><a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a></td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" class="muted">Пока нет посылок.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+    <h3 class="h">Новые клиенты по дням</h3>
+    <div style="background: rgba(255,255,255,.02); border: 1px solid rgba(255,255,255,.06); border-radius: 16px; padding: 12px;">
+      <div class="muted" style="font-weight: 950; font-size: 12px; margin-bottom: 8px;">Текущий месяц{% if client_day_month_title %} • {{ client_day_month_title }}{% endif %}</div>
+      <canvas id="clientsMonthChart" style="width:100%; height:220px;"></canvas>
+    </div>
   </div>
 
   <script id="statusChartData" type="application/json">
@@ -127,61 +73,644 @@
     }
   </script>
 
+  <script id="clientMonthChartData" type="application/json">
+    {
+      "labels": [{% for d in client_day_labels %}"{{ d|escapejs }}"{% if not forloop.last %},{% endif %}{% endfor %}],
+      "values": [{% for v in client_day_values %}{{ v|default:0 }}{% if not forloop.last %},{% endif %}{% endfor %}],
+      "todayLabel": "{{ client_day_today_label|default:''|escapejs }}"
+    }
+  </script>
+
   <script>
     (function(){
-      const canvas = document.getElementById('statusChart');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
+      function drawDonut(chartId, dataId, legendId, centerSub) {
+        const canvas = document.getElementById(chartId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const dataEl = document.getElementById(dataId);
+        let labels = [];
+        let values = [];
+        try {
+          const parsed = JSON.parse((dataEl && dataEl.textContent) ? dataEl.textContent : '{}');
+          labels = Array.isArray(parsed.labels) ? parsed.labels : [];
+          values = Array.isArray(parsed.values) ? parsed.values : [];
+        } catch (e) {
+          labels = [];
+          values = [];
+        }
 
-      const dataEl = document.getElementById('statusChartData');
-      let labels = [];
-      let values = [];
-      try {
-        const parsed = JSON.parse((dataEl && dataEl.textContent) ? dataEl.textContent : '{}');
-        labels = Array.isArray(parsed.labels) ? parsed.labels : [];
-        values = Array.isArray(parsed.values) ? parsed.values : [];
-      } catch (e) {
-        labels = [];
-        values = [];
+        const isSum = String(centerSub || '').toLowerCase().indexOf('сум') >= 0;
+        const fmt = new Intl.NumberFormat('ru-RU', isSum ? { maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
+
+        const colors = [
+          'rgba(224,177,63,.95)',
+          'rgba(59,130,246,.92)',
+          'rgba(34,197,94,.86)',
+          'rgba(244,63,94,.86)',
+          'rgba(168,85,247,.82)',
+          'rgba(148,163,184,.78)'
+        ];
+
+        let geometry = null;
+        let segments = [];
+        let hoveredIndex = -1;
+        let lastCenter = null;
+
+        function _num(x) {
+          const n = Number(x);
+          return Number.isFinite(n) ? n : 0;
+        }
+
+        function _setupSize() {
+          const dpr = (window.devicePixelRatio || 1);
+          const wrap = canvas.parentElement;
+          const baseSize = 240;
+          let size = baseSize;
+          try {
+            const w0 = wrap ? wrap.clientWidth : baseSize;
+            size = Math.max(180, Math.min(baseSize, w0));
+          } catch (e) {
+            size = baseSize;
+          }
+
+          canvas.style.width = size + 'px';
+          canvas.style.height = size + 'px';
+          canvas.width = Math.round(size * dpr);
+          canvas.height = Math.round(size * dpr);
+          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+          const cx = size / 2;
+          const cy = size / 2;
+          const outerR = Math.min(size, size) / 2 - 10;
+          const ringWidth = Math.round(size * 0.24);
+          const innerR = outerR - ringWidth;
+
+          geometry = { size, cx, cy, outerR, innerR };
+        }
+
+        function _buildSegments() {
+          const total = values.reduce((a, b) => a + _num(b), 0);
+          const start0 = -Math.PI / 2;
+          let cur = start0;
+
+          segments = [];
+          if (total <= 0) {
+            return { total: 0 };
+          }
+
+          for (let i = 0; i < values.length; i++) {
+            const v = _num(values[i]);
+            if (v <= 0) continue;
+            const ang = (v / total) * Math.PI * 2;
+            const s = cur;
+            const e = cur + ang;
+            segments.push({
+              i,
+              label: labels[i] || '',
+              value: v,
+              start: s,
+              end: e,
+              color: colors[i % colors.length],
+            });
+            cur = e;
+          }
+          return { total };
+        }
+
+        function _drawCenter(total, active) {
+          const { cx, cy, innerR } = geometry;
+
+          ctx.fillStyle = 'rgba(15,26,46,.72)';
+          ctx.beginPath();
+          ctx.arc(cx, cy, innerR - 2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          if (active) {
+            ctx.fillStyle = 'rgba(156,163,175,.95)';
+            ctx.font = '950 12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+            ctx.fillText(active.label || '', cx, cy - 20);
+
+            ctx.fillStyle = 'rgba(229,231,235,.98)';
+            ctx.font = '950 26px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+            ctx.fillText(fmt.format(active.value), cx, cy + 2);
+
+            ctx.fillStyle = 'rgba(156,163,175,.95)';
+            ctx.font = '950 12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+            if (total > 0) {
+              const pct = Math.round((active.value / total) * 100);
+              ctx.fillText(pct + '%', cx, cy + 24);
+            } else {
+              ctx.fillText(centerSub || '', cx, cy + 24);
+            }
+          } else {
+            ctx.fillStyle = 'rgba(229,231,235,.98)';
+            ctx.font = '950 26px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+            ctx.fillText(fmt.format(total || 0), cx, cy - 6);
+
+            ctx.fillStyle = 'rgba(156,163,175,.95)';
+            ctx.font = '950 12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+            ctx.fillText(centerSub || 'всего', cx, cy + 16);
+          }
+        }
+
+        function _drawLegend(total) {
+          const legend = document.getElementById(legendId);
+          if (!legend) return;
+          legend.innerHTML = '';
+          for (let k = 0; k < segments.length; k++) {
+            const seg = segments[k];
+            const v = seg.value;
+            const pct = total > 0 ? Math.round((v / total) * 100) : 0;
+
+            const row = document.createElement('div');
+            row.style.display = 'flex';
+            row.style.alignItems = 'center';
+            row.style.justifyContent = 'space-between';
+            row.style.gap = '10px';
+            row.style.padding = '8px 2px';
+            row.style.borderTop = (legend.children.length === 0) ? '0' : '1px solid rgba(255,255,255,.06)';
+            row.style.cursor = 'default';
+
+            const left = document.createElement('div');
+            left.style.display = 'flex';
+            left.style.alignItems = 'center';
+            left.style.gap = '8px';
+
+            const dot = document.createElement('span');
+            dot.style.width = '10px';
+            dot.style.height = '10px';
+            dot.style.borderRadius = '999px';
+            dot.style.background = seg.color;
+
+            const name = document.createElement('span');
+            name.className = 'muted';
+            name.style.fontWeight = '950';
+            name.style.fontSize = '12px';
+            name.textContent = seg.label;
+
+            left.appendChild(dot);
+            left.appendChild(name);
+
+            const right = document.createElement('div');
+            right.style.display = 'flex';
+            right.style.alignItems = 'center';
+            right.style.gap = '10px';
+
+            const vEl = document.createElement('span');
+            vEl.style.fontWeight = '950';
+            vEl.style.fontSize = '12px';
+            vEl.style.color = 'rgba(229,231,235,.98)';
+            vEl.textContent = fmt.format(v);
+
+            const pEl = document.createElement('span');
+            pEl.className = 'muted';
+            pEl.style.fontWeight = '950';
+            pEl.style.fontSize = '12px';
+            pEl.textContent = total > 0 ? (pct + '%') : '';
+
+            right.appendChild(vEl);
+            right.appendChild(pEl);
+
+            row.appendChild(left);
+            row.appendChild(right);
+            legend.appendChild(row);
+
+            row.addEventListener('mouseenter', function(){
+              hoveredIndex = seg.i;
+              _render();
+            });
+            row.addEventListener('mouseleave', function(){
+              hoveredIndex = -1;
+              _render();
+            });
+          }
+        }
+
+        function _hitTest(x, y) {
+          if (!geometry) return -1;
+          const dx = x - geometry.cx;
+          const dy = y - geometry.cy;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < geometry.innerR || dist > geometry.outerR) return -1;
+          let a = Math.atan2(dy, dx);
+          if (a < -Math.PI / 2) a += Math.PI * 2;
+          a = a;
+          for (let k = 0; k < segments.length; k++) {
+            const s = segments[k];
+            if (a >= s.start && a <= s.end) return s.i;
+          }
+          return -1;
+        }
+
+        function _render() {
+          _setupSize();
+          const w = geometry.size;
+          const h = geometry.size;
+          ctx.clearRect(0, 0, w, h);
+
+          const built = _buildSegments();
+          const total = built.total || 0;
+
+          if (total <= 0) {
+            ctx.fillStyle = 'rgba(255,255,255,.08)';
+            ctx.beginPath();
+            ctx.arc(geometry.cx, geometry.cy, geometry.outerR, 0, Math.PI * 2);
+            ctx.arc(geometry.cx, geometry.cy, geometry.innerR, 0, Math.PI * 2, true);
+            ctx.closePath();
+            ctx.fill();
+            _drawCenter(0, null);
+            _drawLegend(0);
+            return;
+          }
+
+          const sepColor = 'rgba(15,26,46,.85)';
+          const sepW = 2;
+
+          for (let k = 0; k < segments.length; k++) {
+            const seg = segments[k];
+            const isHover = hoveredIndex === seg.i;
+            const pad = 0.008;
+            const a0 = seg.start + pad;
+            const a1 = seg.end - pad;
+            if (a1 <= a0) continue;
+
+            const out = geometry.outerR + (isHover ? 4 : 0);
+
+            ctx.fillStyle = seg.color;
+            ctx.beginPath();
+            ctx.arc(geometry.cx, geometry.cy, out, a0, a1);
+            ctx.arc(geometry.cx, geometry.cy, geometry.innerR, a1, a0, true);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.strokeStyle = sepColor;
+            ctx.lineWidth = sepW;
+            ctx.beginPath();
+            ctx.arc(geometry.cx, geometry.cy, (geometry.outerR + geometry.innerR) / 2, a0, a1);
+            ctx.stroke();
+          }
+
+          let active = null;
+          if (hoveredIndex >= 0) {
+            for (let k = 0; k < segments.length; k++) {
+              if (segments[k].i === hoveredIndex) {
+                active = segments[k];
+                break;
+              }
+            }
+          }
+          _drawCenter(total, active);
+          if (!lastCenter) {
+            _drawLegend(total);
+            lastCenter = true;
+          }
+        }
+
+        function _onMove(ev) {
+          if (!geometry) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = (ev.clientX - rect.left) * (geometry.size / rect.width);
+          const y = (ev.clientY - rect.top) * (geometry.size / rect.height);
+          const idx = _hitTest(x, y);
+          if (idx !== hoveredIndex) {
+            hoveredIndex = idx;
+            _render();
+          }
+        }
+
+        function _onLeave() {
+          if (hoveredIndex !== -1) {
+            hoveredIndex = -1;
+            _render();
+          }
+        }
+
+        canvas.addEventListener('mousemove', _onMove);
+        canvas.addEventListener('mouseleave', _onLeave);
+        window.addEventListener('resize', function(){ _render(); });
+        _render();
       }
 
-      const max = Math.max(1, ...values);
-      const W = canvas.width = canvas.clientWidth * (window.devicePixelRatio || 1);
-      const H = canvas.height = 220 * (window.devicePixelRatio || 1);
-      ctx.scale((window.devicePixelRatio || 1), (window.devicePixelRatio || 1));
+      function drawBarChart(canvasId, dataId) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
 
-      const w = canvas.clientWidth;
-      const h = 220;
-      ctx.clearRect(0, 0, w, h);
+        const dataEl = document.getElementById(dataId);
+        let labels = [];
+        let values = [];
+        let todayLabel = '';
+        try {
+          const parsed = JSON.parse((dataEl && dataEl.textContent) ? dataEl.textContent : '{}');
+          labels = Array.isArray(parsed.labels) ? parsed.labels : [];
+          values = Array.isArray(parsed.values) ? parsed.values : [];
+          todayLabel = String(parsed.todayLabel || '');
+        } catch (e) {
+          labels = [];
+          values = [];
+          todayLabel = '';
+        }
 
-      const padX = 10;
-      const padY = 10;
-      const barH = 14;
-      const gap = 8;
-      const rowH = barH + gap;
+        const state = {
+          dpr: 1,
+          w: 0,
+          h: 0,
+          padL: 42,
+          padR: 14,
+          padT: 12,
+          padB: 34,
+          bars: [],
+          hovered: -1,
+          maxY: 1,
+          stepY: 1,
+        };
 
-      ctx.font = '12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
-      ctx.textBaseline = 'middle';
+        function niceStep(maxV) {
+          const n = Number(maxV) || 0;
+          if (n <= 6) return 1;
+          if (n <= 12) return 2;
+          if (n <= 25) return 5;
+          const exp = Math.floor(Math.log10(n));
+          const base = Math.pow(10, exp);
+          const f = n / base;
+          if (f <= 2) return 2 * base;
+          if (f <= 5) return 5 * base;
+          return 10 * base;
+        }
 
-      for (let i = 0; i < labels.length; i++){
-        const y = padY + i * rowH;
-        if (y + barH > h - padY) break;
+        function roundRectPath(x, y, w, h, r) {
+          const rr = Math.max(0, Math.min(r, w / 2, h / 2));
+          ctx.beginPath();
+          ctx.moveTo(x + rr, y);
+          ctx.arcTo(x + w, y, x + w, y + h, rr);
+          ctx.arcTo(x + w, y + h, x, y + h, rr);
+          ctx.arcTo(x, y + h, x, y, rr);
+          ctx.arcTo(x, y, x + w, y, rr);
+          ctx.closePath();
+        }
 
-        const v = values[i] || 0;
-        const bw = Math.round((w - 120 - padX*2) * (v / max));
+        function setup() {
+          state.dpr = (window.devicePixelRatio || 1);
+          const parent = canvas.parentElement;
+          const wCss = parent ? parent.clientWidth : 900;
+          const hCss = 240;
+          canvas.style.width = '100%';
+          canvas.style.height = hCss + 'px';
+          canvas.width = Math.round(wCss * state.dpr);
+          canvas.height = Math.round(hCss * state.dpr);
+          ctx.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+          state.w = wCss;
+          state.h = hCss;
+        }
 
-        ctx.fillStyle = 'rgba(255,255,255,.08)';
-        ctx.fillRect(120, y, (w - 120 - padX*2), barH);
+        function buildBars() {
+          const w = state.w;
+          const h = state.h;
+          const padL = state.padL;
+          const padR = state.padR;
+          const padT = state.padT;
+          const padB = state.padB;
+          const chartW = w - padL - padR;
+          const chartH = h - padT - padB;
 
-        ctx.fillStyle = 'rgba(224,177,63,.85)';
-        ctx.fillRect(120, y, bw, barH);
+          const vals = values.map(v => Number(v) || 0);
+          const rawMax = Math.max(0, ...vals);
+          const stepY = niceStep(rawMax);
+          const maxY = Math.max(stepY, Math.ceil(rawMax / stepY) * stepY);
+          state.maxY = maxY;
+          state.stepY = stepY;
 
-        ctx.fillStyle = 'rgba(229,231,235,.95)';
-        ctx.fillText(labels[i], padX, y + barH/2);
+          const n = Math.max(1, labels.length);
+          const step = chartW / n;
+          const barW = Math.max(12, Math.min(28, step * 0.54));
+          state.bars = [];
+          for (let i = 0; i < labels.length; i++) {
+            const v = vals[i] || 0;
+            const bh = Math.round((v / maxY) * chartH);
+            const x = padL + step * i + (step - barW) / 2;
+            const minH = 2;
+            const hEff = (v <= 0) ? minH : Math.max(minH, bh);
+            const y = padT + (chartH - hEff);
+            state.bars.push({ i, x, y, w: barW, h: hEff, v, label: String(labels[i] || '') });
+          }
 
-        ctx.fillStyle = 'rgba(156,163,175,.95)';
-        ctx.fillText(String(v), w - padX - 18, y + barH/2);
+          return { chartW, chartH, padL, padR, padT, padB };
+        }
+
+        function drawGrid(meta) {
+          const { chartW, chartH, padL, padT } = meta;
+          ctx.strokeStyle = 'rgba(255,255,255,.06)';
+          ctx.lineWidth = 1;
+          const tickCount = Math.max(2, Math.round(state.maxY / state.stepY) + 1);
+          for (let t = 0; t < tickCount; t++) {
+            const v = t * state.stepY;
+            const y = padT + (chartH - (v / state.maxY) * chartH);
+            ctx.beginPath();
+            ctx.moveTo(padL, y);
+            ctx.lineTo(padL + chartW, y);
+            ctx.stroke();
+          }
+
+          // base line
+          ctx.strokeStyle = 'rgba(255,255,255,.12)';
+          ctx.beginPath();
+          ctx.moveTo(padL, padT + chartH);
+          ctx.lineTo(padL + chartW, padT + chartH);
+          ctx.stroke();
+
+          ctx.fillStyle = 'rgba(156,163,175,.95)';
+          ctx.font = '950 11px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          for (let t = 0; t < tickCount; t++) {
+            const v = t * state.stepY;
+            const y = padT + (chartH - (v / state.maxY) * chartH);
+            ctx.fillText(String(v), padL - 8, y);
+          }
+
+          // today marker
+          if (todayLabel) {
+            const idx = labels.indexOf(todayLabel);
+            if (idx >= 0) {
+              const n = Math.max(1, labels.length);
+              const step = chartW / n;
+              const x = padL + step * idx + step / 2;
+              ctx.save();
+              ctx.strokeStyle = 'rgba(224,177,63,.38)';
+              ctx.lineWidth = 1;
+              ctx.setLineDash([4, 4]);
+              ctx.beginPath();
+              ctx.moveTo(x, padT);
+              ctx.lineTo(x, padT + chartH);
+              ctx.stroke();
+              ctx.setLineDash([]);
+              ctx.fillStyle = 'rgba(224,177,63,.88)';
+              ctx.font = '950 11px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'bottom';
+              ctx.fillText('сегодня', x, padT - 2);
+              ctx.restore();
+            }
+          }
+        }
+
+        function drawBars(meta) {
+          const { padT, chartH, padL, chartW } = meta;
+
+          // gradient for bars
+          const g = ctx.createLinearGradient(0, padT, 0, padT + chartH);
+          g.addColorStop(0, 'rgba(96,165,250,.95)');
+          g.addColorStop(1, 'rgba(59,130,246,.70)');
+
+          for (let k = 0; k < state.bars.length; k++) {
+            const b = state.bars[k];
+            const hover = state.hovered === b.i;
+            const rr = 8;
+            const x = b.x;
+            const y = b.y;
+            const w = b.w;
+            const h = Math.max(0, b.h);
+            if (h <= 0) continue;
+
+            ctx.save();
+            ctx.shadowColor = hover ? 'rgba(59,130,246,.35)' : 'rgba(0,0,0,.25)';
+            ctx.shadowBlur = hover ? 18 : 10;
+            ctx.shadowOffsetY = 6;
+
+            roundRectPath(x, y, w, h, rr);
+            if (b.v <= 0) {
+              ctx.fillStyle = 'rgba(148,163,184,.18)';
+              ctx.fill();
+            } else {
+              ctx.fillStyle = g;
+              ctx.fill();
+            }
+            ctx.restore();
+
+            // top highlight
+            if (b.v > 0) {
+              roundRectPath(x, y, w, Math.min(6, h), rr);
+              ctx.fillStyle = hover ? 'rgba(224,177,63,.36)' : 'rgba(224,177,63,.14)';
+              ctx.fill();
+            }
+
+            // outline on hover
+            if (hover) {
+              roundRectPath(x - 1, y - 1, w + 2, h + 2, rr);
+              ctx.strokeStyle = 'rgba(224,177,63,.55)';
+              ctx.lineWidth = 1;
+              ctx.stroke();
+            }
+          }
+
+          // x labels
+          const n = Math.max(1, labels.length);
+          const step = chartW / n;
+          ctx.fillStyle = 'rgba(156,163,175,.95)';
+          ctx.font = '950 11px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'top';
+          const labelEvery = (n >= 29) ? 3 : (n >= 21 ? 2 : 1);
+          for (let i = 0; i < labels.length; i++) {
+            if (labelEvery > 1 && (i % labelEvery) !== 0 && i !== labels.length - 1) continue;
+            const x = padL + step * i + step / 2;
+            ctx.fillText(String(labels[i] || ''), x, padT + chartH + 8);
+          }
+        }
+
+        function drawTooltip(meta) {
+          if (state.hovered < 0) return;
+          const b = state.bars.find(x => x.i === state.hovered);
+          if (!b) return;
+
+          const text1 = (todayLabel && b.label === todayLabel) ? 'Сегодня' : ('День ' + b.label);
+          const text2 = String(b.v);
+
+          ctx.font = '950 12px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif';
+          const p = 10;
+          const w1 = ctx.measureText(text1).width;
+          const w2 = ctx.measureText(text2).width;
+          const tw = Math.max(w1, w2) + p * 2;
+          const th = 44;
+
+          let x = b.x + b.w / 2 - tw / 2;
+          let y = b.y - th - 10;
+          if (x < 8) x = 8;
+          if (x + tw > state.w - 8) x = state.w - 8 - tw;
+          if (y < 8) y = 8;
+
+          // box
+          ctx.save();
+          ctx.shadowColor = 'rgba(0,0,0,.35)';
+          ctx.shadowBlur = 14;
+          ctx.shadowOffsetY = 6;
+          roundRectPath(x, y, tw, th, 12);
+          ctx.fillStyle = 'rgba(15,26,46,.92)';
+          ctx.fill();
+          ctx.restore();
+
+          // border
+          roundRectPath(x, y, tw, th, 12);
+          ctx.strokeStyle = 'rgba(255,255,255,.10)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // text
+          ctx.fillStyle = 'rgba(229,231,235,.98)';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text1, x + tw / 2, y + 16);
+          ctx.fillStyle = 'rgba(224,177,63,.95)';
+          ctx.fillText(text2, x + tw / 2, y + 32);
+        }
+
+        function hitTest(mx, my) {
+          for (let i = 0; i < state.bars.length; i++) {
+            const b = state.bars[i];
+            if (mx >= b.x && mx <= b.x + b.w && my >= b.y && my <= b.y + b.h) return b.i;
+          }
+          return -1;
+        }
+
+        function render() {
+          setup();
+          const meta = buildBars();
+          ctx.clearRect(0, 0, state.w, state.h);
+          drawGrid(meta);
+          drawBars(meta);
+          drawTooltip(meta);
+        }
+
+        function onMove(ev) {
+          const rect = canvas.getBoundingClientRect();
+          const x = (ev.clientX - rect.left) * (state.w / rect.width);
+          const y = (ev.clientY - rect.top) * (state.h / rect.height);
+          const h = hitTest(x, y);
+          if (h !== state.hovered) {
+            state.hovered = h;
+            render();
+          }
+        }
+
+        function onLeave() {
+          if (state.hovered !== -1) {
+            state.hovered = -1;
+            render();
+          }
+        }
+
+        canvas.addEventListener('mousemove', onMove);
+        canvas.addEventListener('mouseleave', onLeave);
+        window.addEventListener('resize', function(){ render(); });
+        render();
       }
+
+      drawDonut('statusChart', 'statusChartData', 'statusLegend', 'всего');
+      drawBarChart('clientsMonthChart', 'clientMonthChartData');
     })();
   </script>
 {% endblock %}
