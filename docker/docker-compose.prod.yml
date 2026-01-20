@@ -62,6 +62,26 @@ services:
     networks:
       - portfolio_network_cargo
 
+  celery_worker_cargo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: celery_worker_cargo
+    command: celery -A core worker -l info
+    volumes:
+      - ../app:/app
+    env_file:
+      - ../.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    depends_on:
+      db_cargo:
+        condition: service_healthy
+      redis_cargo:
+        condition: service_started
+    networks:
+      - portfolio_network_cargo
+
   scheduler_cargo:
     build:
       context: ..
