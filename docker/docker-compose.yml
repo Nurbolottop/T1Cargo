@@ -12,11 +12,32 @@ services:
       - postgres_data_cargo:/var/lib/postgresql/data
     networks:
       - portfolio_network
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  celery_worker_cargo:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: celery_worker_cargo
+    command: celery -A core worker -l info
+    volumes:
+      - ../app:/app
+    env_file:
+      - ../.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+    depends_on:
+      db_cargo:
+        condition: service_healthy
+      redis_cargo:
+        condition: service_started
+    networks:
+      - portfolio_network
 
   redis_cargo:
     image: redis:6
@@ -55,14 +76,17 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: telegram_bot_cargo
-    command: python manage.py bot
+    command: sh -c "/entrypoint.sh && python manage.py bot"
     volumes:
       - ../app:/app       # исправлено
     env_file:
       - ../.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
+      - RUN_MAKEMIGRATIONS=1
     depends_on:
       - db_cargo
-      - web_cargo
+      - redis_cargo
     networks:
       - portfolio_network
 

@@ -231,6 +231,9 @@
         <a class="nav-link" href="{% url 'manager_shipments_unknown' %}">↳ Неизвестный клиент</a>
         <a class="nav-link" href="{% url 'manager_shipments_client_not_found' %}">↳ Клиент не найден</a>
         <a class="nav-link {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments' %}">Посылки</a>
+        {% if is_manager or is_director %}
+          <a class="nav-link {% if nav == 'sorting' %}active{% endif %}" href="{% url 'manager_sorting' %}">Сортировка</a>
+        {% endif %}
         <a class="nav-link {% if nav == 'groups' %}active{% endif %}" href="{% url 'manager_groups' %}">Группы отправок</a>
         {% if is_manager or is_director %}
           <a class="nav-link primary" href="{% url 'manager_shipments_add' %}">+ Добавить посылку</a>

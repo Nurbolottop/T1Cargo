@@ -51,14 +51,16 @@ services:
       context: ..
       dockerfile: docker/Dockerfile
     container_name: telegram_bot_cargo
-    command: python manage.py bot
+    command: sh -c "/entrypoint.sh && python manage.py bot"
     volumes:
       - ../app:/app
     env_file:
       - ../.env
+    environment:
+      - DJANGO_SETTINGS_MODULE=core.settings
     depends_on:
       - db_cargo
-      - web_cargo
+      - redis_cargo
     networks:
       - portfolio_network_cargo
 

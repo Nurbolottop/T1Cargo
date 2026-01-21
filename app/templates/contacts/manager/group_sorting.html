@@ -12,6 +12,7 @@
     <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="trackSearchForm">
       <input name="q" value="{{ q|default:'' }}" placeholder="Трек" autofocus id="trackInput" />
       <button class="btn accent" type="submit">Найти</button>
+      <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
       <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
     </form>
 
@@ -45,22 +46,33 @@
         <div class="form-row">
           <div class="col-12">
             <label>Способ расчёта</label>
-            <select name="pricing_mode" id="pricingMode" {% if weight_locked %}disabled{% endif %}>
-              <option value="kg" {% if shipment.pricing_mode == 'kg' or not shipment.pricing_mode %}selected{% endif %}>По кг</option>
-              <option value="gabarit" {% if shipment.pricing_mode == 'gabarit' %}selected{% endif %}>По габариту</option>
-            </select>
+            <input type="hidden" name="pricing_mode" id="pricingMode" value="{{ pricing_mode_selected|default:'' }}" />
+            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;" id="pricingModeButtons">
+              <button
+                class="btn {% if pricing_mode_selected == 'kg' %}accent{% endif %}"
+                type="button"
+                data-mode="kg"
+                {% if weight_locked %}disabled{% endif %}
+              >По кг</button>
+              <button
+                class="btn {% if pricing_mode_selected == 'gabarit' %}accent{% endif %}"
+                type="button"
+                data-mode="gabarit"
+                {% if weight_locked %}disabled{% endif %}
+              >По габариту</button>
+            </div>
           </div>
-          <div class="col-6">
+          <div class="col-6" id="weightWrap" style="display:none;">
             <label>Вес (кг)</label>
-            <input name="weight_kg" value="{{ shipment.weight_kg }}" {% if weight_locked %}disabled{% endif %} id="weightInput" />
+            <input name="weight_kg" value="{% if shipment.weight_kg %}{{ shipment.weight_kg }}{% endif %}" {% if weight_locked %}disabled{% endif %} {% if weight_locked %}data-locked="1"{% endif %} id="weightInput" />
           </div>
-          <div class="col-6">
+          <div class="col-6" id="defaultPriceWrap" style="display:none;">
             <label>Цена за кг (по умолчанию)</label>
             <input value="{{ default_price_per_kg|default:'—' }}" disabled />
           </div>
           <div class="col-6" id="totalPriceWrap" style="display:none;">
             <label>Стоимость (итого)</label>
-            <input name="total_price" value="{{ shipment.total_price }}" {% if weight_locked %}disabled{% endif %} />
+            <input name="total_price" value="{% if shipment.total_price %}{{ shipment.total_price }}{% endif %}" {% if weight_locked %}disabled{% endif %} />
           </div>
         </div>
 
@@ -103,21 +115,74 @@
       });
 
       const modeEl = document.getElementById('pricingMode');
+      const modeButtonsWrap = document.getElementById('pricingModeButtons');
       const weightEl = document.getElementById('weightInput');
+      const weightWrap = document.getElementById('weightWrap');
+      const defaultPriceWrap = document.getElementById('defaultPriceWrap');
       const totalWrap = document.getElementById('totalPriceWrap');
+      const weightLocked = !!(weightEl && weightEl.getAttribute && weightEl.getAttribute('data-locked') === '1');
+
+      function setModeButtonsActive(mode) {
+        if (!modeButtonsWrap) return;
+        const btns = modeButtonsWrap.querySelectorAll('button[data-mode]');
+        btns.forEach((b) => {
+          try {
+            const m = b.getAttribute('data-mode') || '';
+            if (m === mode) {
+              b.classList.add('accent');
+            } else {
+              b.classList.remove('accent');
+            }
+          } catch (e) {
+            return;
+          }
+        });
+      }
 
       function syncMode() {
-        const mode = (modeEl && modeEl.value) ? modeEl.value : 'kg';
-        if (totalWrap) totalWrap.style.display = (mode === 'gabarit') ? '' : 'none';
-        if (weightEl) {
-          if (mode === 'gabarit') {
-            weightEl.placeholder = 'Необязательно';
-          } else {
+        const mode = (modeEl && typeof modeEl.value === 'string') ? modeEl.value : '';
+        setModeButtonsActive(mode);
+
+        if (mode === 'kg') {
+          if (weightWrap) weightWrap.style.display = '';
+          if (defaultPriceWrap) defaultPriceWrap.style.display = '';
+          if (totalWrap) totalWrap.style.display = 'none';
+          if (weightEl) {
             weightEl.placeholder = '';
+            if (!weightLocked) weightEl.disabled = false;
           }
+          return;
         }
+
+        if (mode === 'gabarit') {
+          if (weightWrap) weightWrap.style.display = '';
+          if (defaultPriceWrap) defaultPriceWrap.style.display = 'none';
+          if (totalWrap) totalWrap.style.display = '';
+          if (weightEl) {
+            weightEl.placeholder = 'Необязательно';
+            if (!weightLocked) weightEl.disabled = true;
+          }
+          return;
+        }
+
+        if (weightWrap) weightWrap.style.display = 'none';
+        if (defaultPriceWrap) defaultPriceWrap.style.display = 'none';
+        if (totalWrap) totalWrap.style.display = 'none';
       }
-      if (modeEl) modeEl.addEventListener('change', syncMode);
+      if (modeButtonsWrap && modeEl) {
+        modeButtonsWrap.addEventListener('click', function (e) {
+          const target = e && e.target;
+          if (!target || !target.getAttribute) return;
+          const mode = target.getAttribute('data-mode');
+          if (!mode) return;
+          try {
+            modeEl.value = mode;
+          } catch (err) {
+            return;
+          }
+          syncMode();
+        });
+      }
       syncMode();
     })();
   </script>

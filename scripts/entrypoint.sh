@@ -16,7 +16,11 @@ do
 done
 
 echo "База данных доступна. Создаём миграции..."
-python manage.py makemigrations --noinput
+if [ "${RUN_MAKEMIGRATIONS:-}" = "1" ] || [ "${RUN_MAKEMIGRATIONS:-}" = "true" ] || [ "${RUN_MAKEMIGRATIONS:-}" = "True" ]; then
+  python manage.py makemigrations --noinput
+else
+  echo "Пропускаем makemigrations (RUN_MAKEMIGRATIONS не установлен)"
+fi
 
 echo "Применяем миграции..."
 python manage.py migrate --noinput

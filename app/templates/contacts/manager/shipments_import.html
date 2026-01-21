@@ -38,6 +38,80 @@
       <div class="error" style="margin-top:12px;">{{ report.error }}</div>
     {% endif %}
 
+  {% if report and report.notify_task_id %}
+    <div class="card" style="margin-top:12px;">
+      <h3 class="h">Рассылка уведомлений</h3>
+      <div class="muted">Не закрывайте это окно — идёт отправка уведомлений клиентам.</div>
+
+      <div style="margin-top:12px;">
+        <div class="muted" style="margin-bottom:6px;">
+          Прогресс: <b id="notifyProgressPercent">0%</b>
+          <span class="muted">(</span><span class="muted" id="notifyProgressCurrent">0</span><span class="muted"> / </span><span class="muted" id="notifyProgressTotal">{{ report.notify_total|default:0 }}</span><span class="muted">)</span>
+        </div>
+        <div style="height:10px; background: rgba(255,255,255,.08); border-radius:999px; overflow:hidden;">
+          <div id="notifyProgressBar" style="height:10px; width:0%; background: rgba(34,197,94,.85);"></div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">
+          Отправлено: <b id="notifyProgressSent">0</b>
+          &nbsp;|&nbsp;
+          Ошибки: <b id="notifyProgressFailed">0</b>
+        </div>
+
+        {% if report.group_id %}
+          <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="btn" href="{% url 'manager_group_detail' group_id=report.group_id %}">Открыть группу</a>
+            <a class="btn" href="{% url 'manager_shipments_import' %}{% if selected_filial %}?filial={{ selected_filial.id }}{% endif %}">Новый импорт</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <script>
+      (function(){
+        const taskId = "{{ report.notify_task_id }}";
+        if (!taskId) return;
+
+        const bar = document.getElementById('notifyProgressBar');
+        const pct = document.getElementById('notifyProgressPercent');
+        const cur = document.getElementById('notifyProgressCurrent');
+        const tot = document.getElementById('notifyProgressTotal');
+        const sent = document.getElementById('notifyProgressSent');
+        const failed = document.getElementById('notifyProgressFailed');
+
+        function setProgress(p, c, t, s, f){
+          const percent = Math.max(0, Math.min(100, parseInt(p || 0)));
+          if (bar) bar.style.width = percent + '%';
+          if (pct) pct.textContent = percent + '%';
+          if (cur) cur.textContent = (c || 0);
+          if (tot && t != null) tot.textContent = t;
+          if (sent) sent.textContent = (s || 0);
+          if (failed) failed.textContent = (f || 0);
+        }
+
+        async function poll(){
+          try{
+            const url = "{% url 'manager_shipments_import_progress' task_id='__TASK__' %}".replace('__TASK__', taskId);
+            const resp = await fetch(url, {headers: {'Accept': 'application/json'}});
+            const data = await resp.json();
+            if (!data || !data.ok) return;
+
+            setProgress(data.percent, data.current, data.total, data.sent, data.failed);
+
+            if (data.state === 'SUCCESS' || data.state === 'FAILURE') return;
+          }catch(e){
+            return;
+          }
+          setTimeout(poll, 1200);
+        }
+
+        const initialTotal = parseInt("{{ report.notify_total|default:'0' }}", 10) || 0;
+        setProgress(0, 0, initialTotal, 0, 0);
+        poll();
+      })();
+    </script>
+  {% endif %}
+
     <form method="post" enctype="multipart/form-data" style="margin-top:12px;">
       {% csrf_token %}
 

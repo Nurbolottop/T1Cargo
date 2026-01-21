@@ -6,6 +6,7 @@ from django.db import transaction
 import json
 import logging
 import re
+import time
 import urllib.parse
 import urllib.error
 import urllib.request
@@ -330,12 +331,22 @@ def _send_telegram_message(
         payload["disable_web_page_preview"] = "true"
     data = urllib.parse.urlencode(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=3) as resp:
-            resp.read()
-    except (urllib.error.URLError, TimeoutError, Exception) as e:
-        logger.exception("Telegram send failed (chat_id=%s): %s", chat_id, e)
-        return False
+    last_err: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp.read()
+            return True
+        except (urllib.error.URLError, TimeoutError, Exception) as e:
+            last_err = e
+            if attempt < 4:
+                try:
+                    time.sleep(0.7 * attempt)
+                except Exception:
+                    pass
+                continue
+            logger.exception("Telegram send failed (chat_id=%s): %s", chat_id, e)
+            return False
     return True
 
 

@@ -9,7 +9,7 @@ import uuid
 from django.db import transaction
 from django.db.models import Count, Q, F, Sum, ExpressionWrapper, DecimalField, Value
 from django.db import models
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
@@ -20,8 +20,10 @@ from django.db.models.functions import Coalesce, TruncDate
 from apps.telegram_bot import models as tg_models
 from apps.base import models as base_models
 from apps.telegram_bot.views import _send_telegram_message
-from apps.telegram_bot.tasks import notify_user_arrival_task
+from apps.telegram_bot.tasks import notify_import_arrivals_task
 from .forms import ClientEditDirectorForm, ClientEditManagerForm, ShipmentCreateForm, ShipmentImportForm
+
+from celery.result import AsyncResult
 
 logger = logging.getLogger(__name__)
 
@@ -543,10 +545,17 @@ def manager_client_detail(request, user_id: int):
                 form = ClientEditDirectorForm(instance=client)
             elif _is_manager(getattr(request, "user", None)):
                 form = ClientEditManagerForm(initial={"client_code": client.client_code, "full_name": client.full_name, "phone": client.phone, "address": client.address})
+
     shipments_qs = tg_models.Shipment.objects.filter(user=client).order_by("-created_at")
     if staff_filial is not None:
         shipments_qs = shipments_qs.filter(filial=staff_filial)
     shipments = shipments_qs[:200]
+
+    shipments_stats = shipments_qs.aggregate(
+        total_cnt=Count("id"),
+        ready_cnt=Count("id", filter=Q(status=tg_models.Shipment.Status.WAREHOUSE)),
+        total_sum=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
+    )
 
     delivery_due = Decimal("0")
     try:
@@ -569,6 +578,7 @@ def manager_client_detail(request, user_id: int):
             "nav": "clients",
             "client": client,
             "shipments": shipments,
+            "shipments_stats": shipments_stats,
             "edit_mode": edit_mode,
             "form": form,
             "delivery_due": delivery_due,
@@ -576,6 +586,46 @@ def manager_client_detail(request, user_id: int):
             **_role_ctx(request),
         },
     )
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_client_shipment_set_issued(request, user_id: int, shipment_id: int):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    client = get_object_or_404(tg_models.User, id=user_id)
+    if staff_filial is not None and client.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    shipment = get_object_or_404(tg_models.Shipment.objects.select_related("user"), id=shipment_id, user=client)
+    if staff_filial is not None and shipment.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    if shipment.status != tg_models.Shipment.Status.WAREHOUSE:
+        return HttpResponseForbidden("not_ready_for_pickup")
+
+    if shipment.status != tg_models.Shipment.Status.ISSUED:
+        shipment.status = tg_models.Shipment.Status.ISSUED
+        shipment.save(update_fields=["status", "updated_at"])
+
+        if shipment.user and getattr(shipment.user, "telegram_id", None):
+            token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+            if token:
+                text = _shipment_notify_text_issued(tracking=shipment.tracking_number)
+                try:
+                    _send_telegram_message(token=token, chat_id=int(shipment.user.telegram_id), text=text)
+                except Exception:
+                    pass
+
+    return redirect("manager_client_detail", user_id=client.id)
 
 
 @login_required(login_url="/manager/login/")
@@ -629,8 +679,6 @@ def manager_group_detail(request, group_id: int):
     if staff_filial is not None and group.filial_id != staff_filial.id:
         return HttpResponseForbidden("Нет доступа")
     shipments_qs = tg_models.Shipment.objects.select_related("user").filter(group=group).order_by("-created_at")
-    if staff_filial is not None:
-        shipments_qs = shipments_qs.filter(filial=staff_filial)
     shipments = shipments_qs
 
     agg_all = shipments_qs.aggregate(
@@ -707,6 +755,15 @@ def manager_group_sorting(request, group_id: int):
         if default_price_per_kg is None and shipment.user and shipment.user.filial:
             default_price_per_kg = shipment.user.filial.default_price_per_kg
 
+    pricing_mode_selected = ""
+    if shipment is not None:
+        try:
+            has_calc_data = bool((shipment.weight_kg and Decimal(str(shipment.weight_kg)) > 0) or (shipment.total_price and Decimal(str(shipment.total_price)) > 0))
+        except Exception:
+            has_calc_data = False
+        if has_calc_data or shipment.status in {tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED}:
+            pricing_mode_selected = str(getattr(shipment, "pricing_mode", "") or "")
+
     if request.method == "POST":
         q_post = (request.POST.get("tracking_number") or request.POST.get("q") or "").strip()
         q = q_post or q
@@ -730,6 +787,7 @@ def manager_group_sorting(request, group_id: int):
                     "error": "Товар не найден в этой группе.",
                     "message": "",
                     "default_price_per_kg": None,
+                    "pricing_mode_selected": "",
                     "weight_locked": False,
                     **_role_ctx(request),
                 },
@@ -758,14 +816,33 @@ def manager_group_sorting(request, group_id: int):
                         "error": "Вес уже установлен. Менеджер может указать вес только один раз.",
                         "message": "",
                         "default_price_per_kg": default_price_per_kg,
+                        "pricing_mode_selected": str(getattr(shipment, "pricing_mode", "") or ""),
                         "weight_locked": True,
                         **_role_ctx(request),
                     },
                 )
 
-        pricing_mode = (request.POST.get("pricing_mode") or "kg").strip()
+        pricing_mode = (request.POST.get("pricing_mode") or "").strip()
         if pricing_mode not in {"kg", "gabarit"}:
-            pricing_mode = "kg"
+            error = "Выберите способ расчёта."
+            return render(
+                request,
+                "contacts/manager/group_sorting.html",
+                {
+                    "nav": "groups",
+                    "group": group,
+                    "q": q,
+                    "shipment": shipment,
+                    "error": error,
+                    "message": "",
+                    "default_price_per_kg": default_price_per_kg,
+                    "pricing_mode_selected": "",
+                    "weight_locked": weight_locked,
+                    **_role_ctx(request),
+                },
+            )
+
+        pricing_mode_selected = pricing_mode
 
         weight = None
         raw_w = (request.POST.get("weight_kg") or "").replace(",", ".").strip()
@@ -899,6 +976,7 @@ def manager_group_sorting(request, group_id: int):
             "error": error,
             "message": message,
             "default_price_per_kg": default_price_per_kg,
+            "pricing_mode_selected": pricing_mode_selected,
             "weight_locked": weight_locked,
             **_role_ctx(request),
         },
@@ -1051,6 +1129,67 @@ def manager_shipments(request):
             "q": q,
             "status": status,
             "status_tabs": status_tabs,
+            **_role_ctx(request),
+        },
+    )
+
+
+@login_required(login_url="/manager/login/")
+def manager_sorting(request):
+    denied = _require_manager(request)
+    if denied is not None:
+        return denied
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    user = getattr(request, "user", None)
+    is_director = _is_director(user) or getattr(user, "is_superuser", False)
+
+    selected_filial = None
+    filial_raw = (request.GET.get("filial") or "").strip()
+    if is_director and filial_raw:
+        try:
+            filial_id = int(filial_raw)
+        except Exception:
+            filial_id = None
+        if filial_id:
+            selected_filial = base_models.Filial.objects.filter(id=filial_id).first()
+
+    effective_filial = selected_filial if is_director else staff_filial
+
+    q = (request.GET.get("q") or "").strip()
+    qs = (
+        tg_models.Shipment.objects.select_related("user")
+        .filter(
+            status=tg_models.Shipment.Status.WAREHOUSE,
+            user__isnull=False,
+            import_status=tg_models.Shipment.ImportStatus.OK,
+        )
+        .order_by("-updated_at")
+    )
+    if effective_filial is not None:
+        qs = qs.filter(filial=effective_filial)
+    if q:
+        qs = qs.filter(
+            Q(tracking_number__icontains=q)
+            | Q(client_code_raw__icontains=q)
+            | Q(user__client_code__icontains=q)
+            | Q(user__full_name__icontains=q)
+            | Q(user__phone__icontains=q)
+        )
+
+    shipments = qs[:300]
+    return render(
+        request,
+        "contacts/manager/sorting.html",
+        {
+            "nav": "sorting",
+            "shipments": shipments,
+            "q": q,
+            "filials": base_models.Filial.objects.filter(is_active=True).order_by("city", "name") if is_director else [],
+            "selected_filial": selected_filial,
             **_role_ctx(request),
         },
     )
@@ -1452,14 +1591,6 @@ def manager_shipments_import(request):
     PREVIEW_SHOW_ALL_MAX = 5000
     BULK_SIZE = 500
 
-    send_notifications_on_import = (os.environ.get("SEND_NOTIFICATIONS_ON_IMPORT") or "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-        "y",
-        "on",
-    }
-
     def _cleanup_tmp(path_value: str | None) -> None:
         p = (path_value or "").strip()
         if not p:
@@ -1495,10 +1626,10 @@ def manager_shipments_import(request):
             else:
                 created = 0
                 skipped = 0
+                notify_total = 0
+                notify_task_id = ""
                 errors: list[dict] = []
                 total_rows_in_file = None
-
-                to_create: list[tg_models.Shipment] = []
 
                 users_qs = tg_models.User.objects.all()
                 if effective_filial is not None:
@@ -1534,28 +1665,6 @@ def manager_shipments_import(request):
                         if u2 is not None:
                             return u2
                     return None
-
-                def _flush(group_obj: tg_models.ShipmentGroup) -> None:
-                    nonlocal to_create, created, skipped
-                    if not to_create:
-                        return
-                    trackings = [s.tracking_number for s in to_create if s.tracking_number]
-                    existing = set()
-                    if trackings:
-                        exists_qs = tg_models.Shipment.objects.filter(tracking_number__in=trackings)
-                        if effective_filial is not None:
-                            exists_qs = exists_qs.filter(filial=effective_filial)
-                        existing = set(exists_qs.values_list("tracking_number", flat=True))
-                    final = []
-                    for s in to_create:
-                        if s.tracking_number and s.tracking_number in existing:
-                            skipped += 1
-                            continue
-                        final.append(s)
-                    if final:
-                        tg_models.Shipment.objects.bulk_create(final, batch_size=BULK_SIZE)
-                        created += len(final)
-                    to_create = []
                 with transaction.atomic():
                     group_obj = tg_models.ShipmentGroup.objects.create(
                         name=_next_group_name(),
@@ -1609,26 +1718,26 @@ def manager_shipments_import(request):
                                     sh.price_per_kg = price_per_kg
                                 except Exception:
                                     pass
-                            to_create.append(sh)
-                            if len(to_create) >= BULK_SIZE:
-                                _flush(group_obj)
+                            sh.save()
+                            created += 1
 
-                            if send_notifications_on_import and user_obj is not None and import_status == tg_models.Shipment.ImportStatus.OK:
-                                try:
-                                    transaction.on_commit(
-                                        lambda uid=int(user_obj.id), tr=tracking, st=sh.status: notify_user_arrival_task.delay(uid, tr, st)
-                                    )
-                                except Exception as e:
-                                    logger.exception(
-                                        "Notify user arrival failed during Excel import (user_id=%s, tracking=%s): %s",
-                                        getattr(user_obj, "id", None),
-                                        tracking,
-                                        e,
-                                    )
-
-                        _flush(group_obj)
+                            if user_obj is not None and import_status == tg_models.Shipment.ImportStatus.OK:
+                                notify_total += 1
                     finally:
                         pass
+
+                    try:
+                        def _enqueue_notify() -> None:
+                            nonlocal notify_task_id
+                            try:
+                                async_res = notify_import_arrivals_task.delay(int(group_obj.id))
+                                notify_task_id = str(getattr(async_res, "id", "") or "")
+                            except Exception:
+                                notify_task_id = ""
+
+                        transaction.on_commit(_enqueue_notify)
+                    except Exception:
+                        notify_task_id = ""
 
                 _cleanup_tmp(tmp_path)
                 request.session.pop(preview_key, None)
@@ -1637,7 +1746,17 @@ def manager_shipments_import(request):
                     messages.success(request, f"Импорт завершён: добавлено {created}, пропущено {skipped}, всего строк в файле {int(total_n)}")
                 else:
                     messages.success(request, f"Импорт завершён: добавлено {created}, пропущено {skipped}")
-                return redirect("manager_group_detail", group_id=group_obj.id)
+
+                report = {
+                    "created": created,
+                    "skipped": skipped,
+                    "errors": errors,
+                    "group_name": getattr(group_obj, "name", "") or "—",
+                    "group_id": int(group_obj.id),
+                    "notify_task_id": notify_task_id,
+                    "notify_total": int(notify_total),
+                }
+                form = ShipmentImportForm(initial={"group_status": tg_models.ShipmentGroup.Status.ON_THE_WAY})
         else:
             form = ShipmentImportForm(request.POST, request.FILES)
             if form.is_valid():
@@ -1774,6 +1893,61 @@ def manager_shipments_import(request):
 
 
 @login_required(login_url="/manager/login/")
+def manager_shipments_import_progress(request, task_id: str):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+
+    task_id_value = (task_id or "").strip()
+    if not task_id_value:
+        return JsonResponse({"ok": False, "error": "task_id_required"}, status=400)
+
+    try:
+        res = AsyncResult(task_id_value)
+    except Exception:
+        return JsonResponse({"ok": False, "error": "bad_task_id"}, status=400)
+
+    state = str(getattr(res, "state", "PENDING") or "PENDING")
+    info = getattr(res, "info", None)
+    meta = info if isinstance(info, dict) else {}
+
+    total = meta.get("total") or 0
+    current = meta.get("current") or 0
+    sent = meta.get("sent") or 0
+    failed = meta.get("failed") or 0
+
+    try:
+        total_i = int(total)
+    except Exception:
+        total_i = 0
+    try:
+        current_i = int(current)
+    except Exception:
+        current_i = 0
+
+    percent = 0
+    if total_i > 0:
+        try:
+            percent = int(round((current_i / total_i) * 100))
+        except Exception:
+            percent = 0
+    if state in {"SUCCESS", "FAILURE"}:
+        percent = 100
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "state": state,
+            "percent": percent,
+            "current": current_i,
+            "total": total_i,
+            "sent": int(sent or 0),
+            "failed": int(failed or 0),
+        }
+    )
+
+
+@login_required(login_url="/manager/login/")
 def manager_shipment_new(request):
     denied = _require_editor_role(request)
     if denied is not None:
@@ -1786,20 +1960,39 @@ def manager_shipment_new(request):
     selected_filial = None
     user = getattr(request, "user", None)
     is_director = _is_director(user) or getattr(user, "is_superuser", False)
+
+    group_obj = None
+    group_id_raw = (request.GET.get("group_id") or "").strip()
+    if group_id_raw:
+        try:
+            group_id = int(group_id_raw)
+        except Exception:
+            group_id = None
+        if group_id:
+            group_obj = tg_models.ShipmentGroup.objects.filter(id=group_id).first()
+
+    if group_obj is not None:
+        if staff_filial is not None and group_obj.filial_id != staff_filial.id:
+            return HttpResponseForbidden("Нет доступа")
+        selected_filial = getattr(group_obj, "filial", None)
+
     filial_raw = (request.GET.get("filial") or "").strip()
     if is_director:
-        if not filial_raw:
+        if group_obj is None and not filial_raw:
             return redirect("manager_shipments_add")
         try:
             filial_id = int(filial_raw)
         except Exception:
             filial_id = None
-        if filial_id:
-            selected_filial = base_models.Filial.objects.filter(id=filial_id).first()
-        if selected_filial is None:
-            return redirect("manager_shipments_add")
+        if group_obj is None:
+            if filial_id:
+                selected_filial = base_models.Filial.objects.filter(id=filial_id).first()
+            if selected_filial is None:
+                return redirect("manager_shipments_add")
 
     effective_filial = selected_filial if is_director else staff_filial
+
+    tracking_prefill = (request.GET.get("tracking") or request.GET.get("q") or "").strip()
 
     if request.method == "POST":
         form = ShipmentCreateForm(request.POST, staff_filial=effective_filial)
@@ -1807,7 +2000,12 @@ def manager_shipment_new(request):
             shipment = form.save(staff_filial=effective_filial)
             return redirect("manager_shipment_detail", shipment_id=shipment.id)
     else:
-        form = ShipmentCreateForm(staff_filial=effective_filial)
+        initial = {}
+        if group_obj is not None:
+            initial["group"] = group_obj
+        if tracking_prefill:
+            initial["tracking_number"] = tracking_prefill
+        form = ShipmentCreateForm(staff_filial=effective_filial, initial=initial)
 
     return render(
         request,
@@ -1842,12 +2040,54 @@ def manager_shipment_detail(request, shipment_id: int):
 
         if status and status in dict(tg_models.Shipment.Status.choices):
             shipment.status = status
+
         if weight_kg:
-            shipment.weight_kg = weight_kg
+            try:
+                shipment.weight_kg = Decimal(weight_kg.replace(",", "."))
+            except InvalidOperation:
+                messages.error(request, "Вес должен быть десятичным числом (например 2.5)")
+                return render(
+                    request,
+                    "contacts/manager/shipment_detail.html",
+                    {
+                        "nav": "shipments",
+                        "shipment": shipment,
+                        "statuses": tg_models.Shipment.Status.choices,
+                        **_role_ctx(request),
+                    },
+                )
+
         if price_per_kg:
-            shipment.price_per_kg = price_per_kg
+            try:
+                shipment.price_per_kg = Decimal(price_per_kg.replace(",", "."))
+            except InvalidOperation:
+                messages.error(request, "Цена за кг должна быть десятичным числом (например 220.00)")
+                return render(
+                    request,
+                    "contacts/manager/shipment_detail.html",
+                    {
+                        "nav": "shipments",
+                        "shipment": shipment,
+                        "statuses": tg_models.Shipment.Status.choices,
+                        **_role_ctx(request),
+                    },
+                )
+
         if total_price:
-            shipment.total_price = total_price
+            try:
+                shipment.total_price = Decimal(total_price.replace(",", "."))
+            except InvalidOperation:
+                messages.error(request, "Итоговая стоимость должна быть десятичным числом (например 4400.00)")
+                return render(
+                    request,
+                    "contacts/manager/shipment_detail.html",
+                    {
+                        "nav": "shipments",
+                        "shipment": shipment,
+                        "statuses": tg_models.Shipment.Status.choices,
+                        **_role_ctx(request),
+                    },
+                )
         if arrival_date:
             try:
                 shipment.arrival_date = timezone.datetime.fromisoformat(arrival_date).date()

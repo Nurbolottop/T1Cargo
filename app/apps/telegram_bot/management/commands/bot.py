@@ -1,8 +1,10 @@
+import os
+
 from django.core.management.base import BaseCommand
 from django.db.utils import OperationalError, ProgrammingError
 from django.utils.autoreload import run_with_reloader
 from apps.base.models import Settings
-from apps.telegram_bot.bot_main import start_bot
+from apps.telegram_bot.bot_main_aiogram import start_bot
 
 
 class Command(BaseCommand):
@@ -32,4 +34,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Bot started..."))
             start_bot(token)
 
-        run_with_reloader(_run)
+        use_reloader = (os.environ.get("BOT_AUTORELOAD") or "").strip().lower() in {"1", "true", "yes", "y", "on"}
+        if use_reloader:
+            run_with_reloader(_run)
+        else:
+            _run()

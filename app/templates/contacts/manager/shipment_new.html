@@ -21,6 +21,11 @@
           {% if form.client_code.errors %}<div class="error" style="margin-top:8px;">{{ form.client_code.errors }}</div>{% endif %}
         </div>
         <div class="col-6">
+          <label>{{ form.group.label }}</label>
+          {{ form.group }}
+          {% if form.group.errors %}<div class="error" style="margin-top:8px;">{{ form.group.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6">
           <label>{{ form.tracking_number.label }}</label>
           {{ form.tracking_number }}
           {% if form.tracking_number.errors %}<div class="error" style="margin-top:8px;">{{ form.tracking_number.errors }}</div>{% endif %}

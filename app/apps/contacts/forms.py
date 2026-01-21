@@ -9,11 +9,16 @@ class ShipmentCreateForm(forms.ModelForm):
     def __init__(self, *args, staff_filial=None, **kwargs):
         super().__init__(*args, **kwargs)
         self._staff_filial = staff_filial
+        groups_qs = tg_models.ShipmentGroup.objects.all().order_by("-created_at")
+        if self._staff_filial is not None:
+            groups_qs = groups_qs.filter(filial=self._staff_filial)
+        self.fields["group"].queryset = groups_qs
 
     class Meta:
         model = tg_models.Shipment
         fields = [
             "client_code",
+            "group",
             "tracking_number",
             "status",
             "weight_kg",
@@ -21,6 +26,14 @@ class ShipmentCreateForm(forms.ModelForm):
             "total_price",
             "arrival_date",
         ]
+
+    def clean_group(self):
+        group = self.cleaned_data.get("group")
+        if group is None:
+            return None
+        if self._staff_filial is not None and group.filial_id != self._staff_filial.id:
+            raise forms.ValidationError("Группа должна быть из выбранного филиала")
+        return group
 
     def clean_client_code(self):
         value = (self.cleaned_data.get("client_code") or "").strip()
@@ -39,6 +52,7 @@ class ShipmentCreateForm(forms.ModelForm):
         instance = super().save(commit=False)
         instance.user = getattr(self, "_user_obj", None)
         instance.filial = staff_filial if staff_filial is not None else getattr(instance.user, "filial", None)
+        instance.group = self.cleaned_data.get("group")
         if commit:
             instance.save()
         return instance

@@ -161,6 +161,11 @@
         <a class="btn accent" href="{% url 'manager_shipment_new' %}">+ Добавить посылку</a>
       {% endif %}
       <a class="btn" href="{% url 'manager_clients' %}">Назад к списку</a>
+      <div class="badge" style="margin-left:auto;">
+        <span>Всего:</span><b>{{ shipments_stats.total_cnt|default:'0' }}</b>
+        <span>• Готово:</span><b>{{ shipments_stats.ready_cnt|default:'0' }}</b>
+        <span>• Сумма:</span><b>{{ shipments_stats.total_sum|default:'0' }}</b>
+      </div>
     </div>
     <table>
       <thead>
@@ -179,7 +184,19 @@
             <td>{{ sh.get_status_display }}</td>
             <td class="muted">{{ sh.weight_kg }}</td>
             <td class="muted">{{ sh.total_price }}</td>
-            <td><a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a></td>
+            <td>
+              <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+                {% if sh.status == 'warehouse' %}
+                  {% if is_manager or is_director %}
+                    <form method="post" action="{% url 'manager_client_shipment_set_issued' user_id=client.id shipment_id=sh.id %}" style="margin:0;" onsubmit="return confirm('Отметить как выдано?');">
+                      {% csrf_token %}
+                      <button class="btn" type="submit">Выдано</button>
+                    </form>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </td>
           </tr>
         {% empty %}
           <tr><td colspan="5" class="muted">У клиента пока нет посылок.</td></tr>
