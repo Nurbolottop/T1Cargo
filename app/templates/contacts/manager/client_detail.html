@@ -162,9 +162,9 @@
       {% endif %}
       <a class="btn" href="{% url 'manager_clients' %}">Назад к списку</a>
       <div class="badge" style="margin-left:auto;">
-        <span>Всего:</span><b>{{ shipments_stats.total_cnt|default:'0' }}</b>
-        <span>• Готово:</span><b>{{ shipments_stats.ready_cnt|default:'0' }}</b>
-        <span>• Сумма:</span><b>{{ shipments_stats.total_sum|default:'0' }}</b>
+        <span>Всего:</span><b id="clientStatsTotal">{{ shipments_stats.total_cnt|default:'0' }}</b>
+        <span>• Готово:</span><b id="clientStatsReady">{{ shipments_stats.ready_cnt|default:'0' }}</b>
+        <span>• Сумма:</span><b id="clientStatsSum">{{ shipments_stats.total_sum|default:'0' }}</b>
       </div>
     </div>
     <table>
@@ -181,7 +181,7 @@
         {% for sh in shipments %}
           <tr>
             <td>{{ sh.tracking_number }}</td>
-            <td>{{ sh.get_status_display }}</td>
+            <td data-shipment-status="{{ sh.id }}">{{ sh.get_status_display }}</td>
             <td class="muted">{{ sh.weight_kg }}</td>
             <td class="muted">{{ sh.total_price }}</td>
             <td>
@@ -189,9 +189,9 @@
                 <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
                 {% if sh.status == 'warehouse' %}
                   {% if is_manager or is_director %}
-                    <form method="post" action="{% url 'manager_client_shipment_set_issued' user_id=client.id shipment_id=sh.id %}" style="margin:0;" onsubmit="return confirm('Отметить как выдано?');">
+                    <form method="post" action="{% url 'manager_client_shipment_set_issued' user_id=client.id shipment_id=sh.id %}" style="margin:0;" data-issued-form="1" data-shipment-id="{{ sh.id }}">
                       {% csrf_token %}
-                      <button class="btn" type="submit">Выдано</button>
+                      <button class="btn" type="submit" style="background: rgba(245,158,11,.95); border-color: rgba(245,158,11,.95); color: rgba(17,24,39,1); font-weight:850;">Выдано</button>
                     </form>
                   {% endif %}
                 {% endif %}
@@ -204,4 +204,105 @@
       </tbody>
     </table>
   </div>
+
+  <div id="issuedModal" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:100%; max-width:420px; background: rgba(17,24,39,.98); border: 1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px;">
+      <div style="font-weight:850; font-size:18px;">Подтверждение</div>
+      <div class="muted" style="margin-top:6px;">Отметить посылку как выдано?</div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+        <button class="btn" type="button" id="issuedCancel">Отмена</button>
+        <button class="btn accent" type="button" id="issuedOk">Да, выдано</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const modal = document.getElementById('issuedModal');
+      const okBtn = document.getElementById('issuedOk');
+      const cancelBtn = document.getElementById('issuedCancel');
+      let pendingForm = null;
+
+      function openModal(form){
+        pendingForm = form;
+        if (!modal) return;
+        modal.style.display = 'flex';
+      }
+      function closeModal(){
+        pendingForm = null;
+        if (!modal) return;
+        modal.style.display = 'none';
+      }
+
+      function setStats(stats){
+        if (!stats) return;
+        const elTotal = document.getElementById('clientStatsTotal');
+        const elReady = document.getElementById('clientStatsReady');
+        const elSum = document.getElementById('clientStatsSum');
+        if (elTotal) elTotal.textContent = (stats.total_cnt ?? elTotal.textContent);
+        if (elReady) elReady.textContent = (stats.ready_cnt ?? elReady.textContent);
+        if (elSum) elSum.textContent = (stats.total_sum ?? elSum.textContent);
+      }
+
+      function setRowStatus(shipmentId, label){
+        const cell = document.querySelector('[data-shipment-status="' + shipmentId + '"]');
+        if (cell) cell.textContent = label || cell.textContent;
+      }
+
+      function markDone(form){
+        if (!form) return;
+        const btn = form.querySelector('button[type="submit"]');
+        if (btn) {
+          btn.disabled = true;
+          btn.style.opacity = '0.55';
+          btn.textContent = 'Выдано';
+        }
+      }
+
+      document.addEventListener('submit', function(e){
+        const form = e.target;
+        if (!form || !form.getAttribute) return;
+        if (form.getAttribute('data-issued-form') !== '1') return;
+        e.preventDefault();
+        openModal(form);
+      });
+
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+      if (modal) modal.addEventListener('click', function(e){
+        if (e.target === modal) closeModal();
+      });
+
+      if (okBtn) okBtn.addEventListener('click', async function(){
+        const form = pendingForm;
+        if (!form) return;
+        const action = form.getAttribute('action');
+        const shipmentId = form.getAttribute('data-shipment-id') || '';
+        const csrf = (form.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value || '';
+        try {
+          okBtn.disabled = true;
+          const resp = await fetch(action, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrf,
+              'Accept': 'application/json'
+            },
+            body: new URLSearchParams({}),
+            credentials: 'same-origin'
+          });
+          const data = await resp.json();
+          if (data && data.ok) {
+            setRowStatus(shipmentId, data.status_label);
+            markDone(form);
+            setStats((data.stats || null));
+          }
+        } catch (err) {
+          return;
+        } finally {
+          okBtn.disabled = false;
+          closeModal();
+        }
+      });
+    })();
+  </script>
 {% endblock %}

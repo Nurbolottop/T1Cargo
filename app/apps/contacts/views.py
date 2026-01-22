@@ -7,7 +7,7 @@ import os
 import tempfile
 import uuid
 from django.db import transaction
-from django.db.models import Count, Q, F, Sum, ExpressionWrapper, DecimalField, Value
+from django.db.models import Count, Q, F, Sum, ExpressionWrapper, DecimalField, Value, Case, When, IntegerField
 from django.db import models
 from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -476,6 +476,42 @@ def manager_clients(request):
             | Q(telegram_id__icontains=q)
         )
 
+        q_norm = (q or "").strip()
+        suffix_digits = ""
+        try:
+            if q_norm.isdigit():
+                suffix_digits = q_norm
+            else:
+                tail = (q_norm.split("-")[-1] if "-" in q_norm else "")
+                if tail.isdigit():
+                    suffix_digits = tail
+        except Exception:
+            suffix_digits = ""
+
+        suffix = f"-{suffix_digits}" if suffix_digits else ""
+
+        rank_whens = [
+            When(client_code__iexact=q_norm, then=Value(0)),
+        ]
+        if suffix:
+            rank_whens.append(When(client_code__iendswith=suffix, then=Value(1)))
+        rank_whens.extend(
+            [
+                When(client_code__icontains=q_norm, then=Value(2)),
+                When(full_name__icontains=q_norm, then=Value(3)),
+                When(phone__icontains=q_norm, then=Value(4)),
+                When(telegram_id__icontains=q_norm, then=Value(5)),
+            ]
+        )
+
+        qs = qs.annotate(
+            _rank=Case(
+                *rank_whens,
+                default=Value(100),
+                output_field=IntegerField(),
+            )
+        ).order_by("_rank", "-created_at")
+
     clients = qs[:200]
     return render(
         request,
@@ -624,6 +660,35 @@ def manager_client_shipment_set_issued(request, user_id: int, shipment_id: int):
                     _send_telegram_message(token=token, chat_id=int(shipment.user.telegram_id), text=text)
                 except Exception:
                     pass
+
+    wants_json = False
+    try:
+        wants_json = (request.headers.get("x-requested-with") == "XMLHttpRequest") or ("application/json" in (request.headers.get("accept") or ""))
+    except Exception:
+        wants_json = False
+
+    if wants_json:
+        shipments_qs = tg_models.Shipment.objects.filter(user=client)
+        if staff_filial is not None:
+            shipments_qs = shipments_qs.filter(filial=staff_filial)
+        stats = shipments_qs.aggregate(
+            total_cnt=Count("id"),
+            ready_cnt=Count("id", filter=Q(status=tg_models.Shipment.Status.WAREHOUSE)),
+            total_sum=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
+        )
+        return JsonResponse(
+            {
+                "ok": True,
+                "shipment_id": int(shipment.id),
+                "status": str(shipment.status),
+                "status_label": str(shipment.get_status_display() or ""),
+                "stats": {
+                    "total_cnt": int(stats.get("total_cnt") or 0),
+                    "ready_cnt": int(stats.get("ready_cnt") or 0),
+                    "total_sum": str(stats.get("total_sum") or "0"),
+                },
+            }
+        )
 
     return redirect("manager_client_detail", user_id=client.id)
 
@@ -1163,7 +1228,7 @@ def manager_sorting(request):
     qs = (
         tg_models.Shipment.objects.select_related("user")
         .filter(
-            status=tg_models.Shipment.Status.WAREHOUSE,
+            status=tg_models.Shipment.Status.BISHKEK,
             user__isnull=False,
             import_status=tg_models.Shipment.ImportStatus.OK,
         )
