@@ -30,5 +30,7 @@ urlpatterns = [
     path("manager/shipments/import-progress/<str:task_id>/", views.manager_shipments_import_progress, name="manager_shipments_import_progress"),
     path("manager/shipments/new/", views.manager_shipment_new, name="manager_shipment_new"),
     path("manager/shipments/<int:shipment_id>/", views.manager_shipment_detail, name="manager_shipment_detail"),
+    path("manager/shipments/<int:shipment_id>/bishkek/", views.manager_shipment_set_bishkek, name="manager_shipment_set_bishkek"),
+    path("manager/shipments/<int:shipment_id>/issued/", views.manager_shipment_set_issued, name="manager_shipment_set_issued"),
     path("manager/shipments/<int:shipment_id>/delete/", views.manager_shipment_delete, name="manager_shipment_delete"),
 ]

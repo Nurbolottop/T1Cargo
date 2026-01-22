@@ -39,7 +39,7 @@
       </thead>
       <tbody>
         {% for sh in shipments %}
-          <tr>
+          <tr data-shipment-row="{{ sh.id }}" data-group-id="{{ sh.group_id|default:'' }}" data-tracking="{{ sh.tracking_number }}">
             <td><b>{{ sh.tracking_number }}</b></td>
             <td>
               {% if sh.user %}
@@ -50,11 +50,35 @@
                 <div class="muted">{{ sh.get_import_status_display }}</div>
               {% endif %}
             </td>
-            <td>{{ sh.get_status_display }}</td>
+            <td data-shipment-status="{{ sh.id }}">{{ sh.get_status_display }}</td>
             <td class="muted">{{ sh.weight_kg }}</td>
             <td class="muted">{{ sh.total_price }}</td>
             <td class="row-actions">
-              <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+              <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+                <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+
+                {% if sh.status == 'on_the_way' %}
+                  <form method="post" action="{% url 'manager_shipment_set_bishkek' shipment_id=sh.id %}" style="margin:0;" data-action-form="1" data-action-type="bishkek" data-shipment-id="{{ sh.id }}">
+                    {% csrf_token %}
+                    <button class="btn" type="submit">В Бишкеке</button>
+                  </form>
+                {% endif %}
+
+                {% if sh.status == 'bishkek' %}
+                  {% if sh.group_id %}
+                    <a class="btn accent" href="{% url 'manager_group_sorting' group_id=sh.group_id %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
+                  {% else %}
+                    <a class="btn accent" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Сортировать</a>
+                  {% endif %}
+                {% endif %}
+
+                {% if sh.status == 'warehouse' %}
+                  <form method="post" action="{% url 'manager_shipment_set_issued' shipment_id=sh.id %}" style="margin:0;" data-action-form="1" data-action-type="issued" data-shipment-id="{{ sh.id }}">
+                    {% csrf_token %}
+                    <button class="btn" type="submit" style="background: rgba(245,158,11,.95); border-color: rgba(245,158,11,.95); color: rgba(17,24,39,1); font-weight:850;">Выдано</button>
+                  </form>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% empty %}
@@ -63,4 +87,118 @@
       </tbody>
     </table>
   </div>
+
+  <div id="shipActionModal" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="width:100%; max-width:420px; background: rgba(17,24,39,.98); border: 1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px;">
+      <div style="font-weight:850; font-size:18px;">Подтверждение</div>
+      <div class="muted" style="margin-top:6px;" id="shipActionModalText">Подтвердите действие</div>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+        <button class="btn" type="button" id="shipActionCancel">Отмена</button>
+        <button class="btn accent" type="button" id="shipActionOk">Продолжить</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const modal = document.getElementById('shipActionModal');
+      const okBtn = document.getElementById('shipActionOk');
+      const cancelBtn = document.getElementById('shipActionCancel');
+      const textEl = document.getElementById('shipActionModalText');
+      let pendingForm = null;
+
+      function openModal(form){
+        pendingForm = form;
+        if (textEl) {
+          const t = (form && form.getAttribute) ? (form.getAttribute('data-action-type') || '') : '';
+          if (t === 'issued') textEl.textContent = 'Отметить посылку как выдано?';
+          else if (t === 'bishkek') textEl.textContent = 'Отметить посылку как "В Бишкеке"?';
+          else textEl.textContent = 'Подтвердите действие';
+        }
+        if (modal) modal.style.display = 'flex';
+      }
+      function closeModal(){
+        pendingForm = null;
+        if (modal) modal.style.display = 'none';
+      }
+
+      function setRowStatus(shipmentId, label){
+        const cell = document.querySelector('[data-shipment-status="' + shipmentId + '"]');
+        if (cell) cell.textContent = label || cell.textContent;
+      }
+
+      function hideForm(form){
+        if (!form) return;
+        form.style.display = 'none';
+      }
+
+      function insertSortLink(shipmentId){
+        const row = document.querySelector('[data-shipment-row="' + shipmentId + '"]');
+        if (!row) return;
+        const actions = row.querySelector('.row-actions > div');
+        if (!actions) return;
+
+        const tracking = row.getAttribute('data-tracking') || '';
+        const groupId = row.getAttribute('data-group-id') || '';
+
+        const a = document.createElement('a');
+        a.className = 'btn accent';
+        a.textContent = 'Сортировать';
+        if (groupId) {
+          a.href = '/manager/groups/' + encodeURIComponent(groupId) + '/sorting/?q=' + encodeURIComponent(tracking);
+        } else {
+          a.href = '/manager/shipments/' + encodeURIComponent(shipmentId) + '/';
+        }
+        actions.appendChild(a);
+      }
+
+      document.addEventListener('submit', function(e){
+        const form = e.target;
+        if (!form || !form.getAttribute) return;
+        if (form.getAttribute('data-action-form') !== '1') return;
+        e.preventDefault();
+        openModal(form);
+      });
+
+      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+      if (modal) modal.addEventListener('click', function(e){
+        if (e.target === modal) closeModal();
+      });
+
+      if (okBtn) okBtn.addEventListener('click', async function(){
+        const form = pendingForm;
+        if (!form) return;
+        const action = form.getAttribute('action');
+        const shipmentId = form.getAttribute('data-shipment-id') || '';
+        const csrf = (form.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value || '';
+        try {
+          okBtn.disabled = true;
+          const resp = await fetch(action, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrf,
+              'Accept': 'application/json'
+            },
+            body: new URLSearchParams({}),
+            credentials: 'same-origin'
+          });
+          const data = await resp.json();
+          if (data && data.ok) {
+            setRowStatus(shipmentId, data.status_label);
+            const t = (form && form.getAttribute) ? (form.getAttribute('data-action-type') || '') : '';
+            hideForm(form);
+            if (t === 'bishkek') {
+              insertSortLink(shipmentId);
+            }
+          }
+        } catch (err) {
+          return;
+        } finally {
+          okBtn.disabled = false;
+          closeModal();
+        }
+      });
+    })();
+  </script>
 {% endblock %}

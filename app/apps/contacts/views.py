@@ -1166,15 +1166,12 @@ def manager_shipments(request):
     if status and status not in allowed_statuses:
         status = ""
 
-    qs = (
-        tg_models.Shipment.objects.select_related("user")
-        .filter(user__isnull=False, import_status=tg_models.Shipment.ImportStatus.OK)
-        .order_by("-created_at")
-    )
+    qs = tg_models.Shipment.objects.select_related("user").order_by("-created_at")
     if staff_filial is not None:
         qs = qs.filter(filial=staff_filial)
     if status:
         qs = qs.filter(status=status)
+
     if q:
         qs = qs.filter(
             Q(tracking_number__icontains=q)
@@ -1225,15 +1222,7 @@ def manager_sorting(request):
     effective_filial = selected_filial if is_director else staff_filial
 
     q = (request.GET.get("q") or "").strip()
-    qs = (
-        tg_models.Shipment.objects.select_related("user")
-        .filter(
-            status=tg_models.Shipment.Status.BISHKEK,
-            user__isnull=False,
-            import_status=tg_models.Shipment.ImportStatus.OK,
-        )
-        .order_by("-updated_at")
-    )
+    qs = tg_models.Shipment.objects.select_related("user").filter(status=tg_models.Shipment.Status.BISHKEK).order_by("-updated_at")
     if effective_filial is not None:
         qs = qs.filter(filial=effective_filial)
     if q:
@@ -1258,6 +1247,115 @@ def manager_sorting(request):
             **_role_ctx(request),
         },
     )
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_shipment_set_bishkek(request, shipment_id: int):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    shipment = get_object_or_404(tg_models.Shipment.objects.select_related("user"), id=shipment_id)
+    if staff_filial is not None and shipment.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    if shipment.status != tg_models.Shipment.Status.ON_THE_WAY:
+        return HttpResponseForbidden("not_in_transit")
+
+    shipment.status = tg_models.Shipment.Status.BISHKEK
+    shipment.save(update_fields=["status", "updated_at"])
+
+    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+    if token and shipment.user and getattr(shipment.user, "telegram_id", None):
+        try:
+            _send_telegram_message(
+                token=token,
+                chat_id=int(shipment.user.telegram_id),
+                text=_shipment_notify_text_bishkek(tracking=shipment.tracking_number),
+            )
+        except Exception:
+            pass
+
+    wants_json = False
+    try:
+        wants_json = (request.headers.get("x-requested-with") == "XMLHttpRequest") or (
+            "application/json" in (request.headers.get("accept") or "")
+        )
+    except Exception:
+        wants_json = False
+
+    if wants_json:
+        return JsonResponse(
+            {
+                "ok": True,
+                "shipment_id": int(shipment.id),
+                "status": str(shipment.status),
+                "status_label": str(shipment.get_status_display() or ""),
+            }
+        )
+
+    back = (request.META.get("HTTP_REFERER") or "").strip() or None
+    return redirect(back or "manager_shipments")
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_shipment_set_issued(request, shipment_id: int):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    shipment = get_object_or_404(tg_models.Shipment.objects.select_related("user"), id=shipment_id)
+    if staff_filial is not None and shipment.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    if shipment.status != tg_models.Shipment.Status.WAREHOUSE:
+        return HttpResponseForbidden("not_ready_for_pickup")
+
+    shipment.status = tg_models.Shipment.Status.ISSUED
+    shipment.save(update_fields=["status", "updated_at"])
+
+    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+    if token and shipment.user and getattr(shipment.user, "telegram_id", None):
+        text = _shipment_notify_text_issued(tracking=shipment.tracking_number)
+        try:
+            _send_telegram_message(token=token, chat_id=int(shipment.user.telegram_id), text=text)
+        except Exception:
+            pass
+
+    wants_json = False
+    try:
+        wants_json = (request.headers.get("x-requested-with") == "XMLHttpRequest") or (
+            "application/json" in (request.headers.get("accept") or "")
+        )
+    except Exception:
+        wants_json = False
+
+    if wants_json:
+        return JsonResponse(
+            {
+                "ok": True,
+                "shipment_id": int(shipment.id),
+                "status": str(shipment.status),
+                "status_label": str(shipment.get_status_display() or ""),
+            }
+        )
+
+    back = (request.META.get("HTTP_REFERER") or "").strip() or None
+    return redirect(back or "manager_shipments")
 
 
 @login_required(login_url="/manager/login/")
