@@ -58,7 +58,14 @@
             <td class="muted">{{ sh.weight_kg }}</td>
             <td class="muted">{{ sh.total_price }}</td>
             <td class="row-actions">
-              <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+              <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:nowrap; white-space:nowrap;">
+                <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+                {% if sh.group_id %}
+                  <a class="btn accent" href="{% url 'manager_group_sorting' group_id=sh.group_id %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
+                {% else %}
+                  <a class="btn accent" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Сортировать</a>
+                {% endif %}
+              </div>
             </td>
           </tr>
         {% empty %}

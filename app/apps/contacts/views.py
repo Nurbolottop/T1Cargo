@@ -6,11 +6,13 @@ import logging
 import os
 import tempfile
 import uuid
+from urllib.parse import quote
 from django.db import transaction
 from django.db.models import Count, Q, F, Sum, ExpressionWrapper, DecimalField, Value, Case, When, IntegerField
 from django.db import models
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponseForbidden, JsonResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
@@ -828,6 +830,8 @@ def manager_group_sorting(request, group_id: int):
             has_calc_data = False
         if has_calc_data or shipment.status in {tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED}:
             pricing_mode_selected = str(getattr(shipment, "pricing_mode", "") or "")
+        if pricing_mode_selected not in {"kg", "gabarit"}:
+            pricing_mode_selected = "kg"
 
     if request.method == "POST":
         q_post = (request.POST.get("tracking_number") or request.POST.get("q") or "").strip()
@@ -1226,6 +1230,14 @@ def manager_sorting(request):
     if effective_filial is not None:
         qs = qs.filter(filial=effective_filial)
     if q:
+        exact = qs.select_related("group").filter(tracking_number__iexact=q).first()
+        if exact is not None:
+            if getattr(exact, "group_id", None):
+                url = reverse("manager_group_sorting", kwargs={"group_id": exact.group_id})
+                if q:
+                    url = f"{url}?q={quote(q)}"
+                return HttpResponseRedirect(url)
+            return redirect("manager_shipment_detail", shipment_id=exact.id)
         qs = qs.filter(
             Q(tracking_number__icontains=q)
             | Q(client_code_raw__icontains=q)

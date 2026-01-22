@@ -53,8 +53,8 @@
             <td data-shipment-status="{{ sh.id }}">{{ sh.get_status_display }}</td>
             <td class="muted">{{ sh.weight_kg }}</td>
             <td class="muted">{{ sh.total_price }}</td>
-            <td class="row-actions">
-              <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+            <td class="row-actions" style="white-space:nowrap; width:1%;">
+              <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:nowrap; white-space:nowrap; align-items:center;">
                 <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
 
                 {% if sh.status == 'on_the_way' %}
