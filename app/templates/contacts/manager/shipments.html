@@ -52,7 +52,9 @@
             </td>
             <td data-shipment-status="{{ sh.id }}">{{ sh.get_status_display }}</td>
             <td class="muted">{{ sh.weight_kg }}</td>
-            <td class="muted">{{ sh.total_price }}</td>
+            <td class="muted" data-shipment-total="{{ sh.id }}">
+              <span data-total-price="1">{{ sh.total_price }}</span><span data-issued-at="1">{% if sh.status == 'issued' and sh.issued_at %} ({{ sh.issued_at|date:'d.m.Y' }}){% endif %}</span>
+            </td>
             <td class="row-actions" style="white-space:nowrap; width:1%;">
               <div style="display:flex; gap:8px; justify-content:flex-end; flex-wrap:nowrap; white-space:nowrap; align-items:center;">
                 <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
@@ -127,6 +129,13 @@
         if (cell) cell.textContent = label || cell.textContent;
       }
 
+      function setRowIssuedAt(shipmentId, label){
+        const cell = document.querySelector('[data-shipment-total="' + shipmentId + '"]');
+        if (!cell) return;
+        const issuedEl = cell.querySelector('[data-issued-at="1"]');
+        if (issuedEl) issuedEl.textContent = label ? (' (' + label + ')') : '';
+      }
+
       function hideForm(form){
         if (!form) return;
         form.style.display = 'none';
@@ -190,6 +199,9 @@
             hideForm(form);
             if (t === 'bishkek') {
               insertSortLink(shipmentId);
+            }
+            if (t === 'issued') {
+              setRowIssuedAt(shipmentId, data.issued_at_label || '');
             }
           }
         } catch (err) {

@@ -11,6 +11,12 @@ urlpatterns = [
     path("manager/penalties/", views.manager_penalties, name="manager_penalties"),
     path("manager/clients/", views.manager_clients, name="manager_clients"),
     path("manager/clients/<int:user_id>/", views.manager_client_detail, name="manager_client_detail"),
+    path("manager/clients/<int:user_id>/debt/clear/", views.manager_client_debt_clear, name="manager_client_debt_clear"),
+    path(
+        "manager/clients/<int:user_id>/issue-by-tracking/",
+        views.manager_client_issue_by_tracking,
+        name="manager_client_issue_by_tracking",
+    ),
     path(
         "manager/clients/<int:user_id>/shipments/<int:shipment_id>/issued/",
         views.manager_client_shipment_set_issued,

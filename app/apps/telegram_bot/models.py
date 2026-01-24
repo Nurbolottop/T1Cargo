@@ -179,6 +179,7 @@ class Shipment(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
+    issued_at = models.DateTimeField(blank=True, null=True, verbose_name="Дата выдачи")
 
     class Meta:
         verbose_name = "Посылка"

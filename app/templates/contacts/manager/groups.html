@@ -18,6 +18,7 @@
           <th>Дата отправки</th>
           <th>Статус</th>
           <th>Создано</th>
+          <th>Филиал</th>
           <th></th>
         </tr>
       </thead>
@@ -28,12 +29,13 @@
             <td class="muted">{% if g.sent_date %}{{ g.sent_date|date:'d.m.Y' }}{% else %}—{% endif %}</td>
             <td>{{ g.get_status_display }}</td>
             <td class="muted">{{ g.created_at }}</td>
+            <td class="muted">{% if g.filial %}{{ g.filial }}{% else %}—{% endif %}</td>
             <td class="row-actions">
               <a class="btn" href="{% url 'manager_group_detail' group_id=g.id %}">Открыть</a>
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="5" class="muted">Группы не найдены.</td></tr>
+          <tr><td colspan="6" class="muted">Группы не найдены.</td></tr>
         {% endfor %}
       </tbody>
     </table>

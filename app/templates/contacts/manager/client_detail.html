@@ -128,7 +128,17 @@
         </div>
         <div class="kv-row">
           <div class="kv-k">Долг</div>
-          <div class="kv-v">{{ client.total_debt|default:'0' }}</div>
+          <div class="kv-v">
+            {{ client.total_debt|default:'0' }}
+            {% if is_manager or is_director %}
+              {% if client.total_debt and client.total_debt != 0 %}
+                <form method="post" action="{% url 'manager_client_debt_clear' user_id=client.id %}" style="display:inline; margin-left:10px;" onsubmit="return confirm('Сбросить долг клиента?');">
+                  {% csrf_token %}
+                  <button class="btn" type="submit">Сбросить долг</button>
+                </form>
+              {% endif %}
+            {% endif %}
+          </div>
         </div>
         <div class="kv-row">
           <div class="kv-k">Доставка к оплате</div>
@@ -167,6 +177,22 @@
         <span>• Сумма:</span><b id="clientStatsSum">{{ shipments_stats.total_sum|default:'0' }}</b>
       </div>
     </div>
+
+    {% if is_manager or is_director %}
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+        <form method="post" action="{% url 'manager_client_issue_by_tracking' user_id=client.id %}" id="issueScanForm" style="display:flex; gap:10px; align-items:center; margin:0; flex: 1;">
+          {% csrf_token %}
+          <input id="issueScanInput" type="text" name="tracking" placeholder="Сканируйте трек и нажмите Enter" autocomplete="off" style="max-width:360px;" />
+          <button class="btn" type="submit" style="background: rgba(245,158,11,.95); border-color: rgba(245,158,11,.95); color: rgba(17,24,39,1); font-weight:850;">Выдать</button>
+        </form>
+        <div class="badge" style="margin-left:auto;">
+          <span>Выдано сейчас:</span><b id="issueSessionCount">0</b>
+          <span>• Сумма:</span><b id="issueSessionSum">0</b>
+          <button class="btn" type="button" id="issueSessionReset" style="margin-left:10px;">Сброс</button>
+        </div>
+      </div>
+      <div class="muted" id="issueScanMsg" style="margin-bottom:10px; display:none;"></div>
+    {% endif %}
     <table>
       <thead>
         <tr>
@@ -179,11 +205,13 @@
       </thead>
       <tbody>
         {% for sh in shipments %}
-          <tr>
+          <tr data-shipment-id="{{ sh.id }}" data-tracking="{{ sh.tracking_number|default:'' }}">
             <td>{{ sh.tracking_number }}</td>
             <td data-shipment-status="{{ sh.id }}">{{ sh.get_status_display }}</td>
             <td class="muted">{{ sh.weight_kg }}</td>
-            <td class="muted">{{ sh.total_price }}</td>
+            <td class="muted" data-shipment-total="{{ sh.id }}">
+              <span data-total-price="1">{{ sh.total_price }}</span><span data-issued-at="1">{% if sh.status == 'issued' and sh.issued_at %} ({{ sh.issued_at|date:'d.m.Y' }}){% endif %}</span>
+            </td>
             <td>
               <div style="display:flex; gap:10px; justify-content:flex-end;">
                 <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
@@ -223,6 +251,15 @@
       const cancelBtn = document.getElementById('issuedCancel');
       let pendingForm = null;
 
+      const scanForm = document.getElementById('issueScanForm');
+      const scanInput = document.getElementById('issueScanInput');
+      const scanMsg = document.getElementById('issueScanMsg');
+      const sessionCountEl = document.getElementById('issueSessionCount');
+      const sessionSumEl = document.getElementById('issueSessionSum');
+      const sessionResetBtn = document.getElementById('issueSessionReset');
+      const sessionIssuedIds = new Set();
+      let sessionSum = 0;
+
       function openModal(form){
         pendingForm = form;
         if (!modal) return;
@@ -249,6 +286,13 @@
         if (cell) cell.textContent = label || cell.textContent;
       }
 
+      function setRowIssuedAt(shipmentId, label){
+        const cell = document.querySelector('[data-shipment-total="' + shipmentId + '"]');
+        if (!cell) return;
+        const issuedEl = cell.querySelector('[data-issued-at="1"]');
+        if (issuedEl) issuedEl.textContent = label ? (' (' + label + ')') : '';
+      }
+
       function markDone(form){
         if (!form) return;
         const btn = form.querySelector('button[type="submit"]');
@@ -257,6 +301,83 @@
           btn.style.opacity = '0.55';
           btn.textContent = 'Выдано';
         }
+      }
+
+      function setScanMsg(text, isError){
+        if (!scanMsg) return;
+        if (!text) {
+          scanMsg.style.display = 'none';
+          scanMsg.textContent = '';
+          return;
+        }
+        scanMsg.style.display = 'block';
+        scanMsg.textContent = text;
+        scanMsg.style.color = isError ? 'rgba(248,113,113,1)' : 'rgba(156,163,175,.98)';
+      }
+
+      function parseMoney(v){
+        const s = String(v ?? '0').replace(',', '.').trim();
+        const n = Number(s);
+        return Number.isFinite(n) ? n : 0;
+      }
+
+      function renderSessionTotals(){
+        if (sessionCountEl) sessionCountEl.textContent = String(sessionIssuedIds.size);
+        if (sessionSumEl) {
+          const value = Math.round((sessionSum + Number.EPSILON) * 100) / 100;
+          sessionSumEl.textContent = String(value);
+        }
+      }
+
+      async function issueByTracking(tracking){
+        if (!scanForm) return;
+        const action = scanForm.getAttribute('action');
+        const csrf = (scanForm.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value || '';
+
+        setScanMsg('', false);
+        const trimmed = String(tracking || '').trim();
+        if (!trimmed) {
+          setScanMsg('Пустой трек', true);
+          return;
+        }
+
+        const body = new URLSearchParams({ tracking: trimmed });
+        const resp = await fetch(action, {
+          method: 'POST',
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrf,
+            'Accept': 'application/json'
+          },
+          body,
+          credentials: 'same-origin'
+        });
+        const data = await resp.json();
+
+        if (!data || !data.ok) {
+          const err = (data && data.error) ? String(data.error) : 'error';
+          if (err === 'not_found') setScanMsg('Трек не найден у этого клиента', true);
+          else if (err === 'not_ready_for_pickup') setScanMsg('Посылка не готова к выдаче', true);
+          else if (err === 'empty_tracking') setScanMsg('Пустой трек', true);
+          else setScanMsg('Ошибка', true);
+          return;
+        }
+
+        const shipmentId = String(data.shipment_id || '');
+        setRowStatus(shipmentId, data.status_label);
+        setRowIssuedAt(shipmentId, data.issued_at_label || '');
+
+        const issuedForm = document.querySelector('form[data-issued-form="1"][data-shipment-id="' + shipmentId + '"]');
+        markDone(issuedForm);
+
+        if (!sessionIssuedIds.has(shipmentId)) {
+          sessionIssuedIds.add(shipmentId);
+          sessionSum += parseMoney(data.total_price);
+          renderSessionTotals();
+        }
+
+        setStats((data.stats || null));
+        setScanMsg('Выдано: ' + (data.tracking_number || trimmed), false);
       }
 
       document.addEventListener('submit', function(e){
@@ -295,6 +416,7 @@
             setRowStatus(shipmentId, data.status_label);
             markDone(form);
             setStats((data.stats || null));
+            setRowIssuedAt(shipmentId, data.issued_at_label || '');
           }
         } catch (err) {
           return;
@@ -303,6 +425,36 @@
           closeModal();
         }
       });
+
+      if (scanForm) scanForm.addEventListener('submit', async function(e){
+        e.preventDefault();
+        if (!scanInput) return;
+        const value = (scanInput.value || '').trim();
+        scanInput.value = '';
+        scanInput.focus();
+        try {
+          await issueByTracking(value);
+        } catch (err) {
+          setScanMsg('Ошибка', true);
+        }
+      });
+
+      if (scanInput) scanInput.addEventListener('keydown', function(e){
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (scanForm) scanForm.requestSubmit();
+        }
+      });
+
+      if (sessionResetBtn) sessionResetBtn.addEventListener('click', function(){
+        sessionIssuedIds.clear();
+        sessionSum = 0;
+        renderSessionTotals();
+        setScanMsg('', false);
+        if (scanInput) scanInput.focus();
+      });
+
+      renderSessionTotals();
     })();
   </script>
 {% endblock %}

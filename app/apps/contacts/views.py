@@ -652,7 +652,8 @@ def manager_client_shipment_set_issued(request, user_id: int, shipment_id: int):
 
     if shipment.status != tg_models.Shipment.Status.ISSUED:
         shipment.status = tg_models.Shipment.Status.ISSUED
-        shipment.save(update_fields=["status", "updated_at"])
+        shipment.issued_at = timezone.now()
+        shipment.save(update_fields=["status", "issued_at", "updated_at"])
 
         if shipment.user and getattr(shipment.user, "telegram_id", None):
             token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
@@ -670,6 +671,13 @@ def manager_client_shipment_set_issued(request, user_id: int, shipment_id: int):
         wants_json = False
 
     if wants_json:
+        issued_at_label = ""
+        try:
+            if getattr(shipment, "issued_at", None):
+                issued_at_label = timezone.localtime(shipment.issued_at).strftime("%d.%m.%Y")
+        except Exception:
+            issued_at_label = ""
+
         shipments_qs = tg_models.Shipment.objects.filter(user=client)
         if staff_filial is not None:
             shipments_qs = shipments_qs.filter(filial=staff_filial)
@@ -684,6 +692,7 @@ def manager_client_shipment_set_issued(request, user_id: int, shipment_id: int):
                 "shipment_id": int(shipment.id),
                 "status": str(shipment.status),
                 "status_label": str(shipment.get_status_display() or ""),
+                "issued_at_label": issued_at_label,
                 "stats": {
                     "total_cnt": int(stats.get("total_cnt") or 0),
                     "ready_cnt": int(stats.get("ready_cnt") or 0),
@@ -693,6 +702,93 @@ def manager_client_shipment_set_issued(request, user_id: int, shipment_id: int):
         )
 
     return redirect("manager_client_detail", user_id=client.id)
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_client_issue_by_tracking(request, user_id: int):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    client = get_object_or_404(tg_models.User, id=user_id)
+    if staff_filial is not None and client.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    tracking = (request.POST.get("tracking") or request.POST.get("tracking_number") or "").strip()
+    if not tracking:
+        return JsonResponse({"ok": False, "error": "empty_tracking"})
+
+    shipment_any = (
+        tg_models.Shipment.objects.select_related("user")
+        .filter(user=client, tracking_number__iexact=tracking)
+        .first()
+    )
+    if shipment_any is None:
+        return JsonResponse({"ok": False, "error": "not_found"})
+    if staff_filial is not None and shipment_any.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    if shipment_any.status != tg_models.Shipment.Status.WAREHOUSE:
+        return JsonResponse({"ok": False, "error": "not_ready_for_pickup", "status": str(shipment_any.status)})
+
+    shipment_any.status = tg_models.Shipment.Status.ISSUED
+    shipment_any.issued_at = timezone.now()
+    shipment_any.save(update_fields=["status", "issued_at", "updated_at"])
+
+    if shipment_any.user and getattr(shipment_any.user, "telegram_id", None):
+        token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+        if token:
+            text = _shipment_notify_text_issued(tracking=shipment_any.tracking_number)
+            try:
+                _send_telegram_message(token=token, chat_id=int(shipment_any.user.telegram_id), text=text)
+            except Exception:
+                pass
+
+    issued_at_label = ""
+    try:
+        if getattr(shipment_any, "issued_at", None):
+            issued_at_label = timezone.localtime(shipment_any.issued_at).strftime("%d.%m.%Y")
+    except Exception:
+        issued_at_label = ""
+
+    shipments_qs = tg_models.Shipment.objects.filter(user=client)
+    if staff_filial is not None:
+        shipments_qs = shipments_qs.filter(filial=staff_filial)
+    stats = shipments_qs.aggregate(
+        total_cnt=Count("id"),
+        ready_cnt=Count("id", filter=Q(status=tg_models.Shipment.Status.WAREHOUSE)),
+        total_sum=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
+    )
+
+    total_price_value = "0"
+    try:
+        total_price_value = str((shipment_any.total_price or 0))
+    except Exception:
+        total_price_value = "0"
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "shipment_id": int(shipment_any.id),
+            "tracking_number": str(shipment_any.tracking_number),
+            "status": str(shipment_any.status),
+            "status_label": str(shipment_any.get_status_display() or ""),
+            "issued_at_label": issued_at_label,
+            "total_price": total_price_value,
+            "stats": {
+                "total_cnt": int(stats.get("total_cnt") or 0),
+                "ready_cnt": int(stats.get("ready_cnt") or 0),
+                "total_sum": str(stats.get("total_sum") or "0"),
+            },
+        }
+    )
 
 
 @login_required(login_url="/manager/login/")
@@ -713,6 +809,28 @@ def manager_client_delete(request, user_id: int):
         return HttpResponseForbidden("Нет доступа")
     client.delete()
     return redirect("manager_clients")
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_client_debt_clear(request, user_id: int):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    client = get_object_or_404(tg_models.User, id=user_id)
+    if staff_filial is not None and client.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    client.total_debt = Decimal("0")
+    client.save(update_fields=["total_debt", "updated_at"])
+    return redirect("manager_client_detail", user_id=client.id)
 
 
 @login_required(login_url="/manager/login/")
@@ -849,7 +967,7 @@ def manager_group_sorting(request, group_id: int):
                 request,
                 "contacts/manager/group_sorting.html",
                 {
-                    "nav": "groups",
+                    "nav": "sorting",
                     "group": group,
                     "q": q,
                     "shipment": None,
@@ -878,7 +996,7 @@ def manager_group_sorting(request, group_id: int):
                     request,
                     "contacts/manager/group_sorting.html",
                     {
-                        "nav": "groups",
+                        "nav": "sorting",
                         "group": group,
                         "q": q,
                         "shipment": shipment,
@@ -898,7 +1016,7 @@ def manager_group_sorting(request, group_id: int):
                 request,
                 "contacts/manager/group_sorting.html",
                 {
-                    "nav": "groups",
+                    "nav": "sorting",
                     "group": group,
                     "q": q,
                     "shipment": shipment,
@@ -1038,7 +1156,7 @@ def manager_group_sorting(request, group_id: int):
         request,
         "contacts/manager/group_sorting.html",
         {
-            "nav": "groups",
+            "nav": "sorting",
             "group": group,
             "q": q,
             "shipment": shipment,
@@ -1124,7 +1242,8 @@ def manager_group_shipment_set_issued(request, group_id: int, shipment_id: int):
 
     if shipment.status != tg_models.Shipment.Status.ISSUED:
         shipment.status = tg_models.Shipment.Status.ISSUED
-        shipment.save(update_fields=["status", "updated_at"])
+        shipment.issued_at = timezone.now()
+        shipment.save(update_fields=["status", "issued_at", "updated_at"])
 
         if shipment.user and getattr(shipment.user, "telegram_id", None):
             token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
@@ -1304,12 +1423,20 @@ def manager_shipment_set_bishkek(request, shipment_id: int):
         wants_json = False
 
     if wants_json:
+        issued_at_label = ""
+        try:
+            if getattr(shipment, "issued_at", None):
+                issued_at_label = timezone.localtime(shipment.issued_at).strftime("%d.%m.%Y")
+        except Exception:
+            issued_at_label = ""
+
         return JsonResponse(
             {
                 "ok": True,
                 "shipment_id": int(shipment.id),
                 "status": str(shipment.status),
                 "status_label": str(shipment.get_status_display() or ""),
+                "issued_at_label": issued_at_label,
             }
         )
 
@@ -1338,7 +1465,8 @@ def manager_shipment_set_issued(request, shipment_id: int):
         return HttpResponseForbidden("not_ready_for_pickup")
 
     shipment.status = tg_models.Shipment.Status.ISSUED
-    shipment.save(update_fields=["status", "updated_at"])
+    shipment.issued_at = timezone.now()
+    shipment.save(update_fields=["status", "issued_at", "updated_at"])
 
     token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
     if token and shipment.user and getattr(shipment.user, "telegram_id", None):
@@ -1430,14 +1558,14 @@ def manager_analytics(request):
 
     base_qs = tg_models.Shipment.objects.select_related("user").filter(
         status=tg_models.Shipment.Status.ISSUED,
-        updated_at__date__gte=first_day,
-        updated_at__date__lt=next_month,
+        issued_at__date__gte=first_day,
+        issued_at__date__lt=next_month,
     )
     if effective_filial is not None:
         base_qs = base_qs.filter(filial=effective_filial)
 
     per_day_rows = (
-        base_qs.annotate(d=TruncDate("updated_at"))
+        base_qs.annotate(d=TruncDate("issued_at"))
         .values("d")
         .annotate(
             cnt=Count("id"),
@@ -1453,11 +1581,11 @@ def manager_analytics(request):
 
     day_ops_qs = tg_models.Shipment.objects.select_related("user").filter(
         status=tg_models.Shipment.Status.ISSUED,
-        updated_at__date=selected_day,
+        issued_at__date=selected_day,
     )
     if effective_filial is not None:
         day_ops_qs = day_ops_qs.filter(filial=effective_filial)
-    day_ops = day_ops_qs.annotate(amount=amount_expr).order_by("-updated_at")[:500]
+    day_ops = day_ops_qs.annotate(amount=amount_expr).order_by("-issued_at")[:500]
 
     selected_breakdown = day_ops_qs.aggregate(
         delivery=Coalesce(Sum(delivery_expr, output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
@@ -1599,18 +1727,18 @@ def manager_penalties(request):
 
         last = getattr(user_obj, "storage_penalty_last_charged_date", None)
         start_date = max(last or free_until, free_until)
-        if start_date >= today:
-            continue
         days_to_charge = (today - start_date).days
-        if days_to_charge <= 0:
-            continue
+        if days_to_charge < 0:
+            days_to_charge = 0
         to_charge = (Decimal(days_to_charge) * per_day).quantize(Decimal("0.01"))
-        if to_charge <= 0:
-            continue
 
         days_overdue = (today - free_until).days
         if days_overdue < 0:
             days_overdue = 0
+
+        storage_penalty_total = getattr(user_obj, "storage_penalty_total", 0) or 0
+        if (to_charge is None or to_charge <= 0) and (not storage_penalty_total or Decimal(str(storage_penalty_total)) <= 0):
+            continue
 
         rows.append(
             {
@@ -1619,7 +1747,7 @@ def manager_penalties(request):
                 "filial": filial_obj,
                 "days_overdue": days_overdue,
                 "to_charge": to_charge,
-                "storage_penalty_total": getattr(user_obj, "storage_penalty_total", 0) or 0,
+                "storage_penalty_total": storage_penalty_total,
                 "storage_penalty_last_charged_date": getattr(user_obj, "storage_penalty_last_charged_date", None),
             }
         )
@@ -2213,8 +2341,18 @@ def manager_shipment_detail(request, shipment_id: int):
         total_price = (request.POST.get("total_price") or "").strip()
         arrival_date = (request.POST.get("arrival_date") or "").strip()
 
+        status_changed = False
         if status and status in dict(tg_models.Shipment.Status.choices):
+            status = str(status)
+            if shipment.status != status:
+                status_changed = True
             shipment.status = status
+            if status_changed:
+                if status == tg_models.Shipment.Status.ISSUED:
+                    if getattr(shipment, "issued_at", None) is None:
+                        shipment.issued_at = timezone.now()
+                else:
+                    shipment.issued_at = None
 
         if weight_kg:
             try:

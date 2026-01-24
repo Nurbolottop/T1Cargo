@@ -58,6 +58,9 @@
           <div class="col-4">
             <label>Итоговая стоимость</label>
             <input name="total_price" value="{{ shipment.total_price }}" />
+            {% if shipment.status == 'issued' and shipment.issued_at %}
+              <div class="muted" style="margin-top:6px;">{{ shipment.issued_at|date:'d.m.Y' }}</div>
+            {% endif %}
           </div>
         </div>
 
@@ -96,7 +99,7 @@
           </div>
           <div class="col-4">
             <label>Итоговая стоимость</label>
-            <div style="font-weight:900; padding:10px 12px; border:1px solid var(--border); border-radius:12px;">{{ shipment.total_price }}</div>
+            <div style="font-weight:900; padding:10px 12px; border:1px solid var(--border); border-radius:12px;">{{ shipment.total_price }}{% if shipment.status == 'issued' and shipment.issued_at %} ({{ shipment.issued_at|date:'d.m.Y' }}){% endif %}</div>
           </div>
         </div>
         <div style="display:flex; gap:10px; margin-top:12px;">
