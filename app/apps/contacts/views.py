@@ -793,6 +793,165 @@ def manager_client_issue_by_tracking(request, user_id: int):
 
 @login_required(login_url="/manager/login/")
 @csrf_protect
+def manager_client_pickup_add_by_tracking(request, user_id: int):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    client = get_object_or_404(tg_models.User, id=user_id)
+    if staff_filial is not None and client.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    tracking = (request.POST.get("tracking") or request.POST.get("tracking_number") or "").strip()
+    if not tracking:
+        return JsonResponse({"ok": False, "error": "empty_tracking"})
+
+    shipment_any = (
+        tg_models.Shipment.objects.select_related("user")
+        .filter(user=client, tracking_number__iexact=tracking)
+        .first()
+    )
+    if shipment_any is None:
+        return JsonResponse({"ok": False, "error": "not_found"})
+    if staff_filial is not None and shipment_any.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    if shipment_any.status != tg_models.Shipment.Status.WAREHOUSE:
+        return JsonResponse({"ok": False, "error": "not_ready_for_pickup", "status": str(shipment_any.status)})
+
+    created_at_label = ""
+    try:
+        if getattr(shipment_any, "created_at", None):
+            created_at_label = timezone.localtime(shipment_any.created_at).strftime("%d.%m.%Y")
+    except Exception:
+        created_at_label = ""
+
+    total_price_value = "0"
+    try:
+        total_price_value = str((shipment_any.total_price or 0))
+    except Exception:
+        total_price_value = "0"
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "shipment": {
+                "id": int(shipment_any.id),
+                "tracking_number": str(shipment_any.tracking_number),
+                "total_price": total_price_value,
+                "china_date": created_at_label,
+            },
+        }
+    )
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_client_pickup_bulk_issue(request, user_id: int):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    client = get_object_or_404(tg_models.User, id=user_id)
+    if staff_filial is not None and client.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    raw_ids = list(request.POST.getlist("shipment_ids"))
+    if not raw_ids:
+        raw_join = (request.POST.get("shipment_ids") or "").strip()
+        if raw_join:
+            raw_ids = [p.strip() for p in raw_join.split(",") if p.strip()]
+
+    shipment_ids = []
+    for s in raw_ids:
+        try:
+            shipment_ids.append(int(s))
+        except Exception:
+            continue
+
+    if not shipment_ids:
+        return JsonResponse({"ok": False, "error": "empty_list"})
+
+    qs = tg_models.Shipment.objects.select_related("user").filter(user=client, id__in=shipment_ids)
+    if staff_filial is not None:
+        qs = qs.filter(filial=staff_filial)
+
+    shipments = list(qs)
+    found_ids = {int(s.id) for s in shipments}
+    missing = [int(i) for i in shipment_ids if int(i) not in found_ids]
+
+    errors = []
+    to_issue = []
+    for sh in shipments:
+        if sh.status != tg_models.Shipment.Status.WAREHOUSE:
+            errors.append({"shipment_id": int(sh.id), "error": "not_ready_for_pickup", "status": str(sh.status)})
+            continue
+        to_issue.append(sh)
+
+    issued_ids = []
+    now = timezone.now()
+    for sh in to_issue:
+        sh.status = tg_models.Shipment.Status.ISSUED
+        sh.issued_at = now
+        sh.save(update_fields=["status", "issued_at", "updated_at"])
+        issued_ids.append(int(sh.id))
+
+    if issued_ids:
+        token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+        if token:
+            for sh in to_issue:
+                if sh.user and getattr(sh.user, "telegram_id", None):
+                    text = _shipment_notify_text_issued(tracking=sh.tracking_number)
+                    try:
+                        _send_telegram_message(token=token, chat_id=int(sh.user.telegram_id), text=text)
+                    except Exception:
+                        pass
+
+    shipments_qs = tg_models.Shipment.objects.filter(user=client)
+    if staff_filial is not None:
+        shipments_qs = shipments_qs.filter(filial=staff_filial)
+    stats = shipments_qs.aggregate(
+        total_cnt=Count("id"),
+        ready_cnt=Count("id", filter=Q(status=tg_models.Shipment.Status.WAREHOUSE)),
+        total_sum=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
+    )
+
+    issued_at_label = ""
+    try:
+        issued_at_label = timezone.localtime(now).strftime("%d.%m.%Y")
+    except Exception:
+        issued_at_label = ""
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "issued_ids": issued_ids,
+            "missing": missing,
+            "errors": errors,
+            "issued_at_label": issued_at_label,
+            "stats": {
+                "total_cnt": int(stats.get("total_cnt") or 0),
+                "ready_cnt": int(stats.get("ready_cnt") or 0),
+                "total_sum": str(stats.get("total_sum") or "0"),
+            },
+        }
+    )
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
 def manager_client_delete(request, user_id: int):
     denied = _require_director(request)
     if denied is not None:

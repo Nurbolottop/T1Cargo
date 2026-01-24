@@ -18,6 +18,16 @@ urlpatterns = [
         name="manager_client_issue_by_tracking",
     ),
     path(
+        "manager/clients/<int:user_id>/pickup/add-by-tracking/",
+        views.manager_client_pickup_add_by_tracking,
+        name="manager_client_pickup_add_by_tracking",
+    ),
+    path(
+        "manager/clients/<int:user_id>/pickup/bulk-issue/",
+        views.manager_client_pickup_bulk_issue,
+        name="manager_client_pickup_bulk_issue",
+    ),
+    path(
         "manager/clients/<int:user_id>/shipments/<int:shipment_id>/issued/",
         views.manager_client_shipment_set_issued,
         name="manager_client_shipment_set_issued",

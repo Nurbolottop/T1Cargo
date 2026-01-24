@@ -170,6 +170,9 @@
       {% if is_manager %}
         <a class="btn accent" href="{% url 'manager_shipment_new' %}">+ Добавить посылку</a>
       {% endif %}
+      {% if is_manager or is_director %}
+        <button class="btn" type="button" id="pickupOpen" style="background: rgba(245,158,11,.95); border-color: rgba(245,158,11,.95); color: rgba(17,24,39,1); font-weight:850;">Выдача</button>
+      {% endif %}
       <a class="btn" href="{% url 'manager_clients' %}">Назад к списку</a>
       <div class="badge" style="margin-left:auto;">
         <span>Всего:</span><b id="clientStatsTotal">{{ shipments_stats.total_cnt|default:'0' }}</b>
@@ -179,19 +182,50 @@
     </div>
 
     {% if is_manager or is_director %}
-      <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-        <form method="post" action="{% url 'manager_client_issue_by_tracking' user_id=client.id %}" id="issueScanForm" style="display:flex; gap:10px; align-items:center; margin:0; flex: 1;">
-          {% csrf_token %}
-          <input id="issueScanInput" type="text" name="tracking" placeholder="Сканируйте трек и нажмите Enter" autocomplete="off" style="max-width:360px;" />
-          <button class="btn" type="submit" style="background: rgba(245,158,11,.95); border-color: rgba(245,158,11,.95); color: rgba(17,24,39,1); font-weight:850;">Выдать</button>
-        </form>
-        <div class="badge" style="margin-left:auto;">
-          <span>Выдано сейчас:</span><b id="issueSessionCount">0</b>
-          <span>• Сумма:</span><b id="issueSessionSum">0</b>
-          <button class="btn" type="button" id="issueSessionReset" style="margin-left:10px;">Сброс</button>
+      <div id="pickupModal" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+        <div style="width:100%; max-width:820px; background: rgba(17,24,39,.98); border: 1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+            <div style="font-weight:850; font-size:18px;">Выдача</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="badge"><span>Товаров:</span><b id="pickupCount">0</b></div>
+              <div class="badge"><span>Сумма:</span><b id="pickupSum">0</b></div>
+            </div>
+          </div>
+
+          <form method="post" action="{% url 'manager_client_pickup_add_by_tracking' user_id=client.id %}" id="pickupAddForm" style="display:flex; gap:10px; align-items:center; margin-top:12px;">
+            {% csrf_token %}
+            <input id="pickupScanInput" type="text" name="tracking" placeholder="Сканируйте трек и нажмите Enter" autocomplete="off" style="max-width:360px;" />
+            <button class="btn" type="submit">Добавить</button>
+            <button class="btn" type="button" id="pickupClear" style="margin-left:auto;">Сброс</button>
+          </form>
+
+          <div class="muted" id="pickupMsg" style="margin-top:10px; display:none;"></div>
+
+          <div style="margin-top:12px; max-height: 52vh; overflow:auto; border: 1px solid rgba(255,255,255,.07); border-radius:14px;">
+            <table style="margin:0;">
+              <thead>
+                <tr>
+                  <th>Трек</th>
+                  <th>Сумма</th>
+                  <th>Отправка (Китай)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="pickupList">
+                <tr><td colspan="4" class="muted">Пока ничего не добавлено.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
+            <button class="btn" type="button" id="pickupClose">Закрыть</button>
+            <form method="post" action="{% url 'manager_client_pickup_bulk_issue' user_id=client.id %}" id="pickupIssueForm" style="margin:0;">
+              {% csrf_token %}
+              <button class="btn accent" type="submit" id="pickupIssueBtn">Выдать</button>
+            </form>
+          </div>
         </div>
       </div>
-      <div class="muted" id="issueScanMsg" style="margin-bottom:10px; display:none;"></div>
     {% endif %}
     <table>
       <thead>
@@ -251,14 +285,20 @@
       const cancelBtn = document.getElementById('issuedCancel');
       let pendingForm = null;
 
-      const scanForm = document.getElementById('issueScanForm');
-      const scanInput = document.getElementById('issueScanInput');
-      const scanMsg = document.getElementById('issueScanMsg');
-      const sessionCountEl = document.getElementById('issueSessionCount');
-      const sessionSumEl = document.getElementById('issueSessionSum');
-      const sessionResetBtn = document.getElementById('issueSessionReset');
-      const sessionIssuedIds = new Set();
-      let sessionSum = 0;
+      const pickupOpen = document.getElementById('pickupOpen');
+      const pickupModal = document.getElementById('pickupModal');
+      const pickupClose = document.getElementById('pickupClose');
+      const pickupClear = document.getElementById('pickupClear');
+      const pickupAddForm = document.getElementById('pickupAddForm');
+      const pickupIssueForm = document.getElementById('pickupIssueForm');
+      const pickupIssueBtn = document.getElementById('pickupIssueBtn');
+      const pickupScanInput = document.getElementById('pickupScanInput');
+      const pickupList = document.getElementById('pickupList');
+      const pickupMsg = document.getElementById('pickupMsg');
+      const pickupCountEl = document.getElementById('pickupCount');
+      const pickupSumEl = document.getElementById('pickupSum');
+
+      const pickupItems = new Map();
 
       function openModal(form){
         pendingForm = form;
@@ -303,16 +343,16 @@
         }
       }
 
-      function setScanMsg(text, isError){
-        if (!scanMsg) return;
+      function setPickupMsg(text, isError){
+        if (!pickupMsg) return;
         if (!text) {
-          scanMsg.style.display = 'none';
-          scanMsg.textContent = '';
+          pickupMsg.style.display = 'none';
+          pickupMsg.textContent = '';
           return;
         }
-        scanMsg.style.display = 'block';
-        scanMsg.textContent = text;
-        scanMsg.style.color = isError ? 'rgba(248,113,113,1)' : 'rgba(156,163,175,.98)';
+        pickupMsg.style.display = 'block';
+        pickupMsg.textContent = text;
+        pickupMsg.style.color = isError ? 'rgba(248,113,113,1)' : 'rgba(156,163,175,.98)';
       }
 
       function parseMoney(v){
@@ -321,63 +361,54 @@
         return Number.isFinite(n) ? n : 0;
       }
 
-      function renderSessionTotals(){
-        if (sessionCountEl) sessionCountEl.textContent = String(sessionIssuedIds.size);
-        if (sessionSumEl) {
-          const value = Math.round((sessionSum + Number.EPSILON) * 100) / 100;
-          sessionSumEl.textContent = String(value);
+      function renderPickup(){
+        if (pickupCountEl) pickupCountEl.textContent = String(pickupItems.size);
+        let sum = 0;
+        for (const item of pickupItems.values()) sum += parseMoney(item.total_price);
+        if (pickupSumEl) {
+          const value = Math.round((sum + Number.EPSILON) * 100) / 100;
+          pickupSumEl.textContent = String(value);
         }
+
+        if (!pickupList) return;
+        if (!pickupItems.size) {
+          pickupList.innerHTML = '<tr><td colspan="4" class="muted">Пока ничего не добавлено.</td></tr>';
+          return;
+        }
+        let html = '';
+        for (const item of pickupItems.values()) {
+          const id = String(item.id);
+          const tr = String(item.tracking_number || '');
+          const pr = String(item.total_price ?? '0');
+          const cd = String(item.china_date || '');
+          html += '<tr data-pickup-row="' + id + '">' +
+            '<td><b>' + tr + '</b></td>' +
+            '<td class="muted">' + pr + '</td>' +
+            '<td class="muted">' + (cd || '—') + '</td>' +
+            '<td style="text-align:right;"><button class="btn" type="button" data-pickup-remove="' + id + '">Убрать</button></td>' +
+          '</tr>';
+        }
+        pickupList.innerHTML = html;
       }
 
-      async function issueByTracking(tracking){
-        if (!scanForm) return;
-        const action = scanForm.getAttribute('action');
-        const csrf = (scanForm.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value || '';
+      function openPickup(){
+        if (!pickupModal) return;
+        pickupModal.style.display = 'flex';
+        setPickupMsg('', false);
+        renderPickup();
+        if (pickupScanInput) pickupScanInput.focus();
+      }
 
-        setScanMsg('', false);
-        const trimmed = String(tracking || '').trim();
-        if (!trimmed) {
-          setScanMsg('Пустой трек', true);
-          return;
-        }
+      function closePickup(){
+        if (!pickupModal) return;
+        pickupModal.style.display = 'none';
+      }
 
-        const body = new URLSearchParams({ tracking: trimmed });
-        const resp = await fetch(action, {
-          method: 'POST',
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': csrf,
-            'Accept': 'application/json'
-          },
-          body,
-          credentials: 'same-origin'
-        });
-        const data = await resp.json();
-
-        if (!data || !data.ok) {
-          const err = (data && data.error) ? String(data.error) : 'error';
-          if (err === 'not_found') setScanMsg('Трек не найден у этого клиента', true);
-          else if (err === 'not_ready_for_pickup') setScanMsg('Посылка не готова к выдаче', true);
-          else if (err === 'empty_tracking') setScanMsg('Пустой трек', true);
-          else setScanMsg('Ошибка', true);
-          return;
-        }
-
-        const shipmentId = String(data.shipment_id || '');
-        setRowStatus(shipmentId, data.status_label);
-        setRowIssuedAt(shipmentId, data.issued_at_label || '');
-
-        const issuedForm = document.querySelector('form[data-issued-form="1"][data-shipment-id="' + shipmentId + '"]');
-        markDone(issuedForm);
-
-        if (!sessionIssuedIds.has(shipmentId)) {
-          sessionIssuedIds.add(shipmentId);
-          sessionSum += parseMoney(data.total_price);
-          renderSessionTotals();
-        }
-
-        setStats((data.stats || null));
-        setScanMsg('Выдано: ' + (data.tracking_number || trimmed), false);
+      function clearPickup(){
+        pickupItems.clear();
+        setPickupMsg('', false);
+        renderPickup();
+        if (pickupScanInput) pickupScanInput.focus();
       }
 
       document.addEventListener('submit', function(e){
@@ -426,35 +457,139 @@
         }
       });
 
-      if (scanForm) scanForm.addEventListener('submit', async function(e){
+      if (pickupOpen) pickupOpen.addEventListener('click', openPickup);
+      if (pickupClose) pickupClose.addEventListener('click', closePickup);
+      if (pickupModal) pickupModal.addEventListener('click', function(e){
+        if (e.target === pickupModal) closePickup();
+      });
+      if (pickupClear) pickupClear.addEventListener('click', clearPickup);
+
+      if (pickupList) pickupList.addEventListener('click', function(e){
+        const t = e.target;
+        if (!t || !t.getAttribute) return;
+        const id = t.getAttribute('data-pickup-remove');
+        if (!id) return;
+        pickupItems.delete(String(id));
+        renderPickup();
+      });
+
+      if (pickupAddForm) pickupAddForm.addEventListener('submit', async function(e){
         e.preventDefault();
-        if (!scanInput) return;
-        const value = (scanInput.value || '').trim();
-        scanInput.value = '';
-        scanInput.focus();
+        if (!pickupScanInput) return;
+        const value = (pickupScanInput.value || '').trim();
+        pickupScanInput.value = '';
+        pickupScanInput.focus();
+
+        setPickupMsg('', false);
+        if (!value) {
+          setPickupMsg('Пустой трек', true);
+          return;
+        }
+
+        const action = pickupAddForm.getAttribute('action');
+        const csrf = (pickupAddForm.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value || '';
         try {
-          await issueByTracking(value);
+          const resp = await fetch(action, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrf,
+              'Accept': 'application/json'
+            },
+            body: new URLSearchParams({ tracking: value }),
+            credentials: 'same-origin'
+          });
+          const data = await resp.json();
+          if (!data || !data.ok) {
+            const err = (data && data.error) ? String(data.error) : 'error';
+            if (err === 'not_found') setPickupMsg('Трек не найден у этого клиента', true);
+            else if (err === 'not_ready_for_pickup') setPickupMsg('Посылка не готова к выдаче', true);
+            else if (err === 'empty_tracking') setPickupMsg('Пустой трек', true);
+            else setPickupMsg('Ошибка', true);
+            return;
+          }
+          const sh = data.shipment || null;
+          if (!sh) return;
+          const sid = String(sh.id || '');
+          if (!sid) return;
+          if (!pickupItems.has(sid)) {
+            pickupItems.set(sid, sh);
+            renderPickup();
+          }
         } catch (err) {
-          setScanMsg('Ошибка', true);
+          setPickupMsg('Ошибка', true);
         }
       });
 
-      if (scanInput) scanInput.addEventListener('keydown', function(e){
+      if (pickupScanInput) pickupScanInput.addEventListener('keydown', function(e){
         if (e.key === 'Enter') {
           e.preventDefault();
-          if (scanForm) scanForm.requestSubmit();
+          if (pickupAddForm) pickupAddForm.requestSubmit();
         }
       });
 
-      if (sessionResetBtn) sessionResetBtn.addEventListener('click', function(){
-        sessionIssuedIds.clear();
-        sessionSum = 0;
-        renderSessionTotals();
-        setScanMsg('', false);
-        if (scanInput) scanInput.focus();
-      });
+      if (pickupIssueForm) pickupIssueForm.addEventListener('submit', async function(e){
+        e.preventDefault();
+        if (!pickupItems.size) {
+          setPickupMsg('Список пуст', true);
+          return;
+        }
+        if (!confirm('Выдать все товары из списка?')) return;
 
-      renderSessionTotals();
+        const action = pickupIssueForm.getAttribute('action');
+        const csrf = (pickupIssueForm.querySelector('input[name="csrfmiddlewaretoken"]') || {}).value || '';
+        const ids = Array.from(pickupItems.keys());
+        const body = new URLSearchParams();
+        for (const id of ids) body.append('shipment_ids', id);
+
+        try {
+          if (pickupIssueBtn) pickupIssueBtn.disabled = true;
+          const resp = await fetch(action, {
+            method: 'POST',
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest',
+              'X-CSRFToken': csrf,
+              'Accept': 'application/json'
+            },
+            body,
+            credentials: 'same-origin'
+          });
+          const data = await resp.json();
+          if (!data || !data.ok) {
+            setPickupMsg('Ошибка', true);
+            return;
+          }
+
+          const issuedAtLabel = String(data.issued_at_label || '');
+          const issuedIds = Array.isArray(data.issued_ids) ? data.issued_ids.map(String) : [];
+
+          for (const sid of issuedIds) {
+            setRowStatus(sid, 'Выдано');
+            setRowIssuedAt(sid, issuedAtLabel);
+            const issuedForm = document.querySelector('form[data-issued-form="1"][data-shipment-id="' + sid + '"]');
+            markDone(issuedForm);
+            pickupItems.delete(sid);
+          }
+
+          setStats((data.stats || null));
+
+          const errors = Array.isArray(data.errors) ? data.errors : [];
+          if (errors.length) {
+            setPickupMsg('Не все товары удалось выдать: ' + String(errors.length), true);
+          } else {
+            setPickupMsg('Выдано: ' + String(issuedIds.length), false);
+          }
+
+          renderPickup();
+          if (!pickupItems.size) {
+            if (pickupScanInput) pickupScanInput.focus();
+          }
+        } catch (err) {
+          setPickupMsg('Ошибка', true);
+        } finally {
+          if (pickupIssueBtn) pickupIssueBtn.disabled = false;
+        }
+      });
     })();
   </script>
 {% endblock %}
