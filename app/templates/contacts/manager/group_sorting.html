@@ -35,6 +35,7 @@
         {% if shipment.user %}
           <b>{{ shipment.user.client_code }}</b>
           {% if shipment.user.full_name %} • {{ shipment.user.full_name }}{% endif %}
+          • Готово к выдаче: <b>{{ client_ready_cnt|default:'0' }}</b>
         {% else %}
           <b>{{ shipment.client_code_raw|default:'—' }}</b> • {{ shipment.get_import_status_display }}
         {% endif %}

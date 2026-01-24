@@ -1073,6 +1073,7 @@ def manager_group_sorting(request, group_id: int):
     shipment = None
     error = ""
     message = ""
+    client_ready_cnt = 0
 
     if q:
         shipment = (
@@ -1082,6 +1083,14 @@ def manager_group_sorting(request, group_id: int):
         )
         if shipment is None:
             error = "Товар не найден в этой группе."
+        elif shipment.user:
+            ready_qs = tg_models.Shipment.objects.filter(user=shipment.user, status=tg_models.Shipment.Status.WAREHOUSE)
+            if staff_filial is not None:
+                ready_qs = ready_qs.filter(filial=staff_filial)
+            try:
+                client_ready_cnt = int(ready_qs.count())
+            except Exception:
+                client_ready_cnt = 0
 
     weight_locked = False
     if shipment is not None and _is_manager(getattr(request, "user", None)):
@@ -1135,9 +1144,20 @@ def manager_group_sorting(request, group_id: int):
                     "default_price_per_kg": None,
                     "pricing_mode_selected": "",
                     "weight_locked": False,
+                    "client_ready_cnt": 0,
                     **_role_ctx(request),
                 },
             )
+
+        client_ready_cnt = 0
+        if shipment.user:
+            ready_qs = tg_models.Shipment.objects.filter(user=shipment.user, status=tg_models.Shipment.Status.WAREHOUSE)
+            if staff_filial is not None:
+                ready_qs = ready_qs.filter(filial=staff_filial)
+            try:
+                client_ready_cnt = int(ready_qs.count())
+            except Exception:
+                client_ready_cnt = 0
 
         weight_locked = False
         if shipment is not None and _is_manager(getattr(request, "user", None)):
@@ -1164,6 +1184,7 @@ def manager_group_sorting(request, group_id: int):
                         "default_price_per_kg": default_price_per_kg,
                         "pricing_mode_selected": str(getattr(shipment, "pricing_mode", "") or ""),
                         "weight_locked": True,
+                        "client_ready_cnt": client_ready_cnt,
                         **_role_ctx(request),
                     },
                 )
@@ -1184,6 +1205,7 @@ def manager_group_sorting(request, group_id: int):
                     "default_price_per_kg": default_price_per_kg,
                     "pricing_mode_selected": "",
                     "weight_locked": weight_locked,
+                    "client_ready_cnt": client_ready_cnt,
                     **_role_ctx(request),
                 },
             )
@@ -1324,6 +1346,7 @@ def manager_group_sorting(request, group_id: int):
             "default_price_per_kg": default_price_per_kg,
             "pricing_mode_selected": pricing_mode_selected,
             "weight_locked": weight_locked,
+            "client_ready_cnt": client_ready_cnt,
             **_role_ctx(request),
         },
     )
