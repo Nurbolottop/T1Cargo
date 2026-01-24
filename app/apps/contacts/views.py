@@ -1085,8 +1085,9 @@ def manager_group_sorting(request, group_id: int):
             error = "Товар не найден в этой группе."
         elif shipment.user:
             ready_qs = tg_models.Shipment.objects.filter(user=shipment.user, status=tg_models.Shipment.Status.WAREHOUSE)
-            if staff_filial is not None:
-                ready_qs = ready_qs.filter(filial=staff_filial)
+            filial_scope = staff_filial or getattr(group, "filial", None)
+            if filial_scope is not None:
+                ready_qs = ready_qs.filter(filial=filial_scope)
             try:
                 client_ready_cnt = int(ready_qs.count())
             except Exception:
@@ -1152,8 +1153,9 @@ def manager_group_sorting(request, group_id: int):
         client_ready_cnt = 0
         if shipment.user:
             ready_qs = tg_models.Shipment.objects.filter(user=shipment.user, status=tg_models.Shipment.Status.WAREHOUSE)
-            if staff_filial is not None:
-                ready_qs = ready_qs.filter(filial=staff_filial)
+            filial_scope = staff_filial or getattr(group, "filial", None)
+            if filial_scope is not None:
+                ready_qs = ready_qs.filter(filial=filial_scope)
             try:
                 client_ready_cnt = int(ready_qs.count())
             except Exception:
