@@ -22,7 +22,7 @@ from django.db.models.functions import Coalesce, TruncDate
 from apps.telegram_bot import models as tg_models
 from apps.base import models as base_models
 from apps.telegram_bot.views import _send_telegram_message
-from apps.telegram_bot.tasks import notify_import_arrivals_task
+from apps.telegram_bot.tasks import notify_group_status_task, notify_import_arrivals_task
 from .forms import ClientEditDirectorForm, ClientEditManagerForm, ShipmentCreateForm, ShipmentImportForm
 
 from celery.result import AsyncResult
@@ -1022,8 +1022,20 @@ def manager_group_detail(request, group_id: int):
     group = get_object_or_404(tg_models.ShipmentGroup, id=group_id)
     if staff_filial is not None and group.filial_id != staff_filial.id:
         return HttpResponseForbidden("Нет доступа")
+    status = (request.GET.get("status") or "").strip()
+
+    status_tabs = [
+        ("", "Все"),
+        (tg_models.Shipment.Status.ON_THE_WAY, "В пути"),
+        (tg_models.Shipment.Status.BISHKEK, "В Бишкеке"),
+        (tg_models.Shipment.Status.WAREHOUSE, "Готов к выдаче"),
+        (tg_models.Shipment.Status.ISSUED, "Выдано"),
+    ]
+
     shipments_qs = tg_models.Shipment.objects.select_related("user").filter(group=group).order_by("-created_at")
     shipments = shipments_qs
+    if status:
+        shipments = shipments.filter(status=status)
 
     agg_all = shipments_qs.aggregate(
         total_cnt=Count("id"),
@@ -1050,6 +1062,8 @@ def manager_group_detail(request, group_id: int):
             "shipments": shipments,
             "has_unsorted": has_unsorted,
             "group_kpi": group_kpi,
+            "status": status,
+            "status_tabs": status_tabs,
             **_role_ctx(request),
         },
     )
@@ -1257,16 +1271,12 @@ def manager_group_sorting(request, group_id: int):
                             group.status = tg_models.ShipmentGroup.Status.WAREHOUSE
                             group.save(update_fields=["status", "updated_at"])
 
-                    if shipment.user and getattr(shipment.user, "telegram_id", None):
-                        token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
-                        if token:
-                            text = _shipment_notify_text_ready_for_pickup(
-                                tracking=shipment.tracking_number,
-                                weight_kg=shipment.weight_kg,
-                                total_price=shipment.total_price,
-                            )
                             try:
-                                _send_telegram_message(token=token, chat_id=int(shipment.user.telegram_id), text=text)
+                                notify_group_status_task.delay(
+                                    int(group.id),
+                                    str(tg_models.Shipment.Status.WAREHOUSE),
+                                    int(staff_filial.id) if staff_filial is not None else None,
+                                )
                             except Exception:
                                 pass
 
@@ -1313,16 +1323,12 @@ def manager_group_sorting(request, group_id: int):
                             group.status = tg_models.ShipmentGroup.Status.WAREHOUSE
                             group.save(update_fields=["status", "updated_at"])
 
-                    if shipment.user and getattr(shipment.user, "telegram_id", None):
-                        token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
-                        if token:
-                            text = _shipment_notify_text_ready_for_pickup(
-                                tracking=shipment.tracking_number,
-                                weight_kg=shipment.weight_kg,
-                                total_price=shipment.total_price,
-                            )
                             try:
-                                _send_telegram_message(token=token, chat_id=int(shipment.user.telegram_id), text=text)
+                                notify_group_status_task.delay(
+                                    int(group.id),
+                                    str(tg_models.Shipment.Status.WAREHOUSE),
+                                    int(staff_filial.id) if staff_filial is not None else None,
+                                )
                             except Exception:
                                 pass
 
@@ -1379,24 +1385,14 @@ def manager_group_set_bishkek(request, group_id: int):
         qs_update = qs_update.filter(filial=staff_filial)
     qs_update.update(status=tg_models.Shipment.Status.BISHKEK, updated_at=timezone.now())
 
-    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
-    if token:
-        qs = tg_models.Shipment.objects.select_related("user").filter(group=group, user__isnull=False)
-        if staff_filial is not None:
-            qs = qs.filter(filial=staff_filial)
-        for sh in qs:
-            user_obj = sh.user
-            chat_id = getattr(user_obj, "telegram_id", None)
-            if not chat_id:
-                continue
-            try:
-                _send_telegram_message(
-                    token=token,
-                    chat_id=int(chat_id),
-                    text=_shipment_notify_text_bishkek(tracking=sh.tracking_number),
-                )
-            except Exception:
-                continue
+    try:
+        notify_group_status_task.delay(
+            int(group.id),
+            str(tg_models.Shipment.Status.BISHKEK),
+            int(staff_filial.id) if staff_filial is not None else None,
+        )
+    except Exception:
+        pass
 
     return redirect("manager_group_detail", group_id=group.id)
 

@@ -58,11 +58,25 @@
 
   <div class="card" style="margin-top:12px;">
     <h3 class="h">Посылки в группе</h3>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+      {% for value,label in status_tabs %}
+        <a
+          class="btn {% if status == value %}accent{% endif %}"
+          href="{% url 'manager_group_detail' group_id=group.id %}{% if value %}?status={{ value }}{% endif %}"
+        >
+          {{ label }}
+        </a>
+      {% endfor %}
+      <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Сбросить</a>
+    </div>
+
     <table>
       <thead>
         <tr>
           <th>Трек</th>
           <th>Клиент</th>
+          <th>Стоимость</th>
           <th>Статус</th>
           <th></th>
         </tr>
@@ -80,6 +94,7 @@
                 <div class="muted">{{ sh.get_import_status_display }}</div>
               {% endif %}
             </td>
+            <td>{% if sh.total_price %}{{ sh.total_price }}{% else %}—{% endif %}</td>
             <td>{{ sh.get_status_display }}</td>
             <td class="row-actions">
               <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
@@ -92,7 +107,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="4" class="muted">В группе пока нет посылок.</td></tr>
+          <tr><td colspan="5" class="muted">В группе пока нет посылок.</td></tr>
         {% endfor %}
       </tbody>
     </table>
