@@ -51,6 +51,22 @@
           <div class="n">{{ group_kpi.issued_sum|default:0 }}</div>
           <div class="t">Сумма (выдано)</div>
         </div>
+        <div class="box">
+          <div class="n">{{ group_kpi.priced_cnt|default:0 }}</div>
+          <div class="t">Посчитано</div>
+        </div>
+        <div class="box">
+          <div class="n">{{ group_kpi.unpriced_cnt|default:0 }}</div>
+          <div class="t">Не посчитано</div>
+        </div>
+        <div class="box">
+          <div class="n">{{ group_kpi.issued_priced_cnt|default:0 }}</div>
+          <div class="t">Выдано (посчитано)</div>
+        </div>
+        <div class="box">
+          <div class="n">{{ group_kpi.issued_unpriced_cnt|default:0 }}</div>
+          <div class="t">Выдано (не посчитано)</div>
+        </div>
       </div>
       <div class="muted" style="margin-top:10px;">*«Сумма (выдано)» считается по посылкам со статусом «Выдано».</div>
     </div>

@@ -1045,11 +1045,25 @@ def manager_group_detail(request, group_id: int):
         issued_cnt=Count("id"),
         issued_sum=Coalesce(Sum("total_price"), Value(0), output_field=DecimalField(max_digits=14, decimal_places=2)),
     )
+
+    agg_priced = shipments_qs.aggregate(
+        priced_cnt=Count("id", filter=Q(total_price__gt=0)),
+        unpriced_cnt=Count("id", filter=(Q(total_price__isnull=True) | Q(total_price__lte=0))),
+        issued_priced_cnt=Count("id", filter=(Q(status=tg_models.Shipment.Status.ISSUED) & Q(total_price__gt=0))),
+        issued_unpriced_cnt=Count(
+            "id",
+            filter=(Q(status=tg_models.Shipment.Status.ISSUED) & (Q(total_price__isnull=True) | Q(total_price__lte=0))),
+        ),
+    )
     group_kpi = {
         "total_cnt": int(agg_all.get("total_cnt") or 0),
         "issued_cnt": int(agg_issued.get("issued_cnt") or 0),
         "total_sum": agg_all.get("total_sum") or Decimal("0"),
         "issued_sum": agg_issued.get("issued_sum") or Decimal("0"),
+        "priced_cnt": int(agg_priced.get("priced_cnt") or 0),
+        "unpriced_cnt": int(agg_priced.get("unpriced_cnt") or 0),
+        "issued_priced_cnt": int(agg_priced.get("issued_priced_cnt") or 0),
+        "issued_unpriced_cnt": int(agg_priced.get("issued_unpriced_cnt") or 0),
     }
 
     has_unsorted = shipments_qs.exclude(status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED]).exists()

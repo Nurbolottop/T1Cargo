@@ -283,5 +283,218 @@
       </div>
     </main>
   </div>
+
+  <div id="numKeypadOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.22); z-index:9999;"></div>
+  <div id="numKeypadPanel" style="display:none; position:fixed; left:50%; bottom:12px; transform: translateX(-50%); width:100%; max-width:420px; background: rgba(17,24,39,.98); border: 1px solid rgba(255,255,255,.10); border-radius:16px; padding:12px; z-index:10000; box-shadow: 0 18px 40px rgba(0,0,0,.35);">
+    <div id="numKeypadHeader" style="display:flex; gap:10px; justify-content:space-between; align-items:center; margin-bottom:10px; cursor:move; user-select:none;">
+      <div class="muted" style="font-weight:850;">Цифровая клавиатура</div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn" type="button" id="numKeypadClear">Очистить</button>
+        <button class="btn" type="button" id="numKeypadClose">Закрыть</button>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+      <button class="btn" type="button" data-num="1">1</button>
+      <button class="btn" type="button" data-num="2">2</button>
+      <button class="btn" type="button" data-num="3">3</button>
+      <button class="btn" type="button" data-num="4">4</button>
+      <button class="btn" type="button" data-num="5">5</button>
+      <button class="btn" type="button" data-num="6">6</button>
+      <button class="btn" type="button" data-num="7">7</button>
+      <button class="btn" type="button" data-num="8">8</button>
+      <button class="btn" type="button" data-num="9">9</button>
+      <button class="btn" type="button" id="numKeypadBack">⌫</button>
+      <button class="btn" type="button" data-num="0">0</button>
+      <button class="btn accent" type="button" id="numKeypadOk">OK</button>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      let activeInput = null;
+      const overlay = document.getElementById('numKeypadOverlay');
+      const panel = document.getElementById('numKeypadPanel');
+      const header = document.getElementById('numKeypadHeader');
+      const closeBtn = document.getElementById('numKeypadClose');
+      const clearBtn = document.getElementById('numKeypadClear');
+      const backBtn = document.getElementById('numKeypadBack');
+      const okBtn = document.getElementById('numKeypadOk');
+
+      if (!overlay || !panel) return;
+
+      function setActiveInput(el){
+        if (!el) return;
+        activeInput = el;
+      }
+
+      function openKeypad(forInput){
+        if (forInput) setActiveInput(forInput);
+        overlay.style.display = 'block';
+        panel.style.display = 'block';
+        try{ activeInput && activeInput.focus(); }catch(e){}
+      }
+
+      function closeKeypad(){
+        overlay.style.display = 'none';
+        panel.style.display = 'none';
+        try{ activeInput && activeInput.focus(); }catch(e){}
+      }
+
+      function setValue(v){
+        if (!activeInput) return;
+        activeInput.value = v;
+        try{ activeInput.dispatchEvent(new Event('input', {bubbles:true})); }catch(e){}
+      }
+
+      function appendDigit(d){
+        if (!activeInput) return;
+        setValue(String(activeInput.value || '') + String(d));
+        try{ activeInput.focus(); }catch(e){}
+      }
+
+      function applySavedPosition(){
+        try{
+          const raw = sessionStorage.getItem('numKeypadPos') || '';
+          if (!raw) return;
+          const pos = JSON.parse(raw);
+          if (!pos || typeof pos.left !== 'number' || typeof pos.top !== 'number') return;
+          panel.style.left = pos.left + 'px';
+          panel.style.top = pos.top + 'px';
+          panel.style.bottom = 'auto';
+          panel.style.transform = 'none';
+        }catch(e){
+          return;
+        }
+      }
+
+      function savePosition(){
+        try{
+          const rect = panel.getBoundingClientRect();
+          sessionStorage.setItem('numKeypadPos', JSON.stringify({left: rect.left, top: rect.top}));
+        }catch(e){
+          return;
+        }
+      }
+
+      applySavedPosition();
+
+      panel.addEventListener('click', function(e){
+        const t = e.target;
+        if (!t || !t.getAttribute) return;
+        const n = t.getAttribute('data-num');
+        if (n == null) return;
+        appendDigit(n);
+      });
+
+      if (closeBtn) closeBtn.addEventListener('click', closeKeypad);
+      if (clearBtn) clearBtn.addEventListener('click', function(){ setValue(''); });
+      if (backBtn) backBtn.addEventListener('click', function(){
+        if (!activeInput) return;
+        const v = String(activeInput.value || '');
+        setValue(v.slice(0, -1));
+      });
+      if (okBtn) okBtn.addEventListener('click', function(){
+        closeKeypad();
+      });
+
+      overlay.addEventListener('click', function(){
+        closeKeypad();
+      });
+
+      document.addEventListener('keydown', function(e){
+        if (panel.style.display !== 'block') return;
+        if (e.key === 'Escape') closeKeypad();
+      });
+
+      function ensureKeypadButtonForInput(input){
+        if (!input || input.getAttribute('data-numkeypad-ready') === '1') return;
+
+        const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.gap = '10px';
+        wrapper.style.alignItems = 'center';
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn';
+        btn.textContent = '123';
+        btn.style.minWidth = '64px';
+        btn.setAttribute('data-numkeypad-btn', '1');
+
+        btn.addEventListener('click', function(){
+          setActiveInput(input);
+          openKeypad(input);
+        });
+
+        input.addEventListener('focus', function(){ setActiveInput(input); });
+
+        const parent = input.parentNode;
+        if (!parent) return;
+        parent.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+        wrapper.appendChild(btn);
+        try{ input.style.flex = '1'; }catch(e){}
+
+        input.setAttribute('data-numkeypad-ready', '1');
+      }
+
+      function initSearchKeypads(){
+        const inputs = document.querySelectorAll('input[name="q"]');
+        for (let i=0; i<inputs.length; i++){
+          const inp = inputs[i];
+          if (!inp) continue;
+          ensureKeypadButtonForInput(inp);
+        }
+      }
+
+      if (document.readyState === 'loading'){
+        document.addEventListener('DOMContentLoaded', initSearchKeypads);
+      } else {
+        initSearchKeypads();
+      }
+
+      if (header) {
+        let dragging = false;
+        let offX = 0;
+        let offY = 0;
+
+        header.addEventListener('pointerdown', function(e){
+          try{ e.preventDefault(); }catch(err){}
+          dragging = true;
+          const rect = panel.getBoundingClientRect();
+          offX = e.clientX - rect.left;
+          offY = e.clientY - rect.top;
+          panel.style.transform = 'none';
+          panel.style.bottom = 'auto';
+          try{ header.setPointerCapture(e.pointerId); }catch(err){}
+        });
+
+        header.addEventListener('pointermove', function(e){
+          if (!dragging) return;
+          const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+          const maxTop = Math.max(0, window.innerHeight - panel.offsetHeight);
+          let left = e.clientX - offX;
+          let top = e.clientY - offY;
+          if (left < 0) left = 0;
+          if (top < 0) top = 0;
+          if (left > maxLeft) left = maxLeft;
+          if (top > maxTop) top = maxTop;
+          panel.style.left = left + 'px';
+          panel.style.top = top + 'px';
+        });
+
+        function endDrag(e){
+          if (!dragging) return;
+          dragging = false;
+          savePosition();
+          try{ header.releasePointerCapture(e.pointerId); }catch(err){}
+        }
+
+        header.addEventListener('pointerup', endDrag);
+        header.addEventListener('pointercancel', endDrag);
+      }
+    })();
+  </script>
 </body>
 </html>

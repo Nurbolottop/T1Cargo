@@ -38,6 +38,7 @@
           <th>Последнее начисление</th>
           <th>К начислению</th>
           <th>Начислено (итого)</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -45,7 +46,7 @@
           <tr>
             <td>
               {% if r.user %}
-                <b>{{ r.user.client_code|default:'—' }}</b>
+                <a class="btn" href="{% url 'manager_client_detail' user_id=r.user.id %}" style="padding:6px 10px; border-radius:999px;">{{ r.user.client_code|default:'—' }}</a>
                 {% if r.user.full_name %}<div class="muted">{{ r.user.full_name }}</div>{% endif %}
               {% endif %}
             </td>
@@ -54,9 +55,14 @@
             <td class="muted">{% if r.storage_penalty_last_charged_date %}{{ r.storage_penalty_last_charged_date|date:'d.m.Y' }}{% else %}—{% endif %}</td>
             <td class="muted">{{ r.to_charge }}</td>
             <td class="muted">{{ r.storage_penalty_total }}</td>
+            <td class="row-actions" style="white-space:nowrap; width:1%;">
+              {% if r.user %}
+                <a class="btn" href="{% url 'manager_client_detail' user_id=r.user.id %}">Открыть</a>
+              {% endif %}
+            </td>
           </tr>
         {% empty %}
-          <tr><td colspan="6" class="muted">Сейчас нет клиентов, по которым начисляется штраф.</td></tr>
+          <tr><td colspan="7" class="muted">Сейчас нет клиентов, по которым начисляется штраф.</td></tr>
         {% endfor %}
       </tbody>
     </table>

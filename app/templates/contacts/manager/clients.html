@@ -10,10 +10,7 @@
     <form method="get" class="form-row">
       <div class="col-12">
         <label>Поиск (код клиента / ФИО / телефон / Telegram ID)</label>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <input id="clientSearchInput" name="q" value="{{ q|default:'' }}" placeholder="Например: T1-1234" style="flex:1;" />
-          <button class="btn" type="button" id="clientSearchKeypadBtn" style="min-width:64px;">123</button>
-        </div>
+        <input name="q" value="{{ q|default:'' }}" placeholder="Например: T1-1234" />
       </div>
       <div class="col-12" style="display:flex; gap:10px;">
         <button class="btn accent" type="submit">Поиск</button>
@@ -21,83 +18,6 @@
       </div>
     </form>
   </div>
-
-  <div id="numKeypadOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.45); z-index:9999; align-items:flex-end; justify-content:center; padding:12px;">
-    <div id="numKeypadPanel" style="width:100%; max-width:420px; background: rgba(17,24,39,.98); border: 1px solid rgba(255,255,255,.10); border-radius:16px; padding:12px;">
-      <div style="display:flex; gap:10px; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <div class="muted" style="font-weight:850;">Цифровая клавиатура</div>
-        <button class="btn" type="button" id="numKeypadClose">Закрыть</button>
-      </div>
-
-      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
-        <button class="btn" type="button" data-num="1">1</button>
-        <button class="btn" type="button" data-num="2">2</button>
-        <button class="btn" type="button" data-num="3">3</button>
-        <button class="btn" type="button" data-num="4">4</button>
-        <button class="btn" type="button" data-num="5">5</button>
-        <button class="btn" type="button" data-num="6">6</button>
-        <button class="btn" type="button" data-num="7">7</button>
-        <button class="btn" type="button" data-num="8">8</button>
-        <button class="btn" type="button" data-num="9">9</button>
-        <button class="btn" type="button" id="numKeypadClear">Очистить</button>
-        <button class="btn" type="button" data-num="0">0</button>
-        <button class="btn" type="button" id="numKeypadBack">⌫</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    (function(){
-      const input = document.getElementById('clientSearchInput');
-      const btn = document.getElementById('clientSearchKeypadBtn');
-      const overlay = document.getElementById('numKeypadOverlay');
-      const panel = document.getElementById('numKeypadPanel');
-      const closeBtn = document.getElementById('numKeypadClose');
-      const clearBtn = document.getElementById('numKeypadClear');
-      const backBtn = document.getElementById('numKeypadBack');
-
-      if (!input || !btn || !overlay || !panel) return;
-
-      function openKeypad(){
-        overlay.style.display = 'flex';
-        try{ input.focus(); }catch(e){}
-      }
-      function closeKeypad(){
-        overlay.style.display = 'none';
-        try{ input.focus(); }catch(e){}
-      }
-      function setValue(v){
-        input.value = v;
-        try{ input.dispatchEvent(new Event('input', {bubbles:true})); }catch(e){}
-      }
-
-      btn.addEventListener('click', openKeypad);
-      if (closeBtn) closeBtn.addEventListener('click', closeKeypad);
-      if (clearBtn) clearBtn.addEventListener('click', function(){ setValue(''); });
-      if (backBtn) backBtn.addEventListener('click', function(){
-        const v = String(input.value || '');
-        setValue(v.slice(0, -1));
-      });
-
-      panel.addEventListener('click', function(e){
-        const t = e.target;
-        if (!t || !t.getAttribute) return;
-        const n = t.getAttribute('data-num');
-        if (n == null) return;
-        setValue(String(input.value || '') + String(n));
-        try{ input.focus(); }catch(err){}
-      });
-
-      overlay.addEventListener('click', function(e){
-        if (e.target === overlay) closeKeypad();
-      });
-
-      document.addEventListener('keydown', function(e){
-        if (overlay.style.display !== 'flex') return;
-        if (e.key === 'Escape') closeKeypad();
-      });
-    })();
-  </script>
 
   <div class="card" style="margin-top:12px;">
     <table>
