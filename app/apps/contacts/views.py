@@ -1286,10 +1286,12 @@ def manager_group_sorting(request, group_id: int):
                             group.save(update_fields=["status", "updated_at"])
 
                             try:
-                                notify_group_status_task.delay(
-                                    int(group.id),
-                                    str(tg_models.Shipment.Status.WAREHOUSE),
-                                    int(staff_filial.id) if staff_filial is not None else None,
+                                transaction.on_commit(
+                                    lambda: notify_group_status_task.delay(
+                                        int(group.id),
+                                        str(tg_models.Shipment.Status.WAREHOUSE),
+                                        int(staff_filial.id) if staff_filial is not None else None,
+                                    )
                                 )
                             except Exception:
                                 pass
@@ -1338,10 +1340,12 @@ def manager_group_sorting(request, group_id: int):
                             group.save(update_fields=["status", "updated_at"])
 
                             try:
-                                notify_group_status_task.delay(
-                                    int(group.id),
-                                    str(tg_models.Shipment.Status.WAREHOUSE),
-                                    int(staff_filial.id) if staff_filial is not None else None,
+                                transaction.on_commit(
+                                    lambda: notify_group_status_task.delay(
+                                        int(group.id),
+                                        str(tg_models.Shipment.Status.WAREHOUSE),
+                                        int(staff_filial.id) if staff_filial is not None else None,
+                                    )
                                 )
                             except Exception:
                                 pass

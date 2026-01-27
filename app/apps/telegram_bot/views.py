@@ -331,15 +331,28 @@ def _send_telegram_message(
         payload["disable_web_page_preview"] = "true"
     data = urllib.parse.urlencode(payload).encode("utf-8")
     req = urllib.request.Request(url, data=data, method="POST")
-    last_err: Exception | None = None
     for attempt in range(1, 4):
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 resp.read()
             return True
+        except urllib.error.HTTPError as e:
+            if attempt < 3:
+                try:
+                    time.sleep(0.7 * attempt)
+                except Exception:
+                    pass
+                continue
+
+            body = ""
+            try:
+                body = (e.read() or b"").decode("utf-8", errors="ignore")
+            except Exception:
+                body = ""
+            logger.exception("Telegram send failed (chat_id=%s, status=%s, body=%s): %s", chat_id, getattr(e, "code", None), body, e)
+            return False
         except (urllib.error.URLError, TimeoutError, Exception) as e:
-            last_err = e
-            if attempt < 4:
+            if attempt < 3:
                 try:
                     time.sleep(0.7 * attempt)
                 except Exception:
@@ -347,7 +360,7 @@ def _send_telegram_message(
                 continue
             logger.exception("Telegram send failed (chat_id=%s): %s", chat_id, e)
             return False
-    return True
+    return False
 
 
 def _generate_client_code(filial_id: int | None) -> tuple[str, base_models.Filial | None]:
