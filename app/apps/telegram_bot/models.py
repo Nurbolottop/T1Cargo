@@ -185,6 +185,11 @@ class Shipment(models.Model):
         verbose_name = "Посылка"
         verbose_name_plural = "Посылки"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["group", "filial", "status"], name="shp_grp_fil_status_idx"),
+            models.Index(fields=["group", "user", "filial", "status"], name="shp_grp_usr_fil_st_idx"),
+            models.Index(fields=["user", "filial", "status"], name="shp_usr_fil_status_idx"),
+        ]
 
     def __str__(self) -> str:
         return self.tracking_number

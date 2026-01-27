@@ -5,6 +5,10 @@ from . import views
 urlpatterns = [
     path("manager/login/", views.manager_login, name="manager_login"),
     path("manager/logout/", views.manager_logout, name="manager_logout"),
+    path("manager/notifications/", views.manager_notifications, name="manager_notifications"),
+    path("manager/notifications/broadcast/", views.manager_notifications_broadcast, name="manager_notifications_broadcast"),
+    path("manager/notifications/penalty-remind/", views.manager_notifications_penalty_remind, name="manager_notifications_penalty_remind"),
+    path("manager/notifications/ready-remind/", views.manager_notifications_ready_remind, name="manager_notifications_ready_remind"),
     path("manager/", views.manager_dashboard, name="manager_dashboard"),
     path("manager/analytics/", views.manager_analytics, name="manager_analytics"),
     path("manager/sorting/", views.manager_sorting, name="manager_sorting"),

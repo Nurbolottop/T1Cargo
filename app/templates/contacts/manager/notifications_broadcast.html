@@ -1,0 +1,41 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Рассылка • Менеджер{% endblock %}
+
+{% block page_title %}Рассылка{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+      <h2 class="h" style="margin:0;">Отправить рассылку</h2>
+      <a class="btn" href="{% url 'manager_notifications' %}{% if show_filial_selector and selected_filial %}?filial={{ selected_filial.id }}{% endif %}">Назад</a>
+    </div>
+    <div class="muted" style="margin-top:8px;">Сообщение отправится всем клиентам выбранного филиала (или всем филиалам, если не выбрано). Отправка выполняется в очереди (Celery).</div>
+
+    {% if show_filial_selector and filials %}
+      <form method="get" style="margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="muted" style="font-weight:950; font-size:12px;">Филиал</div>
+        <select name="filial" class="btn" onchange="this.form.submit()" style="padding:10px 12px;">
+          <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+          {% for f in filials %}
+            <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <form method="post" action="{% url 'manager_notifications_broadcast' %}" style="margin-top:10px;">
+      {% csrf_token %}
+      {% if show_filial_selector and filials %}
+        <input type="hidden" name="filial" value="{% if selected_filial %}{{ selected_filial.id }}{% endif %}">
+      {% endif %}
+      <label>Текст рассылки</label>
+      <textarea name="text" rows="8" style="width:100%; padding:10px 12px; border-radius:12px; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); color: var(--text);"></textarea>
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+        <button class="btn accent" type="submit">Отправить</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

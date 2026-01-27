@@ -5,26 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Менеджер панель{% endblock %}</title>
   <style>
-    :root { --bg:#0b1220; --card:#0f1a2e; --text:#e5e7eb; --muted:#9ca3af; --border:#22304a; --accent:#e0b13f; }
+    :root { --bg:#070b15; --card:#0c1324; --text:#e6e9ef; --muted:#99a3b3; --border:#1f2a43; --accent:#e0b13f; --danger:#ef4444; --ring: rgba(224,177,63,.22); }
     * { box-sizing: border-box; }
-    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background: var(--bg); color:var(--text); }
+    body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background: var(--bg); color:var(--text); line-height: 1.35; }
     a { color:inherit; text-decoration:none; }
 
     .app {
       min-height: 100vh;
       display: flex;
       background:
-        radial-gradient(900px 520px at 15% -10%, rgba(224,177,63,.12), transparent 55%),
-        radial-gradient(900px 520px at 90% 0%, rgba(59,130,246,.12), transparent 55%),
+        radial-gradient(900px 520px at 12% -8%, rgba(224,177,63,.16), transparent 55%),
+        radial-gradient(900px 520px at 92% 6%, rgba(59,130,246,.14), transparent 55%),
+        radial-gradient(900px 520px at 50% 120%, rgba(16,185,129,.10), transparent 55%),
         var(--bg);
     }
 
     .sidebar {
-      width: 280px;
+      width: 292px;
       padding: 18px 14px;
-      border-right: 1px solid rgba(255,255,255,.06);
-      background: rgba(15,26,46,.45);
-      backdrop-filter: blur(10px);
+      border-right: 1px solid rgba(255,255,255,.07);
+      background: linear-gradient(180deg, rgba(12,19,36,.78) 0%, rgba(10,16,30,.62) 100%);
+      backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
       height: 100vh;
@@ -39,7 +40,7 @@
       gap:6px;
       padding: 10px 10px 14px;
     }
-    .sb-title .name { font-weight: 950; letter-spacing: .2px; }
+    .sb-title .name { font-weight: 950; letter-spacing: .25px; font-size: 18px; }
     .sb-title .meta { color: var(--muted); font-weight: 900; font-size: 12px; }
 
     .sb-nav { margin-top: 10px; display:flex; flex-direction:column; gap:8px; padding: 0 6px; flex: 1; }
@@ -51,15 +52,15 @@
       padding: 10px 12px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,.06);
-      background: rgba(255,255,255,.03);
+      background: rgba(255,255,255,.028);
       font-weight: 950;
-      transition: background .12s ease, border-color .12s ease, transform .12s ease;
+      transition: background .12s ease, border-color .12s ease, transform .12s ease, box-shadow .12s ease;
     }
-    .nav-link:hover { transform: translateY(-1px); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.12); }
-    .nav-link.active { background: rgba(224,177,63,.12); border-color: rgba(224,177,63,.32); color: #f8d778; }
-    .nav-link.primary { background: rgba(224,177,63,.92); color: #111827; border-color: transparent; }
-    .nav-link.primary:hover { background: rgba(236,195,92,.98); }
-    .nav-link.danger { background: rgba(255,255,255,.02); }
+    .nav-link:hover { transform: translateY(-1px); background: rgba(255,255,255,.045); border-color: rgba(255,255,255,.14); box-shadow: 0 10px 22px rgba(0,0,0,.22); }
+    .nav-link.active { background: rgba(224,177,63,.14); border-color: rgba(224,177,63,.38); color: #f8d778; box-shadow: inset 3px 0 0 rgba(224,177,63,.95); }
+    .nav-link.primary { background: linear-gradient(180deg, rgba(224,177,63,.96), rgba(206,156,45,.94)); color: #111827; border-color: transparent; box-shadow: 0 14px 30px rgba(224,177,63,.18); }
+    .nav-link.primary:hover { background: linear-gradient(180deg, rgba(236,195,92,.98), rgba(218,165,38,.96)); }
+    .nav-link.danger { background: rgba(255,255,255,.02); border-color: rgba(255,255,255,.06); }
 
     .main { flex: 1; min-width: 0; display:flex; flex-direction:column; }
     .topbar {
@@ -68,8 +69,8 @@
       justify-content:space-between;
       padding: 12px 18px;
       border-bottom: 1px solid rgba(255,255,255,.06);
-      background: rgba(15,26,46,.40);
-      backdrop-filter: blur(10px);
+      background: rgba(12,19,36,.52);
+      backdrop-filter: blur(12px);
       min-height: 64px;
       height: auto;
       gap: 10px;
@@ -83,7 +84,7 @@
       padding: 8px 10px;
       border-radius: 999px;
       border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.03);
+      background: rgba(255,255,255,.028);
       color: var(--muted);
       font-weight: 950;
       font-size: 12px;
@@ -99,11 +100,11 @@
     }
 
     .card {
-      background: rgba(15,26,46,.55);
-      border: 1px solid rgba(255,255,255,.07);
+      background: linear-gradient(180deg, rgba(15,26,46,.56), rgba(11,18,32,.44));
+      border: 1px solid rgba(255,255,255,.08);
       border-radius: 18px;
       padding: 16px;
-      box-shadow: 0 18px 40px rgba(0,0,0,.28);
+      box-shadow: 0 18px 44px rgba(0,0,0,.32);
     }
     .h { font-weight: 950; margin: 0 0 10px; letter-spacing:.2px; }
     .muted { color: var(--muted); }
@@ -155,27 +156,27 @@
       padding: 10px 12px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.03);
+      background: rgba(255,255,255,.028);
       color: var(--text);
       font-weight: 950;
       cursor: pointer;
       transition: transform .12s ease, background .12s ease, border-color .12s ease;
       white-space: nowrap;
     }
-    .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.16); }
-    .btn.accent { background: rgba(224,177,63,.92); color:#111827; border-color: transparent; }
-    .btn.accent:hover { background: rgba(236,195,92,.98); }
+    .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.18); }
+    .btn.accent { background: linear-gradient(180deg, rgba(224,177,63,.96), rgba(206,156,45,.94)); color:#111827; border-color: transparent; box-shadow: 0 14px 30px rgba(224,177,63,.18); }
+    .btn.accent:hover { background: linear-gradient(180deg, rgba(236,195,92,.98), rgba(218,165,38,.96)); }
 
     input, select {
       width:100%;
       padding: 10px 12px;
       border-radius: 12px;
       border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.03);
+      background: rgba(255,255,255,.028);
       color: var(--text);
       transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
     }
-    input:focus, select:focus { outline: none; border-color: rgba(224,177,63,.55); box-shadow: 0 0 0 4px rgba(224,177,63,.12); background: rgba(255,255,255,.04); }
+    input:focus, select:focus { outline: none; border-color: rgba(224,177,63,.65); box-shadow: 0 0 0 5px var(--ring); background: rgba(255,255,255,.035); }
     select { color-scheme: dark; }
     option { background: #0f1a2e; color: var(--text); }
     label { display:block; font-size:12px; font-weight: 950; color: var(--muted); margin: 10px 0 6px; }
@@ -188,16 +189,20 @@
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: middle; }
     th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-    tbody tr:hover td { background: rgba(255,255,255,.03); }
+    tbody tr:hover td { background: rgba(255,255,255,.035); }
     th:last-child, td:last-child { width: 140px; text-align: right; white-space: nowrap; }
 
-    .error { background: rgba(244,63,94,.12); border:1px solid rgba(244,63,94,.35); color:#fecdd3; padding:10px 12px; border-radius:12px; font-weight:900; }
+    .error { background: rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.35); color:#fecdd3; padding:10px 12px; border-radius:12px; font-weight:900; }
 
     .msg { padding: 10px 12px; border-radius: 12px; font-weight: 950; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
     .msg.success { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.10); color: rgba(229,231,235,.98); }
     .msg.error { border-color: rgba(244,63,94,.35); background: rgba(244,63,94,.12); color: #fecdd3; }
     .msg.info { border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.10); color: rgba(229,231,235,.98); }
     .msg.warning { border-color: rgba(224,177,63,.45); background: rgba(224,177,63,.12); color: rgba(229,231,235,.98); }
+
+    .sidebar::-webkit-scrollbar, .content::-webkit-scrollbar { width: 10px; height: 10px; }
+    .sidebar::-webkit-scrollbar-thumb, .content::-webkit-scrollbar-thumb { background: rgba(255,255,255,.10); border-radius: 999px; border: 2px solid rgba(0,0,0,.25); }
+    .sidebar::-webkit-scrollbar-thumb:hover, .content::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.16); }
 
     @media (max-width: 980px){
       .sidebar { display:none; }
@@ -241,6 +246,7 @@
       </nav>
 
       <div class="sb-footer">
+        <a class="nav-link {% if nav == 'notifications' %}active{% endif %}" href="{% url 'manager_notifications' %}">Уведомления</a>
         <a class="nav-link danger" href="{% url 'manager_logout' %}">Выход</a>
       </div>
     </aside>

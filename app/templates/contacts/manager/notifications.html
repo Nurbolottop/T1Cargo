@@ -1,0 +1,45 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Уведомления • Менеджер{% endblock %}
+
+{% block page_title %}Уведомления{% endblock %}
+
+{% block content %}
+  <div class="card">
+    <h2 class="h">Центр уведомлений</h2>
+    <div class="muted">Все отправки ставятся в очередь (Celery). После запуска появится ID задачи.</div>
+
+    {% if show_filial_selector and filials %}
+      <form method="get" style="margin-top:10px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <div class="muted" style="font-weight:950; font-size:12px;">Филиал</div>
+        <select name="filial" class="btn" onchange="this.form.submit()" style="padding:10px 12px;">
+          <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+          {% for f in filials %}
+            <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
+          {% endfor %}
+        </select>
+      </form>
+    {% endif %}
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <h3 class="h" style="margin-top:0;">Действия</h3>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+      <a class="btn accent" href="{% url 'manager_notifications_broadcast' %}{% if show_filial_selector and selected_filial %}?filial={{ selected_filial.id }}{% endif %}">Отправить рассылку</a>
+      <form method="post" action="{% url 'manager_notifications_penalty_remind' %}" style="margin:0;">
+        {% csrf_token %}
+        {% if show_filial_selector and filials %}
+          <input type="hidden" name="filial" value="{% if selected_filial %}{{ selected_filial.id }}{% endif %}">
+        {% endif %}
+        <button class="btn accent" type="submit">Напомнить о штрафе / долге</button>
+      </form>
+      <form method="post" action="{% url 'manager_notifications_ready_remind' %}" style="margin:0;">
+        {% csrf_token %}
+        {% if show_filial_selector and filials %}
+          <input type="hidden" name="filial" value="{% if selected_filial %}{{ selected_filial.id }}{% endif %}">
+        {% endif %}
+        <button class="btn accent" type="submit">Товары готовы к выдаче</button>
+      </form>
+    </div>
+  </div>
+{% endblock %}

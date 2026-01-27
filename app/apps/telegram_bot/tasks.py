@@ -2,6 +2,8 @@ import logging
 
 from celery import shared_task
 
+from decimal import Decimal
+from django.utils import timezone
 from typing import Optional
 
 from apps.base import models as base_models
@@ -57,6 +59,7 @@ def _shipment_notify_text_bishkek_batch(trackings: list[str]) -> str:
 
 def _shipment_notify_text_ready_for_pickup_batch(items: list[dict]) -> str:
     lines = []
+    total_price = Decimal("0")
     for it in items:
         t = (str(it.get("tracking") or "—")).strip() or "—"
         w = it.get("weight_kg")
@@ -66,9 +69,16 @@ def _shipment_notify_text_ready_for_pickup_batch(items: list[dict]) -> str:
             extra.append(f"{w} кг")
         if p is not None and str(p).strip() != "":
             extra.append(f"{p} сом")
+            try:
+                total_price += Decimal(str(p))
+            except Exception:
+                pass
         suffix = (" — " + ", ".join(extra)) if extra else ""
         lines.append(f"• {t}{suffix}")
     list_block = "\n".join(lines) if lines else "—"
+    total_line = ""
+    if total_price > 0:
+        total_line = f"\n\n💰 Итого к оплате: {total_price} сом"
     return (
         "✅📦 Посылка готова к выдаче!\n\n"
         "🧾 Трек-номера:\n"
@@ -76,6 +86,7 @@ def _shipment_notify_text_ready_for_pickup_batch(items: list[dict]) -> str:
         "🆓 Бесплатное хранение — 3 дня\n"
         "⏳ Далее начисляется плата за хранение.\n\n"
         "📍 Вы можете забрать посылку в пункте выдачи."
+        f"{total_line}"
     )
 
 
@@ -99,6 +110,198 @@ def _split_long_text(text: str, max_len: int = 3600) -> list[str]:
     if cur:
         parts.append(cur)
     return [p for p in parts if p.strip()]
+
+
+def _send_text_to_chat(token: str, chat_id: int, text: str) -> bool:
+    chunks = _split_long_text(text)
+    for chunk in chunks:
+        ok = _send_telegram_message(token=token, chat_id=int(chat_id), text=chunk)
+        if not ok:
+            return False
+    return True
+
+
+def _penalty_reminder_text(has_debt: bool, has_penalty: bool, has_accrual: bool) -> str:
+    lines = ["⚠️ Напоминание"]
+    if has_debt:
+        lines.append("• У вас есть долг")
+    if has_penalty:
+        lines.append("• У вас есть штраф за хранение")
+    if has_accrual:
+        lines.append("• По посылкам начисляется плата за хранение")
+    lines.append("")
+    lines.append("Пожалуйста, оплатите задолженность/штраф и заберите посылки как можно скорее.")
+    return "\n".join(lines)
+
+
+@shared_task(bind=True)
+def broadcast_to_clients_task(self, text: str, filial_id: Optional[int] = None) -> dict:
+    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+    if not token:
+        return {"sent": 0, "failed": 0}
+
+    qs = tg_models.User.objects.exclude(telegram_id__isnull=True).exclude(telegram_id=0)
+    if filial_id is not None:
+        try:
+            fid = int(filial_id)
+        except Exception:
+            fid = 0
+        if fid:
+            qs = qs.filter(filial_id=fid)
+
+    sent = 0
+    failed = 0
+    for u in qs.only("id", "telegram_id").iterator(chunk_size=500):
+        chat_id = getattr(u, "telegram_id", None)
+        if not chat_id:
+            failed += 1
+            continue
+        ok = _send_text_to_chat(token=token, chat_id=int(chat_id), text=str(text or ""))
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+    return {"sent": sent, "failed": failed}
+
+
+@shared_task(bind=True)
+def remind_penalties_and_debts_task(self, filial_id: Optional[int] = None) -> dict:
+    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+    if not token:
+        return {"sent": 0, "failed": 0, "total": 0}
+
+    user_qs = tg_models.User.objects.exclude(telegram_id__isnull=True).exclude(telegram_id=0)
+    if filial_id is not None:
+        try:
+            fid = int(filial_id)
+        except Exception:
+            fid = 0
+        if fid:
+            user_qs = user_qs.filter(filial_id=fid)
+
+    today = timezone.localdate()
+    free_days = 3
+    cutoff = today - timezone.timedelta(days=free_days)
+
+    accrual_user_ids = set(
+        tg_models.Shipment.objects.select_related("user", "user__filial")
+        .filter(status=tg_models.Shipment.Status.WAREHOUSE)
+        .exclude(user__isnull=True)
+        .exclude(arrival_date__isnull=True)
+        .filter(arrival_date__lt=cutoff)
+        .filter(user__filial__storage_penalty_per_day__gt=0)
+        .values_list("user_id", flat=True)
+        .distinct()
+    )
+
+    total = 0
+    sent = 0
+    failed = 0
+
+    for u in user_qs.only("id", "telegram_id", "total_debt", "storage_penalty_total").iterator(chunk_size=500):
+        uid = getattr(u, "id", None)
+        chat_id = getattr(u, "telegram_id", None)
+        if not uid or not chat_id:
+            continue
+
+        has_debt = False
+        has_penalty = False
+        try:
+            has_debt = Decimal(str(getattr(u, "total_debt", 0) or 0)) > 0
+        except Exception:
+            has_debt = False
+        try:
+            has_penalty = Decimal(str(getattr(u, "storage_penalty_total", 0) or 0)) > 0
+        except Exception:
+            has_penalty = False
+        has_accrual = int(uid) in accrual_user_ids
+
+        if not (has_debt or has_penalty or has_accrual):
+            continue
+
+        total += 1
+        text = _penalty_reminder_text(has_debt=has_debt, has_penalty=has_penalty, has_accrual=has_accrual)
+        ok = _send_text_to_chat(token=token, chat_id=int(chat_id), text=text)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    return {"total": total, "sent": sent, "failed": failed}
+
+
+@shared_task(bind=True)
+def remind_ready_for_pickup_task(self, filial_id: Optional[int] = None) -> dict:
+    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+    if not token:
+        return {"sent": 0, "failed": 0, "total": 0}
+
+    qs = tg_models.Shipment.objects.filter(status=tg_models.Shipment.Status.WAREHOUSE).exclude(user__isnull=True)
+    if filial_id is not None:
+        try:
+            fid = int(filial_id)
+        except Exception:
+            fid = 0
+        if fid:
+            qs = qs.filter(filial_id=fid)
+
+    shipments = list(qs.only("id", "user_id", "group_id", "tracking_number", "weight_kg", "total_price").iterator(chunk_size=1000))
+    if not shipments:
+        return {"total": 0, "sent": 0, "failed": 0}
+
+    user_ids = sorted({int(s.user_id) for s in shipments if getattr(s, "user_id", None)})
+    user_map = {
+        int(u.id): (getattr(u, "telegram_id", None) or None)
+        for u in tg_models.User.objects.filter(id__in=user_ids).only("id", "telegram_id")
+    }
+
+    grouped: dict[tuple[int, int], list[dict]] = {}
+    for sh in shipments:
+        try:
+            uid = int(sh.user_id)
+        except Exception:
+            continue
+        gid = getattr(sh, "group_id", None)
+        try:
+            gid_int = int(gid) if gid is not None else 0
+        except Exception:
+            gid_int = 0
+        key = (uid, gid_int)
+        bucket = grouped.get(key)
+        if bucket is None:
+            bucket = []
+            grouped[key] = bucket
+        bucket.append(
+            {
+                "tracking": str(getattr(sh, "tracking_number", "") or ""),
+                "weight_kg": getattr(sh, "weight_kg", None),
+                "total_price": getattr(sh, "total_price", None),
+            }
+        )
+
+    total = len(grouped)
+    sent = 0
+    failed = 0
+
+    idx = 0
+    for (uid, _gid_int), items in grouped.items():
+        idx += 1
+        if idx % 50 == 0:
+            self.update_state(state="PROGRESS", meta={"current": idx, "total": total, "sent": sent, "failed": failed})
+
+        chat_id = user_map.get(uid)
+        if not chat_id:
+            failed += 1
+            continue
+
+        text = _shipment_notify_text_ready_for_pickup_batch(items)
+        ok = _send_text_to_chat(token=token, chat_id=int(chat_id), text=text)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    return {"total": total, "sent": sent, "failed": failed}
 
 
 def _send_user_arrival_notification(user_id: int, tracking: str, shipment_status: str) -> bool:
@@ -271,6 +474,92 @@ def notify_import_arrivals_task(self, group_id: int) -> dict:
 
     self.update_state(state="SUCCESS", meta={"current": total, "total": total, "sent": sent, "failed": failed})
     return {"current": total, "total": total, "sent": sent, "failed": failed}
+
+
+@shared_task(bind=True)
+def notify_user_group_status_task(
+    self,
+    user_id: int,
+    group_id: int,
+    shipment_status: str,
+    filial_id: Optional[int] = None,
+) -> dict:
+    try:
+        uid = int(user_id)
+    except Exception:
+        uid = 0
+    try:
+        gid = int(group_id)
+    except Exception:
+        gid = 0
+
+    status = str(shipment_status or "")
+
+    qs = tg_models.Shipment.objects.filter(group_id=gid, user_id=uid, status=status)
+    if filial_id is not None:
+        try:
+            fid = int(filial_id)
+        except Exception:
+            fid = 0
+        if fid:
+            qs = qs.filter(filial_id=fid)
+
+    try:
+        total = int(qs.count())
+    except Exception:
+        total = 0
+
+    if total <= 0:
+        return {"total": 0, "sent": 0, "failed": 0}
+
+    if status == tg_models.Shipment.Status.WAREHOUSE:
+        remaining_qs = tg_models.Shipment.objects.filter(group_id=gid, user_id=uid)
+        if filial_id is not None:
+            try:
+                fid = int(filial_id)
+            except Exception:
+                fid = 0
+            if fid:
+                remaining_qs = remaining_qs.filter(filial_id=fid)
+        remaining = remaining_qs.exclude(
+            status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED]
+        ).exists()
+        if remaining:
+            return {"total": total, "sent": 0, "failed": 0}
+
+    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+    if not token:
+        return {"total": total, "sent": 0, "failed": total or 1}
+
+    user_obj = tg_models.User.objects.filter(id=uid).only("id", "telegram_id").first()
+    chat_id = getattr(user_obj, "telegram_id", None) if user_obj else None
+    if not chat_id:
+        return {"total": total, "sent": 0, "failed": total or 1}
+
+    shipments = list(qs.only("tracking_number", "weight_kg", "total_price").iterator(chunk_size=500))
+    items = [
+        {
+            "tracking": str(getattr(sh, "tracking_number", "") or ""),
+            "weight_kg": getattr(sh, "weight_kg", None),
+            "total_price": getattr(sh, "total_price", None),
+        }
+        for sh in shipments
+    ]
+    trackings = [str(getattr(sh, "tracking_number", "") or "") for sh in shipments]
+
+    if status == tg_models.Shipment.Status.WAREHOUSE:
+        text = _shipment_notify_text_ready_for_pickup_batch(items)
+    elif status == tg_models.Shipment.Status.ON_THE_WAY:
+        text = _shipment_notify_text_in_transit_batch(trackings)
+    else:
+        text = _shipment_notify_text_bishkek_batch(trackings)
+
+    chunks = _split_long_text(text)
+    for chunk in chunks:
+        ok = _send_telegram_message(token=token, chat_id=int(chat_id), text=chunk)
+        if not ok:
+            return {"total": total, "sent": 0, "failed": 1}
+    return {"total": total, "sent": 1, "failed": 0}
 
 
 @shared_task(bind=True)

@@ -22,7 +22,14 @@ from django.db.models.functions import Coalesce, TruncDate
 from apps.telegram_bot import models as tg_models
 from apps.base import models as base_models
 from apps.telegram_bot.views import _send_telegram_message
-from apps.telegram_bot.tasks import notify_group_status_task, notify_import_arrivals_task
+from apps.telegram_bot.tasks import (
+    notify_group_status_task,
+    notify_import_arrivals_task,
+    notify_user_group_status_task,
+    broadcast_to_clients_task,
+    remind_penalties_and_debts_task,
+    remind_ready_for_pickup_task,
+)
 from .forms import ClientEditDirectorForm, ClientEditManagerForm, ShipmentCreateForm, ShipmentImportForm
 
 from celery.result import AsyncResult
@@ -224,6 +231,188 @@ def manager_login(request):
 def manager_logout(request):
     logout(request)
     return redirect("manager_login")
+
+
+@login_required(login_url="/manager/login/")
+def manager_notifications(request):
+    denied = _require_manager(request)
+    if denied is not None:
+        return denied
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    user = getattr(request, "user", None)
+    is_director = _is_director(user) or getattr(user, "is_superuser", False)
+    show_filial_selector = bool(is_director)
+
+    selected_filial = None
+    filial_raw = (request.GET.get("filial") or "").strip()
+    if is_director and filial_raw:
+        try:
+            filial_id = int(filial_raw)
+        except Exception:
+            filial_id = None
+        if filial_id:
+            selected_filial = base_models.Filial.objects.filter(id=filial_id).first()
+
+    effective_filial = selected_filial if is_director else staff_filial
+
+    return render(
+        request,
+        "contacts/manager/notifications.html",
+        {
+            "nav": "notifications",
+            "show_filial_selector": show_filial_selector,
+            "filials": base_models.Filial.objects.filter(is_active=True).order_by("city", "name") if show_filial_selector else [],
+            "selected_filial": selected_filial,
+            "effective_filial": effective_filial,
+            **_role_ctx(request),
+        },
+    )
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_notifications_broadcast(request):
+    denied = _require_manager(request)
+    if denied is not None:
+        return denied
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    user = getattr(request, "user", None)
+    is_director = _is_director(user) or getattr(user, "is_superuser", False)
+    show_filial_selector = bool(is_director)
+
+    if request.method == "GET":
+        selected_filial = None
+        filial_raw = (request.GET.get("filial") or "").strip()
+        if is_director and filial_raw:
+            try:
+                filial_id = int(filial_raw)
+            except Exception:
+                filial_id = None
+            if filial_id:
+                selected_filial = base_models.Filial.objects.filter(id=filial_id).first()
+
+        effective_filial = selected_filial if is_director else staff_filial
+
+        return render(
+            request,
+            "contacts/manager/notifications_broadcast.html",
+            {
+                "nav": "notifications",
+                "show_filial_selector": show_filial_selector,
+                "filials": base_models.Filial.objects.filter(is_active=True).order_by("city", "name") if show_filial_selector else [],
+                "selected_filial": selected_filial,
+                "effective_filial": effective_filial,
+                **_role_ctx(request),
+            },
+        )
+
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    text = (request.POST.get("text") or "").strip()
+    if not text:
+        messages.error(request, "Введите текст рассылки")
+        if is_director and (request.POST.get("filial") or "").strip():
+            try:
+                fid = int((request.POST.get("filial") or "").strip())
+            except Exception:
+                fid = None
+            if fid:
+                return redirect(f"{reverse('manager_notifications_broadcast')}?filial={int(fid)}")
+        return redirect("manager_notifications_broadcast")
+
+    filial_id = None
+    if is_director:
+        filial_raw = (request.POST.get("filial") or "").strip()
+        if filial_raw:
+            try:
+                filial_id = int(filial_raw)
+            except Exception:
+                filial_id = None
+    else:
+        filial_id = getattr(staff_filial, "id", None) if staff_filial is not None else None
+
+    res = broadcast_to_clients_task.delay(text, filial_id)
+    messages.success(request, f"Рассылка поставлена в очередь: {res.id}")
+    if is_director and filial_id:
+        return redirect(f"{reverse('manager_notifications')}?filial={int(filial_id)}")
+    return redirect("manager_notifications")
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_notifications_penalty_remind(request):
+    denied = _require_manager(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    user = getattr(request, "user", None)
+    is_director = _is_director(user) or getattr(user, "is_superuser", False)
+
+    filial_id = None
+    if is_director:
+        filial_raw = (request.POST.get("filial") or "").strip()
+        if filial_raw:
+            try:
+                filial_id = int(filial_raw)
+            except Exception:
+                filial_id = None
+    else:
+        filial_id = getattr(staff_filial, "id", None) if staff_filial is not None else None
+
+    res = remind_penalties_and_debts_task.delay(filial_id)
+    messages.success(request, f"Напоминания о долгах/штрафах поставлены в очередь: {res.id}")
+    if is_director and filial_id:
+        return redirect(f"{reverse('manager_notifications')}?filial={int(filial_id)}")
+    return redirect("manager_notifications")
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_notifications_ready_remind(request):
+    denied = _require_manager(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    user = getattr(request, "user", None)
+    is_director = _is_director(user) or getattr(user, "is_superuser", False)
+
+    filial_id = None
+    if is_director:
+        filial_raw = (request.POST.get("filial") or "").strip()
+        if filial_raw:
+            try:
+                filial_id = int(filial_raw)
+            except Exception:
+                filial_id = None
+    else:
+        filial_id = getattr(staff_filial, "id", None) if staff_filial is not None else None
+
+    res = remind_ready_for_pickup_task.delay(filial_id)
+    messages.success(request, f"Уведомления 'Готов к выдаче' поставлены в очередь: {res.id}")
+    if is_director and filial_id:
+        return redirect(f"{reverse('manager_notifications')}?filial={int(filial_id)}")
+    return redirect("manager_notifications")
 
 
 def _require_manager(request):
@@ -1274,6 +1463,26 @@ def manager_group_sorting(request, group_id: int):
                         shipment.arrival_date = timezone.now().date()
                         shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
 
+                        if shipment.user_id:
+                            remaining_user_unsorted = tg_models.Shipment.objects.filter(group=group, user_id=shipment.user_id)
+                            if staff_filial is not None:
+                                remaining_user_unsorted = remaining_user_unsorted.filter(filial=staff_filial)
+                            remaining_user_unsorted = remaining_user_unsorted.exclude(
+                                status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED]
+                            ).exists()
+                            if not remaining_user_unsorted:
+                                try:
+                                    transaction.on_commit(
+                                        lambda: notify_user_group_status_task.delay(
+                                            int(shipment.user_id),
+                                            int(group.id),
+                                            str(tg_models.Shipment.Status.WAREHOUSE),
+                                            int(staff_filial.id) if staff_filial is not None else None,
+                                        )
+                                    )
+                                except Exception:
+                                    pass
+
                         remaining_unsorted = tg_models.Shipment.objects.filter(group=group)
                         if staff_filial is not None:
                             remaining_unsorted = remaining_unsorted.filter(filial=staff_filial)
@@ -1284,17 +1493,6 @@ def manager_group_sorting(request, group_id: int):
                         if (not remaining_unsorted) and group.status != tg_models.ShipmentGroup.Status.WAREHOUSE:
                             group.status = tg_models.ShipmentGroup.Status.WAREHOUSE
                             group.save(update_fields=["status", "updated_at"])
-
-                            try:
-                                transaction.on_commit(
-                                    lambda: notify_group_status_task.delay(
-                                        int(group.id),
-                                        str(tg_models.Shipment.Status.WAREHOUSE),
-                                        int(staff_filial.id) if staff_filial is not None else None,
-                                    )
-                                )
-                            except Exception:
-                                pass
 
                     return redirect("manager_group_sorting", group_id=group.id)
         else:
@@ -1328,6 +1526,26 @@ def manager_group_sorting(request, group_id: int):
                         shipment.arrival_date = timezone.now().date()
                         shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
 
+                        if shipment.user_id:
+                            remaining_user_unsorted = tg_models.Shipment.objects.filter(group=group, user_id=shipment.user_id)
+                            if staff_filial is not None:
+                                remaining_user_unsorted = remaining_user_unsorted.filter(filial=staff_filial)
+                            remaining_user_unsorted = remaining_user_unsorted.exclude(
+                                status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED]
+                            ).exists()
+                            if not remaining_user_unsorted:
+                                try:
+                                    transaction.on_commit(
+                                        lambda: notify_user_group_status_task.delay(
+                                            int(shipment.user_id),
+                                            int(group.id),
+                                            str(tg_models.Shipment.Status.WAREHOUSE),
+                                            int(staff_filial.id) if staff_filial is not None else None,
+                                        )
+                                    )
+                                except Exception:
+                                    pass
+
                         remaining_unsorted = tg_models.Shipment.objects.filter(group=group)
                         if staff_filial is not None:
                             remaining_unsorted = remaining_unsorted.filter(filial=staff_filial)
@@ -1338,17 +1556,6 @@ def manager_group_sorting(request, group_id: int):
                         if (not remaining_unsorted) and group.status != tg_models.ShipmentGroup.Status.WAREHOUSE:
                             group.status = tg_models.ShipmentGroup.Status.WAREHOUSE
                             group.save(update_fields=["status", "updated_at"])
-
-                            try:
-                                transaction.on_commit(
-                                    lambda: notify_group_status_task.delay(
-                                        int(group.id),
-                                        str(tg_models.Shipment.Status.WAREHOUSE),
-                                        int(staff_filial.id) if staff_filial is not None else None,
-                                    )
-                                )
-                            except Exception:
-                                pass
 
                     return redirect("manager_group_sorting", group_id=group.id)
 
