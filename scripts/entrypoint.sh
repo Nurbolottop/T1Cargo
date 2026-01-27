@@ -28,6 +28,7 @@ python manage.py migrate --noinput
 echo "Собираем статические файлы..."
 python manage.py collectstatic --noinput
 
-
 # Запускаем переданную команду
-exec "$@"
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+fi
