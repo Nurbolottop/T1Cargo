@@ -1,79 +1,59 @@
 
-# Backend — готовый скелет проекта
+# CargoBot — Backend
 
-Это **готовая структура (skeleton)** для быстрого старта проектов: от простых сайтов до админок/CRM.
+Backend проекта **CargoBot**: Django-приложение для управления карго-отправками (менеджерская панель), Telegram WebApp для клиентов и Telegram-бот. В инфраструктуру также входят Postgres, Redis и Celery.
 
-Скелет уже содержит базовую инфраструктуру:
+## Стек
 
-- Docker / docker-compose (отдельно dev и prod)
-- Postgres + Redis
-- Django backend
-- пример отдельного сервиса (telegram bot) в том же образе
+- **Python** 3.11
+- **Django** 5.2
+- **PostgreSQL** 14
+- **Redis** 6
+- **Celery** 5.4
+- **Telegram bot** (aiogram)
 
-## Что нужно настроить под себя
-
-В репозитории используются плейсхолдеры вида `*_namex`. Перед стартом желательно заменить их на свои значения.
-
-### 1) Переменные окружения (.env)
-
-В корне `Backend/` есть файл `.envtest` — это пример того, какие переменные нужны.
-
-Сделай файл `.env` на его основе:
-
-```bash
-cp .envtest .env
-```
-
-Проверь и отредактируй минимум:
-
-- `SECRET_KEY` — ключ Django
-- `DEBUG` — `True` только для разработки
-- `ALLOWED_HOSTS` — домены/хосты
-- `LANGUAGE_CODE`, `TIME_ZONE`
-- `PROJECT_NAMEx` — имя проекта (используется как общий нейминг)
-
-Postgres:
-
-- `POSTGRES_DB` — имя базы
-- `POSTGRES_USER` — пользователь
-- `POSTGRES_PASSWORD` — пароль
-- `POSTGRES_HOST` — **должен совпадать с именем сервиса БД в docker-compose** (по умолчанию `db_namex`)
-- `POSTGRES_PORT` — обычно `5432` внутри сети docker
-
-### 2) docker-compose: нейминг сервисов/контейнеров/volume/network
+## Сервисы (docker-compose)
 
 Файлы:
 
-- `docker/docker-compose.yml` — dev
-- `docker/docker-compose.prod.yml` — prod
+- `docker/docker-compose.yml` — разработка
+- `docker/docker-compose.prod.yml` — продакшн
 
-Там есть плейсхолдеры, которые стоит заменить под проект:
+Сервисы:
 
-- `db_namex` (service namex) — имя сервиса Postgres
-- `container_namex: postgres_db_namex` — имя контейнера Postgres
-- `postgres_data_namex` — имя volume для данных Postgres
-- `redis_namex` / `container_namex: redis_namex` — Redis
-- `web_namex` / `container_namex: django_web_namex` — Django контейнер
-- `telegram_bot` / `container_namex: telegram_bot_namex` — бот
-- `portfolio_network` / `portfolio_network_namex` — docker network
+- `db_cargo` — Postgres
+- `redis_cargo` — Redis
+- `web_cargo` — Django (dev: `runserver`, prod: `gunicorn`)
+- `celery_worker_cargo` — Celery worker
+- `telegram_bot` — запуск бота (`python manage.py bot`)
+- `scheduler_cargo` — прод-сервис для ежедневного запуска начислений (см. ниже)
 
-Важно:
+## Переменные окружения
 
-- `POSTGRES_HOST` в `.env` должен совпадать с **именем сервиса Postgres** (например `db_namex`).
-- В dev-compose проброшены порты:
-  - Postgres: `5433:5432` (снаружи 5433)
-  - Redis: `6389:6379` (снаружи 6389)
-  - Django: `127.0.0.1:8084:8082` (снаружи 8084)
-  При необходимости поменяй внешние порты, если заняты.
+В корне `Backend/` есть `.envtest` — пример переменных окружения. Создай `.env` на его основе.
 
-## Структура проекта
+Минимально необходимые:
 
-- `app/` — Django проект
-- `docker/` — Dockerfile и docker-compose
-- `scripts/entrypoint.sh` — entrypoint для контейнера
-- `.envtest` — пример переменных окружения
+- `SECRET_KEY`
+- `DEBUG` (`True` только для разработки)
+- `ALLOWED_HOSTS` (через запятую)
+- `CSRF_TRUSTED_ORIGINS` (через запятую, опционально; важно для https-доменов)
+- `LANGUAGE_CODE`, `TIME_ZONE`
 
-## Запуск в разработке (docker-compose)
+Postgres:
+
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_HOST` — **должен совпадать с именем сервиса БД в compose** (по умолчанию: `db_cargo`)
+- `POSTGRES_PORT` — обычно `5432` внутри docker-сети
+
+Опционально:
+
+- `BOT_AUTORELOAD` — если `true/1`, бот будет запускаться с autoreload
+- `RUN_MAKEMIGRATIONS` — если `true/1`, контейнер выполнит `makemigrations` (по умолчанию пропускается)
+
+## Быстрый старт (development)
 
 1) Создай `.env`:
 
@@ -87,26 +67,79 @@ cp .envtest .env
 docker compose -f docker/docker-compose.yml up --build
 ```
 
-По умолчанию `web_namex` запускает:
+Порты по умолчанию (dev):
 
-- миграции
-- `collectstatic`
-- dev server Django на `0.0.0.0:8082` (наружу проброшен `127.0.0.1:8084`)
+- Django: `http://127.0.0.1:8084` (контейнер слушает `8082`)
+- Postgres: `localhost:5435`
+- Redis: `localhost:6389`
 
-Открывай:
+## Первый запуск (инициализация)
 
-- `http://127.0.0.1:8084`
+После старта контейнеров:
 
-## Запуск в продакшне
+1) Создай суперпользователя Django:
+
+```bash
+docker compose -f docker/docker-compose.yml exec web_cargo python manage.py createsuperuser
+```
+
+2) Открой админку:
+
+- `http://127.0.0.1:8084/admin/`
+
+3) Создай запись **Settings** (в админке), т.к. бот читает настройки и токен из БД:
+
+- Включи `is_bot_enabled`
+- Заполни `telegram_token`
+- При необходимости заполни ссылку `registration_webapp_url`
+
+## Основные URL
+
+- **Admin**: `/admin/`
+- **Менеджерская панель** (вход): `/manager/login/`
+- **Telegram WebApp**:
+  - `/webapp/register/`
+  - `/webapp/profile/`
+
+## Полезные команды
+
+Запуск бота (используется сервисом `telegram_bot`):
+
+```bash
+docker compose -f docker/docker-compose.yml exec web_cargo python manage.py bot
+```
+
+Начисление штрафов за хранение (команда есть, в prod запускается сервисом `scheduler_cargo` раз в сутки):
+
+```bash
+docker compose -f docker/docker-compose.yml exec web_cargo python manage.py charge_storage_penalties
+docker compose -f docker/docker-compose.yml exec web_cargo python manage.py charge_storage_penalties --date 2026-01-01 --dry-run
+```
+
+Celery worker (обычно запускается как отдельный сервис):
+
+```bash
+docker compose -f docker/docker-compose.yml logs -f celery_worker_cargo
+```
+
+## Продакшн
 
 ```bash
 docker compose -f docker/docker-compose.prod.yml up --build -d
 ```
 
-В прод-конфиге `web_namex` запускается через gunicorn и слушает `0.0.0.0:8000`.
+По умолчанию web-сервис публикуется на `:8003` (контейнер слушает `8000`).
+
+## Структура
+
+- `app/` — Django проект (`core/` + приложения `apps/*`)
+- `docker/` — Dockerfile и docker-compose
+- `scripts/entrypoint.sh` — ожидание БД + миграции + collectstatic
+- `.envtest` — пример переменных окружения
 
 ## Типовые проблемы
 
-- Если Postgres не поднимается — проверь `POSTGRES_*` в `.env` и что `POSTGRES_HOST` совпадает с сервисом БД.
-- Если порты заняты — поменяй внешние порты в `docker-compose.yml`.
+- **Нет соединения с БД**: проверь `POSTGRES_*` в `.env` и что `POSTGRES_HOST=db_cargo` (для текущего compose).
+- **Бот не стартует**: создай запись `Settings` в админке и включи `is_bot_enabled`, заполни `telegram_token`.
+- **Порты заняты**: поменяй внешние порты в `docker/docker-compose.yml`.
 
