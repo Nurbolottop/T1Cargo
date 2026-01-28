@@ -2,6 +2,8 @@ import asyncio
 import html
 import re
 import time
+import traceback
+from decimal import Decimal
 
 from asgiref.sync import sync_to_async
 from django.db.utils import OperationalError, ProgrammingError
@@ -100,6 +102,7 @@ def start_bot(token: str) -> None:
         except KeyboardInterrupt:
             return
         except Exception:
+            traceback.print_exc()
             time.sleep(5)
 
 
@@ -164,6 +167,24 @@ def _format_money(value) -> str:
         return f"{value:.2f}"
     except Exception:
         return str(value)
+
+
+def _format_weight(value) -> str:
+    try:
+        s = f"{value:.3f}"
+    except Exception:
+        return str(value)
+    s = s.rstrip("0").rstrip(".")
+    return s or "0"
+
+
+def _format_date_ru(d) -> str:
+    if not d:
+        return "—"
+    try:
+        return d.strftime("%d.%m.%Y")
+    except Exception:
+        return str(d)
 
 
 async def _send_registration_required(bot: Bot, chat_id: int) -> None:
@@ -293,25 +314,76 @@ async def _run_bot(token: str) -> None:
             return
 
         def _sync_list_shipments() -> list[tg_models.Shipment]:
-            return list(tg_models.Shipment.objects.filter(user=user_obj).order_by("-created_at")[:15])
+            return list(
+                tg_models.Shipment.objects.select_related("group")
+                .filter(user=user_obj)
+                .order_by("-created_at")[:30]
+            )
 
         items = await sync_to_async(_sync_list_shipments, thread_sensitive=True)()
         if not items:
             await message.answer("У вас активных посылок нет.", reply_markup=_main_menu_keyboard())
             return
 
-        lines: list[str] = []
-        for sh in items:
-            lines.append(
-                (
-                    f"📦 {sh.tracking_number}\n"
-                    f"Статус: {sh.get_status_display()}\n"
-                    f"Вес: {sh.weight_kg} кг\n"
-                    f"Сумма: {_format_money(sh.total_price)}\n"
-                )
-            )
+        grouped: dict[int | None, dict] = {}
+        order: list[int | None] = []
 
-        await message.answer("Мои посылки:\n\n" + "\n".join(lines), reply_markup=_main_menu_keyboard())
+        total_weight = Decimal("0")
+        total_sum = Decimal("0")
+
+        for sh in items:
+            group_obj = getattr(sh, "group", None)
+            gid = getattr(group_obj, "id", None) if group_obj else None
+            if gid not in grouped:
+                grouped[gid] = {"group": group_obj, "items": [], "weight": Decimal("0"), "sum": Decimal("0")}
+                order.append(gid)
+
+            try:
+                w = Decimal(str(getattr(sh, "weight_kg", 0) or 0))
+            except Exception:
+                w = Decimal("0")
+            try:
+                p = Decimal(str(getattr(sh, "total_price", 0) or 0))
+            except Exception:
+                p = Decimal("0")
+
+            grouped[gid]["items"].append(sh)
+            grouped[gid]["weight"] += w
+            grouped[gid]["sum"] += p
+            total_weight += w
+            total_sum += p
+
+        blocks: list[str] = []
+        for gid in order:
+            payload = grouped[gid]
+            group_obj = payload.get("group")
+
+            sent_date = getattr(group_obj, "sent_date", None) if group_obj else None
+            group_name = (getattr(group_obj, "name", "") or "").strip() if group_obj else ""
+
+            header = f"📅 Отправка: {_format_date_ru(sent_date)}"
+            if group_name:
+                header += f" | Партия: {group_name}"
+
+            lines: list[str] = [header]
+            for sh in payload.get("items") or []:
+                lines.append(
+                    f"• {getattr(sh, 'tracking_number', '—') or '—'} — {sh.get_status_display()} — { _format_weight(getattr(sh, 'weight_kg', 0) or 0) } кг — {_format_money(getattr(sh, 'total_price', 0) or 0)}"
+                )
+
+            group_cnt = len(payload.get("items") or [])
+            lines.append(
+                f"Итого по партии: {group_cnt} шт, { _format_weight(payload.get('weight') or 0) } кг, {_format_money(payload.get('sum') or 0)}"
+            )
+            blocks.append("\n".join(lines))
+
+        text = (
+            "📦 Мои посылки\n\n"
+            + "\n\n".join(blocks)
+            + "\n\n"
+            + f"Общий итог: {len(items)} шт, { _format_weight(total_weight) } кг, {_format_money(total_sum)}"
+        )
+        await message.answer(text, reply_markup=_main_menu_keyboard())
 
     @router.message(F.text == "🎁 Адреса")
     async def warehouses(message: Message) -> None:

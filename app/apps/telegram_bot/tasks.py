@@ -3,6 +3,7 @@ import logging
 from celery import shared_task
 
 from decimal import Decimal
+from django.db.utils import OperationalError, ProgrammingError
 from django.utils import timezone
 from typing import Optional
 
@@ -136,9 +137,16 @@ def _penalty_reminder_text(has_debt: bool, has_penalty: bool, has_accrual: bool)
 
 @shared_task(bind=True)
 def broadcast_to_clients_task(self, text: str, filial_id: Optional[int] = None) -> dict:
-    token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+    try:
+        settings_obj = base_models.Settings.objects.first()
+    except (OperationalError, ProgrammingError) as exc:
+        logger.exception("broadcast_to_clients_task: database not ready: %s", exc)
+        return {"sent": 0, "failed": 0, "total": 0}
+
+    token = (getattr(settings_obj, "telegram_token", "") or "").strip()
     if not token:
-        return {"sent": 0, "failed": 0}
+        logger.error("broadcast_to_clients_task: telegram_token is empty")
+        return {"sent": 0, "failed": 0, "total": 0}
 
     qs = tg_models.User.objects.exclude(telegram_id__isnull=True).exclude(telegram_id=0)
     if filial_id is not None:
@@ -149,9 +157,25 @@ def broadcast_to_clients_task(self, text: str, filial_id: Optional[int] = None) 
         if fid:
             qs = qs.filter(filial_id=fid)
 
+    try:
+        total = int(qs.count())
+    except Exception:
+        total = 0
+
+    logger.info(
+        "broadcast_to_clients_task started (filial_id=%s, recipients=%s)",
+        filial_id,
+        total,
+    )
+    self.update_state(state="PROGRESS", meta={"current": 0, "total": total, "sent": 0, "failed": 0})
+
     sent = 0
     failed = 0
+    idx = 0
     for u in qs.only("id", "telegram_id").iterator(chunk_size=500):
+        idx += 1
+        if idx % 100 == 0:
+            self.update_state(state="PROGRESS", meta={"current": idx, "total": total, "sent": sent, "failed": failed})
         chat_id = getattr(u, "telegram_id", None)
         if not chat_id:
             failed += 1
@@ -161,7 +185,16 @@ def broadcast_to_clients_task(self, text: str, filial_id: Optional[int] = None) 
             sent += 1
         else:
             failed += 1
-    return {"sent": sent, "failed": failed}
+
+    logger.info(
+        "broadcast_to_clients_task finished (filial_id=%s, total=%s, sent=%s, failed=%s)",
+        filial_id,
+        total,
+        sent,
+        failed,
+    )
+    self.update_state(state="SUCCESS", meta={"current": total, "total": total, "sent": sent, "failed": failed})
+    return {"total": total, "sent": sent, "failed": failed}
 
 
 @shared_task(bind=True)
