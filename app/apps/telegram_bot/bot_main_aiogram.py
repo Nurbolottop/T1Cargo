@@ -365,25 +365,39 @@ async def _run_bot(token: str) -> None:
             if group_name:
                 header += f" | Партия: {group_name}"
 
-            lines: list[str] = [header]
+            header_html = f"<b>📦 Отправка: {_format_date_ru(sent_date)}</b>"
+            if group_name:
+                header_html += f"\n<i>Партия:</i> {html.escape(group_name)}"
+
+            lines_html: list[str] = [header_html]
             for sh in payload.get("items") or []:
-                lines.append(
-                    f"• {getattr(sh, 'tracking_number', '—') or '—'} — {sh.get_status_display()} — { _format_weight(getattr(sh, 'weight_kg', 0) or 0) } кг — {_format_money(getattr(sh, 'total_price', 0) or 0)}"
-                )
+                tracking = html.escape(str(getattr(sh, "tracking_number", "") or "—"))
+                status = html.escape(str(sh.get_status_display() or "—"))
+                weight = _format_weight(getattr(sh, "weight_kg", 0) or 0)
+                price = _format_money(getattr(sh, "total_price", 0) or 0)
+                lines_html.append(f"• <code>{tracking}</code> — <b>{status}</b>\n  ⚖️ {weight} кг   💰 {price} сом")
 
             group_cnt = len(payload.get("items") or [])
-            lines.append(
-                f"Итого по партии: {group_cnt} шт, { _format_weight(payload.get('weight') or 0) } кг, {_format_money(payload.get('sum') or 0)}"
-            )
-            blocks.append("\n".join(lines))
+            group_weight = _format_weight(payload.get("weight") or 0)
+            group_sum = _format_money(payload.get("sum") or 0)
+            lines_html.append(f"➡️ <b>Итого по партии:</b> {group_cnt} шт • {group_weight} кг • {group_sum} сом")
+            blocks.append("\n".join(lines_html))
 
+        total_weight_s = _format_weight(total_weight)
+        total_sum_s = _format_money(total_sum)
         text = (
-            "📦 Мои посылки\n\n"
-            + "\n\n".join(blocks)
-            + "\n\n"
-            + f"Общий итог: {len(items)} шт, { _format_weight(total_weight) } кг, {_format_money(total_sum)}"
+            "<b>📦 Мои посылки</b>\n"
+            "<i>Сгруппировано по партиям (датам отправки).</i>\n\n"
+            + "\n\n━━━━━━━━━━━━\n\n".join(blocks)
+            + "\n\n✅ <b>Общий итог:</b> "
+            + f"{len(items)} шт • {total_weight_s} кг • {total_sum_s} сом"
         )
-        await message.answer(text, reply_markup=_main_menu_keyboard())
+        await message.answer(
+            text,
+            reply_markup=_main_menu_keyboard(),
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+        )
 
     @router.message(F.text == "🎁 Адреса")
     async def warehouses(message: Message) -> None:
