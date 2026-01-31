@@ -5,8 +5,6 @@ import time
 import traceback
 from decimal import Decimal
 
-from aiohttp import ClientTimeout
-
 from asgiref.sync import sync_to_async
 from django.db.utils import OperationalError, ProgrammingError
 
@@ -206,7 +204,7 @@ async def _run_bot(token: str) -> None:
     if not settings_obj or not settings_obj.is_bot_enabled:
         return
 
-    session = AiohttpSession(timeout=ClientTimeout(total=120, connect=10, sock_read=90))
+    session = AiohttpSession(timeout=90)
     bot = Bot(token=token, session=session)
     dp = Dispatcher()
     router = Router()
