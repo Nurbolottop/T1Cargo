@@ -2261,6 +2261,9 @@ def manager_shipments_import(request):
         code = (raw_code or "").strip()
         if not code:
             return ""
+        code = code.replace(" ", "").replace("_", "-")
+        if code.endswith(".0") and code[:-2].isdigit():
+            code = code[:-2]
         if "-" in code:
             return code.upper()
         prefix = (getattr(effective_filial, "client_code_prefix", "") or "").strip().upper() if effective_filial else ""

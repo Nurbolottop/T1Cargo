@@ -89,40 +89,82 @@ class UserAdmin(admin.ModelAdmin):
 @admin.register(tg_models.Shipment)
 class ShipmentAdmin(admin.ModelAdmin):
     inlines = ()
+    actions = ("attach_orphan_shipments",)
     list_display = (
         "tracking_number",
         "user",
+        "client_code_raw",
+        "import_status",
+        "filial",
+        "group",
         "status",
         "weight_kg",
         "price_per_kg",
         "total_price",
         "arrival_date",
+        "issued_at",
         "created_at",
     )
-    list_filter = ("status", "arrival_date", "created_at")
-    search_fields = ("tracking_number", "user__client_code", "user__telegram_id", "user__full_name")
+    list_filter = ("status", "import_status", "filial", "group", "arrival_date", "created_at")
+    search_fields = (
+        "tracking_number",
+        "client_code_raw",
+        "user__client_code",
+        "user__telegram_id",
+        "user__full_name",
+    )
     autocomplete_fields = ("user",)
     readonly_fields = ("created_at", "updated_at")
-    fieldsets = (
-        (
-            "Основное",
-            {
-                "fields": (
-                    "user",
-                    "tracking_number",
-                    "status",
-                )
-            },
-        ),
-        (
-            "Стоимость",
-            {"fields": ("weight_kg", "price_per_kg", "total_price")},
-        ),
-        (
-            "Даты",
-            {"fields": ("arrival_date", "created_at", "updated_at")},
-        ),
-    )
+
+    def get_fields(self, request, obj=None):
+        fields = [f.name for f in self.model._meta.concrete_fields]
+        fields.extend([f.name for f in self.model._meta.many_to_many])
+        return fields
+
+    @admin.action(description="Привязать выбранные посылки к клиентам по коду")
+    def attach_orphan_shipments(self, request, queryset):
+        updated = 0
+        skipped = 0
+
+        for sh in queryset.select_related("filial").filter(user__isnull=True):
+            raw = (getattr(sh, "client_code_raw", "") or "").strip()
+            if not raw:
+                skipped += 1
+                continue
+
+            cleaned = raw.replace(" ", "")
+            if cleaned.endswith(".0") and cleaned[:-2].isdigit():
+                cleaned = cleaned[:-2]
+
+            filial = getattr(sh, "filial", None)
+            prefix = (getattr(filial, "client_code_prefix", "") or "").strip().upper() if filial else ""
+
+            if "-" in cleaned:
+                code_norm = cleaned.upper()
+            else:
+                code_norm = f"{prefix}-{cleaned}" if prefix else cleaned
+
+            users_qs = tg_models.User.objects.all()
+            if filial is not None:
+                users_qs = users_qs.filter(filial=filial)
+
+            user_obj = users_qs.filter(client_code__iexact=code_norm).first()
+            if user_obj is None and "-" not in code_norm:
+                suffix = f"-{code_norm}"
+                qs = users_qs.filter(client_code__iendswith=suffix)
+                if qs.count() == 1:
+                    user_obj = qs.first()
+
+            if user_obj is None:
+                skipped += 1
+                continue
+
+            sh.user = user_obj
+            sh.import_status = tg_models.Shipment.ImportStatus.OK
+            sh.save(update_fields=["user", "import_status"])
+            updated += 1
+
+        self.message_user(request, f"Готово. Привязано: {updated}. Пропущено: {skipped}.")
 
 @admin.register(tg_models.UsersSH)
 class UsersSHAdmin(DjangoUserAdmin):
