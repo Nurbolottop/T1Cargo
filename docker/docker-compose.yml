@@ -84,6 +84,8 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=core.settings
       - RUN_MAKEMIGRATIONS=1
+      - RUN_MIGRATE=0
+      - RUN_COLLECTSTATIC=0
     restart: unless-stopped
     depends_on:
       - db_cargo

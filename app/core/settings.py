@@ -72,9 +72,10 @@ from core.project_settings.internationalization import *
 
 STATIC_URL = '/static/'
 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),   # 👉 Это /app/core/static — ВЕРНО
-]
+STATICFILES_DIRS = []  
+_static_dir = os.path.join(BASE_DIR, 'static')   # 👉 Это /app/core/static — ВЕРНО
+if os.path.isdir(_static_dir):
+    STATICFILES_DIRS.append(_static_dir)
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 MEDIA_URL = '/media/'   

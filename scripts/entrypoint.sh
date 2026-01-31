@@ -23,10 +23,18 @@ else
 fi
 
 echo "Применяем миграции..."
-python manage.py migrate --noinput
+if [ "${RUN_MIGRATE:-1}" = "1" ] || [ "${RUN_MIGRATE:-}" = "true" ] || [ "${RUN_MIGRATE:-}" = "True" ]; then
+  python manage.py migrate --noinput
+else
+  echo "Пропускаем migrate (RUN_MIGRATE выключен)"
+fi
 
 echo "Собираем статические файлы..."
-python manage.py collectstatic --noinput
+if [ "${RUN_COLLECTSTATIC:-1}" = "1" ] || [ "${RUN_COLLECTSTATIC:-}" = "true" ] || [ "${RUN_COLLECTSTATIC:-}" = "True" ]; then
+  python manage.py collectstatic --noinput
+else
+  echo "Пропускаем collectstatic (RUN_COLLECTSTATIC выключен)"
+fi
 
 # Запускаем переданную команду
 if [ "$#" -gt 0 ]; then
