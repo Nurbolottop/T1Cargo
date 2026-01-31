@@ -58,6 +58,7 @@ services:
       - ../.env
     environment:
       - DJANGO_SETTINGS_MODULE=core.settings
+      - PYTHONUNBUFFERED=1
       - RUN_MIGRATE=0
       - RUN_COLLECTSTATIC=0
     depends_on:
