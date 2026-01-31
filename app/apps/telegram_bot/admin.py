@@ -117,8 +117,15 @@ class ShipmentAdmin(admin.ModelAdmin):
     readonly_fields = ("created_at", "updated_at")
 
     def get_fields(self, request, obj=None):
-        fields = [f.name for f in self.model._meta.concrete_fields]
-        fields.extend([f.name for f in self.model._meta.many_to_many])
+        fields = [
+            f.name
+            for f in self.model._meta.fields
+            if getattr(f, "editable", False) and not getattr(f, "primary_key", False)
+        ]
+        fields.extend([f.name for f in self.model._meta.many_to_many if getattr(f, "editable", False)])
+        for ro in self.get_readonly_fields(request, obj):
+            if ro not in fields:
+                fields.append(ro)
         return fields
 
     @admin.action(description="Привязать выбранные посылки к клиентам по коду")
