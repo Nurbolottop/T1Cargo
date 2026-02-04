@@ -62,7 +62,7 @@
                 {% if sh.status == 'on_the_way' %}
                   <form method="post" action="{% url 'manager_shipment_set_bishkek' shipment_id=sh.id %}" style="margin:0;" data-action-form="1" data-action-type="bishkek" data-shipment-id="{{ sh.id }}">
                     {% csrf_token %}
-                    <button class="btn" type="submit">В Бишкеке</button>
+                    <button class="btn" type="submit">В Кыргызстане</button>
                   </form>
                 {% endif %}
 
@@ -114,7 +114,7 @@
         if (textEl) {
           const t = (form && form.getAttribute) ? (form.getAttribute('data-action-type') || '') : '';
           if (t === 'issued') textEl.textContent = 'Отметить посылку как выдано?';
-          else if (t === 'bishkek') textEl.textContent = 'Отметить посылку как "В Бишкеке"?';
+          else if (t === 'bishkek') textEl.textContent = 'Отметить посылку как "В Кыргызстане"?';
           else textEl.textContent = 'Подтвердите действие';
         }
         if (modal) modal.style.display = 'flex';

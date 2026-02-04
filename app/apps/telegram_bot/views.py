@@ -406,6 +406,7 @@ def webapp_register_submit(request):
     address = (payload.get("address") or "").strip()
     filial_id = payload.get("filial_id")
     existing_client_code = (payload.get("client_code") or "").strip()
+    client_kind = (payload.get("client_kind") or "").strip().lower()
 
     telegram_user_id = payload.get("telegram_user_id")
     telegram_username = (payload.get("telegram_username") or "").strip()
@@ -431,6 +432,16 @@ def webapp_register_submit(request):
         filial_obj = base_models.Filial.objects.filter(is_active=True).order_by("city", "name").first()
     if filial_obj is None:
         return JsonResponse({"ok": False, "error": "no_filials"}, status=400)
+
+    if client_kind not in {"new", "old", ""}:
+        client_kind = ""
+    if not client_kind:
+        client_kind = "old" if existing_client_code else "new"
+
+    if client_kind == "old" and not existing_client_code:
+        return JsonResponse({"ok": False, "error": "client_code_required"}, status=400)
+    if client_kind == "new":
+        existing_client_code = ""
 
     normalized_client_code = _normalize_client_code(existing_client_code, filial_obj)
 

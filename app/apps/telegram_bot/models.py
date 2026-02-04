@@ -103,7 +103,7 @@ class User(models.Model):
 class ShipmentGroup(models.Model):
     class Status(models.TextChoices):
         ON_THE_WAY = "on_the_way", "В пути"
-        BISHKEK = "bishkek", "В Бишкеке"
+        BISHKEK = "bishkek", "В Кыргызстане"
         WAREHOUSE = "warehouse", "Готов к выдаче"
         ISSUED = "issued", "Выдано"
 
@@ -117,7 +117,7 @@ class ShipmentGroup(models.Model):
     )
     name = models.CharField(max_length=64, unique=True, verbose_name="Название группы")
     sent_date = models.DateField(blank=True, null=True, verbose_name="Дата отправки")
-    bishkek_marked = models.BooleanField(default=False, verbose_name="Отмечено: В Бишкеке")
+    bishkek_marked = models.BooleanField(default=False, verbose_name="Отмечено: В Кыргызстане")
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.ON_THE_WAY, verbose_name="Статус группы")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
@@ -138,7 +138,7 @@ class Shipment(models.Model):
 
     class Status(models.TextChoices):
         ON_THE_WAY = "on_the_way", "В пути"
-        BISHKEK = "bishkek", "В Бишкеке"
+        BISHKEK = "bishkek", "В Кыргызстане"
         WAREHOUSE = "warehouse", "Готов к выдаче"
         ISSUED = "issued", "Выдано"
 

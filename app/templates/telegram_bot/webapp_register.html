@@ -163,6 +163,14 @@
       </div>
 
       <div class="field">
+        <div class="label">Клиент <small>(обязательно)</small></div>
+        <select id="client_kind">
+          <option value="new" selected>Новый клиент</option>
+          <option value="old">Старый клиент</option>
+        </select>
+      </div>
+
+      <div class="field" id="client_code_field" style="display:none;">
         <div class="label">Код клиента <small>(если уже есть)</small></div>
         <input id="client_code" placeholder="Введите код, если вам его выдавали раньше" autocomplete="off" inputmode="numeric" enterkeyhint="next" />
         <div class="hint">Если у вас нет кода — оставьте поле пустым. Не вводите случайные цифры.</div>
@@ -203,11 +211,15 @@
     }
 
     function getFocusableFields() {
+      const kindEl = document.getElementById('client_kind');
+      const codeField = document.getElementById('client_code_field');
+      const codeVisible = codeField && codeField.style.display !== 'none';
       return [
         document.getElementById('filial_id'),
         document.getElementById('full_name'),
         document.getElementById('phone'),
-        document.getElementById('client_code'),
+        kindEl,
+        (codeVisible ? document.getElementById('client_code') : null),
         document.getElementById('address'),
       ].filter(Boolean);
     }
@@ -264,6 +276,9 @@
     }
 
     async function applyClientCode() {
+      const kindEl = document.getElementById('client_kind');
+      const kind = kindEl ? String(kindEl.value || '') : '';
+      if (kind !== 'old') return;
       const code = document.getElementById('client_code').value.trim();
       if (!code) return;
       try {
@@ -288,6 +303,8 @@
         document.activeElement.blur();
       }
       const full_name = document.getElementById('full_name').value.trim();
+      const kindEl = document.getElementById('client_kind');
+      const client_kind = kindEl ? String(kindEl.value || '') : 'new';
       const client_code = document.getElementById('client_code').value.trim();
       const phone = normalizePhone(document.getElementById('phone').value);
       const address = document.getElementById('address').value.trim();
@@ -309,6 +326,11 @@
         return;
       }
 
+      if (client_kind === 'old' && !client_code) {
+        showError('Введите код клиента');
+        return;
+      }
+
       if (!telegram_user_id) {
         showError('Откройте регистрацию через Telegram-бота (кнопка «Получить код»).');
         return;
@@ -323,6 +345,7 @@
       const payload = {
         full_name,
         client_code,
+        client_kind,
         phone,
         address,
         filial_id,
@@ -348,6 +371,9 @@
           } else
           if (data && data.error === 'code_taken') {
             showError('Код занят');
+          } else
+          if (data && data.error === 'client_code_required') {
+            showError('Введите код клиента');
           } else {
             showError('Не удалось отправить. Попробуйте ещё раз.');
           }
@@ -373,16 +399,32 @@
     loadFilials();
     document.getElementById('submit').addEventListener('click', submitForm);
     document.getElementById('client_code').addEventListener('blur', applyClientCode);
+    document.getElementById('client_kind').addEventListener('change', () => {
+      const kindEl = document.getElementById('client_kind');
+      const wrap = document.getElementById('client_code_field');
+      const codeEl = document.getElementById('client_code');
+      const kind = kindEl ? String(kindEl.value || '') : 'new';
+      if (wrap) wrap.style.display = (kind === 'old') ? 'block' : 'none';
+      if (kind !== 'old' && codeEl) codeEl.value = '';
+    });
     document.getElementById('phone').addEventListener('blur', () => {
       const v = normalizePhone(document.getElementById('phone').value);
       document.getElementById('phone').value = v;
     });
+
+    (function initClientKind(){
+      const kindEl = document.getElementById('client_kind');
+      const wrap = document.getElementById('client_code_field');
+      const kind = kindEl ? String(kindEl.value || '') : 'new';
+      if (wrap) wrap.style.display = (kind === 'old') ? 'block' : 'none';
+    })();
 
     const fullNameEl = document.getElementById('full_name');
     const phoneEl = document.getElementById('phone');
     const codeEl = document.getElementById('client_code');
     const addressEl = document.getElementById('address');
     const filialEl = document.getElementById('filial_id');
+    const kindEl = document.getElementById('client_kind');
 
     if (filialEl) {
       filialEl.addEventListener('change', () => {
@@ -391,7 +433,7 @@
       filialEl.addEventListener('focus', () => scrollToField(filialEl));
     }
 
-    for (const el of [fullNameEl, phoneEl, codeEl, addressEl]) {
+    for (const el of [fullNameEl, phoneEl, kindEl, codeEl, addressEl]) {
       if (!el) continue;
       el.addEventListener('focus', () => scrollToField(el));
       el.addEventListener('keydown', (e) => {

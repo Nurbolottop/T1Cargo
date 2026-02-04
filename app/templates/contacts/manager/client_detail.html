@@ -14,7 +14,7 @@
         {% endif %}
       {% endif %}
 
-      {% if is_director %}
+      {% if is_manager or is_director %}
         <form method="post" action="{% url 'manager_client_delete' user_id=client.id %}" onsubmit="return confirm('Удалить клиента?');" style="margin-left:auto;">
           {% csrf_token %}
           <button class="btn" type="submit">Удалить</button>

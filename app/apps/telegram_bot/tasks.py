@@ -49,7 +49,7 @@ def _shipment_notify_text_bishkek_batch(trackings: list[str]) -> str:
     list_block = "\n".join(lines) if lines else "—"
     return (
         "📦📍 Отличные новости!\n\n"
-        "Ваш товар прибыл в Бишкек KG\n\n"
+        "Ваш товар прибыл в Кыргызстан KG\n\n"
         "🧾 Трек-номера:\n"
         f"{list_block}\n\n"
         "🛠 Сейчас посылка проходит оформление\n"
@@ -372,7 +372,7 @@ def _shipment_notify_text_bishkek(tracking: str) -> str:
     tracking = (tracking or "—").strip() or "—"
     return (
         "📦📍 Отличные новости!\n\n"
-        "Ваш товар прибыл в Бишкек KG\n\n"
+        "Ваш товар прибыл в Кыргызстан KG\n\n"
         f"🧾 Трек-номер: {tracking}\n\n"
         "🛠 Сейчас посылка проходит оформление\n"
         "и подготовку к выдаче.\n\n"

@@ -51,7 +51,7 @@ def _shipment_notify_text_bishkek(tracking: str) -> str:
     tracking = (tracking or "—").strip() or "—"
     return (
         "📦📍 Отличные новости!\n\n"
-        "Ваш товар прибыл в Бишкек KG\n\n"
+        "Ваш товар прибыл в Кыргызстан KG\n\n"
         f"🧾 Трек-номер: {tracking}\n\n"
         "🛠 Сейчас посылка проходит оформление\n"
         "и подготовку к выдаче.\n\n"
@@ -1142,7 +1142,7 @@ def manager_client_pickup_bulk_issue(request, user_id: int):
 @login_required(login_url="/manager/login/")
 @csrf_protect
 def manager_client_delete(request, user_id: int):
-    denied = _require_director(request)
+    denied = _require_editor_role(request)
     if denied is not None:
         return denied
     if request.method != "POST":
@@ -1216,7 +1216,7 @@ def manager_group_detail(request, group_id: int):
     status_tabs = [
         ("", "Все"),
         (tg_models.Shipment.Status.ON_THE_WAY, "В пути"),
-        (tg_models.Shipment.Status.BISHKEK, "В Бишкеке"),
+        (tg_models.Shipment.Status.BISHKEK, "В Кыргызстане"),
         (tg_models.Shipment.Status.WAREHOUSE, "Готов к выдаче"),
         (tg_models.Shipment.Status.ISSUED, "Выдано"),
     ]
@@ -1270,6 +1270,30 @@ def manager_group_detail(request, group_id: int):
             **_role_ctx(request),
         },
     )
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_group_delete(request, group_id: int):
+    denied = _require_director(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    group = get_object_or_404(tg_models.ShipmentGroup, id=group_id)
+    if staff_filial is not None and group.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    with transaction.atomic():
+        tg_models.Shipment.objects.filter(group=group).delete()
+        group.delete()
+
+    return redirect("manager_groups")
 
 
 @login_required(login_url="/manager/login/")
@@ -1686,7 +1710,7 @@ def manager_shipments(request):
     status_tabs = [
         ("", "Все"),
         (tg_models.Shipment.Status.ON_THE_WAY, "В пути"),
-        (tg_models.Shipment.Status.BISHKEK, "В Бишкеке"),
+        (tg_models.Shipment.Status.BISHKEK, "В Кыргызстане"),
         (tg_models.Shipment.Status.WAREHOUSE, "Готов к выдаче"),
         (tg_models.Shipment.Status.ISSUED, "Выдано"),
     ]

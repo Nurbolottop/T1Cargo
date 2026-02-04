@@ -20,10 +20,16 @@
           <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Сортировка</a>
         {% endif %}
         <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}">Добавить посылку</a>
+        {% if is_director %}
+          <form method="post" action="{% url 'manager_group_delete' group_id=group.id %}" onsubmit="return confirm('Удалить группу и все посылки внутри?');" style="margin:0;">
+            {% csrf_token %}
+            <button class="btn" type="submit">Удалить группу</button>
+          </form>
+        {% endif %}
         {% if group.status != 'bishkek' and not group.bishkek_marked %}
           <form method="post" action="{% url 'manager_group_set_bishkek' group_id=group.id %}">
             {% csrf_token %}
-            <button class="btn accent" type="submit">В Бишкеке</button>
+            <button class="btn accent" type="submit">В Кыргызстане</button>
           </form>
         {% endif %}
         <a class="btn" href="{% url 'manager_groups' %}">Назад</a>
