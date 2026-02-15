@@ -39,9 +39,9 @@
 
         <div class="col-6">
           <label>Способ расчёта</label>
-          <input type="hidden" name="pricing_mode" id="pricingMode" value="{{ form.pricing_mode.value|default:'' }}" />
+          <input type="hidden" name="pricing_mode" id="pricingMode" value="{{ form.pricing_mode.value|default:'kg' }}" />
           <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;" id="pricingModeButtons">
-            <button class="btn {% if form.pricing_mode.value == 'kg' %}accent{% endif %}" type="button" data-mode="kg">По кг</button>
+            <button class="btn {% if form.pricing_mode.value == 'kg' or not form.pricing_mode.value %}accent{% endif %}" type="button" data-mode="kg">По кг</button>
             <button class="btn {% if form.pricing_mode.value == 'gabarit' %}accent{% endif %}" type="button" data-mode="gabarit">По габариту</button>
           </div>
         </div>
@@ -58,8 +58,8 @@
           <div class="muted" style="font-size:11px; margin-top:4px;">Автоматически из группы (двойной клик для редактирования)</div>
         </div>
 
-        {# Field for both modes #}
-        <div class="col-6" id="totalPriceWrap">
+        {# Field for "По габариту" mode only #}
+        <div class="col-6" id="totalPriceWrap" style="display:none;">
           <label>{{ form.total_price.label }}</label>
           {{ form.total_price }}
           {% if form.total_price.errors %}<div class="error" style="margin-top:8px;">{{ form.total_price.errors }}</div>{% endif %}
@@ -92,6 +92,7 @@
       // KG mode fields
       const kgWeightWrap = document.getElementById('kgWeightWrap');
       const kgPriceWrap = document.getElementById('kgPriceWrap');
+      const totalPriceWrap = document.getElementById('totalPriceWrap');
       const weightInput = document.querySelector('input[name="weight_kg"]');
       const pricePerKgInput = document.getElementById('pricePerKgInput');
 
@@ -153,17 +154,20 @@
       }
 
       function syncMode() {
-        const mode = modeEl ? modeEl.value : '';
+        const mode = modeEl ? modeEl.value : 'kg';
         setModeButtonsActive(mode);
 
         // Show/hide fields based on mode
         if (mode === 'kg') {
+          // kg mode - show weight and price, hide total price (auto-calculated)
           if (kgWeightWrap) kgWeightWrap.style.display = '';
           if (kgPriceWrap) kgPriceWrap.style.display = '';
+          if (totalPriceWrap) totalPriceWrap.style.display = 'none';
         } else {
           // gabarit mode - hide kg fields, only total price visible
           if (kgWeightWrap) kgWeightWrap.style.display = 'none';
           if (kgPriceWrap) kgPriceWrap.style.display = 'none';
+          if (totalPriceWrap) totalPriceWrap.style.display = '';
         }
       }
 
