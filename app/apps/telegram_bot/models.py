@@ -119,6 +119,7 @@ class ShipmentGroup(models.Model):
     sent_date = models.DateField(blank=True, null=True, verbose_name="Дата отправки")
     bishkek_marked = models.BooleanField(default=False, verbose_name="Отмечено: В Кыргызстане")
     status = models.CharField(max_length=32, choices=Status.choices, default=Status.ON_THE_WAY, verbose_name="Статус группы")
+    price_per_kg = models.DecimalField(max_digits=12, decimal_places=2, default=0, blank=True, verbose_name="Цена за кг (по умолчанию)")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создано")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Обновлено")
 
