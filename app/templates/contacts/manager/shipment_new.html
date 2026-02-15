@@ -63,26 +63,15 @@
           </div>
         </div>
 
-        <div class="col-3" id="weightWrap">
+        <div class="col-6" id="weightWrap">
           <label>{{ form.weight_kg.label }}</label>
           {{ form.weight_kg }}
           {% if form.weight_kg.errors %}<div class="error" style="margin-top:8px;">{{ form.weight_kg.errors }}</div>{% endif %}
         </div>
-        <div class="col-3" id="priceWrap">
-          <label>{{ form.price_per_kg.label }}</label>
-          {{ form.price_per_kg }}
-          {% if form.price_per_kg.errors %}<div class="error" style="margin-top:8px;">{{ form.price_per_kg.errors }}</div>{% endif %}
-        </div>
-
         <div class="col-6" id="totalPriceWrap">
           <label>{{ form.total_price.label }}</label>
           {{ form.total_price }}
           {% if form.total_price.errors %}<div class="error" style="margin-top:8px;">{{ form.total_price.errors }}</div>{% endif %}
-        </div>
-        <div class="col-6">
-          <label>{{ form.arrival_date.label }}</label>
-          {{ form.arrival_date }}
-          {% if form.arrival_date.errors %}<div class="error" style="margin-top:8px;">{{ form.arrival_date.errors }}</div>{% endif %}
         </div>
       </div>
 
@@ -103,29 +92,31 @@
       const modeEl = document.getElementById('pricingMode');
       const modeButtonsWrap = document.getElementById('pricingModeButtons');
       const dimensionsWrap = document.getElementById('dimensionsWrap');
-      const weightWrap = document.getElementById('weightWrap');
-      const priceWrap = document.getElementById('priceWrap');
-      const totalPriceWrap = document.getElementById('totalPriceWrap');
       const lengthInput = document.querySelector('input[name="length_cm"]');
       const widthInput = document.querySelector('input[name="width_cm"]');
       const heightInput = document.querySelector('input[name="height_cm"]');
       const trackingInput = document.querySelector('input[name="tracking_number"]');
 
-      // Auto-fill price_per_kg when group is selected
-      if (groupSelect && pricePerKgInput) {
+      // Auto-fill price_per_kg when group is selected (hidden field)
+      if (groupSelect) {
+        const priceInput = document.createElement('input');
+        priceInput.type = 'hidden';
+        priceInput.name = 'price_per_kg';
+        priceInput.id = 'hiddenPricePerKg';
+        form.appendChild(priceInput);
+        
         groupSelect.addEventListener('change', function() {
           const selected = groupSelect.options[groupSelect.selectedIndex];
           const price = selected.getAttribute('data-price');
           if (price) {
-            pricePerKgInput.value = price;
+            priceInput.value = price;
           }
         });
-        // Trigger on page load if group is pre-selected
         if (groupSelect.value) {
           const selected = groupSelect.options[groupSelect.selectedIndex];
           const price = selected.getAttribute('data-price');
           if (price) {
-            pricePerKgInput.value = price;
+            priceInput.value = price;
           }
         }
       }
@@ -134,7 +125,7 @@
       function calculateTotal() {
         const mode = modeEl ? modeEl.value : '';
         const weight = parseFloat(weightInput ? weightInput.value : 0) || 0;
-        const pricePerKg = parseFloat(pricePerKgInput ? pricePerKgInput.value : 0) || 0;
+        const pricePerKg = parseFloat(document.getElementById('hiddenPricePerKg') ? document.getElementById('hiddenPricePerKg').value : 0) || 0;
         const length = parseFloat(lengthInput ? lengthInput.value : 0) || 0;
         const width = parseFloat(widthInput ? widthInput.value : 0) || 0;
         const height = parseFloat(heightInput ? heightInput.value : 0) || 0;
@@ -143,7 +134,6 @@
         if (mode === 'kg' && weight && pricePerKg) {
           total = weight * pricePerKg;
         } else if (mode === 'gabarit' && length && width && height && pricePerKg) {
-          // Volumetric weight: (L * W * H) / 5000, then multiply by price
           const volumetricWeight = (length * width * height) / 5000;
           total = volumetricWeight * pricePerKg;
         }
@@ -155,7 +145,6 @@
 
       // Watch inputs for changes
       if (weightInput) weightInput.addEventListener('input', calculateTotal);
-      if (pricePerKgInput) pricePerKgInput.addEventListener('input', calculateTotal);
       if (lengthInput) lengthInput.addEventListener('input', calculateTotal);
       if (widthInput) widthInput.addEventListener('input', calculateTotal);
       if (heightInput) heightInput.addEventListener('input', calculateTotal);
@@ -178,23 +167,12 @@
         const mode = modeEl ? modeEl.value : '';
         setModeButtonsActive(mode);
 
-        if (mode === 'kg') {
-          if (dimensionsWrap) dimensionsWrap.style.display = 'none';
-          if (weightWrap) weightWrap.style.display = '';
-          if (priceWrap) priceWrap.style.display = '';
-          if (totalPriceWrap) totalPriceWrap.style.display = '';
-          if (weightInput) weightInput.disabled = false;
-        } else if (mode === 'gabarit') {
+        if (mode === 'gabarit') {
           if (dimensionsWrap) dimensionsWrap.style.display = '';
-          if (weightWrap) weightWrap.style.display = '';
-          if (priceWrap) priceWrap.style.display = '';
-          if (totalPriceWrap) totalPriceWrap.style.display = '';
-          if (weightInput) weightInput.placeholder = 'Необязательно (для справки)';
+          if (weightInput) weightInput.placeholder = 'Необязательно';
         } else {
           if (dimensionsWrap) dimensionsWrap.style.display = 'none';
-          if (weightWrap) weightWrap.style.display = '';
-          if (priceWrap) priceWrap.style.display = '';
-          if (totalPriceWrap) totalPriceWrap.style.display = '';
+          if (weightInput) weightInput.placeholder = '';
         }
         calculateTotal();
       }
@@ -216,7 +194,6 @@
         trackingInput.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
             e.preventDefault();
-            // Move focus to client_code field instead
             const clientCodeInput = document.querySelector('input[name="client_code"]');
             if (clientCodeInput) {
               clientCodeInput.focus();

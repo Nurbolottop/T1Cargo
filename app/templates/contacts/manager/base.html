@@ -22,20 +22,20 @@
       --kv-text: rgba(229,231,235,.98);
     }
     :root[data-theme="light"] { 
-      --bg:#070b15; --card:#0c1324; --text:#e6e9ef; --muted:#99a3b3; --border:#1f2a43; --accent:#e0b13f; --danger:#ef4444; --ring: rgba(224,177,63,.22);
-      --card-bg: rgba(15,26,46,.56);
-      --card-border: rgba(255,255,255,.08);
-      --sidebar-bg: linear-gradient(180deg, rgba(12,19,36,.78) 0%, rgba(10,16,30,.62) 100%);
-      --topbar-bg: rgba(12,19,36,.52);
-      --input-bg: rgba(255,255,255,.028);
-      --input-border: rgba(255,255,255,.10);
-      --btn-hover: rgba(255,255,255,.05);
-      --table-hover: rgba(255,255,255,.035);
-      --shadow: rgba(0,0,0,.32);
-      --scrollbar-thumb: rgba(255,255,255,.10);
-      --keypad-bg: rgba(17,24,39,.98);
-      --accent-text: #111827;
-      --kv-text: rgba(229,231,235,.98);
+      --bg:#ffffff; --card:#f5f5f5; --text:#121212; --muted:#6a6a6a; --border:#e0e0e0; --accent:#1db954; --danger:#e22134; --ring: rgba(29,185,84,.22);
+      --card-bg: #f5f5f5;
+      --card-border: #e0e0e0;
+      --sidebar-bg: #000000;
+      --topbar-bg: #ffffff;
+      --input-bg: #ffffff;
+      --input-border: #d1d1d1;
+      --btn-hover: #f0f0f0;
+      --table-hover: #f5f5f5;
+      --shadow: rgba(0,0,0,.1);
+      --scrollbar-thumb: rgba(0,0,0,.2);
+      --keypad-bg: #ffffff;
+      --accent-text: #ffffff;
+      --kv-text: #121212;
     }
     * { box-sizing: border-box; }
     body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background: var(--bg); color:var(--text); line-height: 1.35; }
@@ -95,6 +95,24 @@
     .nav-link.primary { background: linear-gradient(180deg, rgba(224,177,63,.96), rgba(206,156,45,.94)); color: var(--accent-text); border-color: transparent; box-shadow: 0 14px 30px rgba(224,177,63,.18); }
     .nav-link.primary:hover { background: linear-gradient(180deg, rgba(236,195,92,.98), rgba(218,165,38,.96)); }
     .nav-link.danger { background: var(--input-bg); border-color: var(--border); }
+
+    /* Spotify-style light theme overrides */
+    :root[data-theme="light"] .sidebar .nav-link { color: #ffffff; background: transparent; border-color: rgba(255,255,255,.15); }
+    :root[data-theme="light"] .sidebar .nav-link:hover { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.25); }
+    :root[data-theme="light"] .sidebar .nav-link.active { background: #1db954; color: #ffffff; border-color: #1db954; box-shadow: none; }
+    :root[data-theme="light"] .sidebar .sb-title .name { color: #ffffff; }
+    :root[data-theme="light"] .sidebar .sb-title .meta { color: rgba(255,255,255,.7); }
+    :root[data-theme="light"] .sb-footer { border-color: rgba(255,255,255,.15); }
+    :root[data-theme="light"] .nav-link.primary { background: #1db954; color: #ffffff; box-shadow: 0 8px 20px rgba(29,185,84,.25); }
+    :root[data-theme="light"] .nav-link.primary:hover { background: #1ed760; box-shadow: 0 10px 24px rgba(29,185,84,.35); }
+    :root[data-theme="light"] .btn.accent { background: #1db954; color: #ffffff; box-shadow: 0 8px 20px rgba(29,185,84,.25); }
+    :root[data-theme="light"] .btn.accent:hover { background: #1ed760; box-shadow: 0 10px 24px rgba(29,185,84,.35); }
+    :root[data-theme="light"] .topbar { box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+    :root[data-theme="light"] .error { background: rgba(220,38,38,.10); border-color: rgba(220,38,38,.30); color:#991b1b; }
+    :root[data-theme="light"] .msg.success { border-color: rgba(29,185,84,.35); background: rgba(29,185,84,.10); color: #15803d; }
+    :root[data-theme="light"] .msg.error { border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.10); color: #991b1b; }
+    :root[data-theme="light"] .msg.info { border-color: rgba(37,99,235,.35); background: rgba(37,99,235,.10); color: #1d4ed8; }
+    :root[data-theme="light"] .msg.warning { border-color: rgba(217,119,6,.45); background: rgba(217,119,6,.10); color: #b45309; }
 
     .main { flex: 1; min-width: 0; display:flex; flex-direction:column; }
     .topbar { border-bottom: 1px solid var(--border); background: var(--topbar-bg); }
