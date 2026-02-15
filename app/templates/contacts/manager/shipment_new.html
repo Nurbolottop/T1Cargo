@@ -54,8 +54,8 @@
         </div>
         <div class="col-6" id="kgPriceWrap" style="display:none;">
           <label>Цена за кг</label>
-          <input type="number" step="0.01" name="price_per_kg" id="pricePerKgInput" value="" readonly style="background: rgba(255,255,255,0.05);" />
-          <div class="muted" style="font-size:11px; margin-top:4px;">Автоматически из группы (двойной клик для редактирования)</div>
+          <input type="number" step="0.01" name="price_per_kg" id="pricePerKgInput" value="" />
+          <div class="muted" style="font-size:11px; margin-top:4px;">Автоматически из группы (если задана)</div>
         </div>
 
         {# Field for "По габариту" mode only #}
@@ -110,18 +110,6 @@
       if (groupSelect) {
         groupSelect.addEventListener('change', updatePriceFromGroup);
         updatePriceFromGroup(); // Set on page load
-      }
-
-      // Allow editing price_per_kg on double-click
-      if (pricePerKgInput) {
-        pricePerKgInput.addEventListener('dblclick', function() {
-          this.removeAttribute('readonly');
-          this.style.background = '';
-        });
-        pricePerKgInput.addEventListener('blur', function() {
-          this.setAttribute('readonly', 'readonly');
-          this.style.background = 'rgba(255,255,255,0.05)';
-        });
       }
 
       // Calculate total price for kg mode
