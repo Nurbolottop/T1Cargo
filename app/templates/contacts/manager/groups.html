@@ -13,7 +13,7 @@
     <div class="muted">Список загруженных Excel-групп.</div>
   </div>
 
-  {% if is_director %}
+  {% if is_director or is_manager %}
     <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
       <button class="btn" id="deleteSelectedGroups" disabled>Удалить выбранные</button>
       <span id="deleteSelectedCount" class="muted" style="margin-left:8px;">0 выбрано</span>
@@ -24,7 +24,7 @@
     <table>
       <thead>
         <tr>
-          {% if is_director %}
+          {% if is_director or is_manager %}
             <th style="width:40px;">
               <input type="checkbox" id="selectAllGroups" title="Выбрать все группы" />
             </th>
@@ -40,7 +40,7 @@
       <tbody>
         {% for g in groups %}
           <tr data-group-id="{{ g.id }}" class="group-row">
-            {% if is_director %}
+            {% if is_director or is_manager %}
               <td>
                 <input type="checkbox" class="groupCheckbox" value="{{ g.id }}" style="transform: scale(1.2); cursor: pointer;" />
               </td>
@@ -55,13 +55,13 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="{% if is_director %}7{% else %}6{% endif %}" class="muted">Группы не найдены.</td></tr>
+          <tr><td colspan="{% if is_director or is_manager %}7{% else %}6{% endif %}" class="muted">Группы не найдены.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
-  {% if is_director %}
+  {% if is_director or is_manager %}
     <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
       <button class="btn" id="deleteSelectedGroups2" disabled>Удалить выбранные</button>
       <span id="deleteSelectedCount2" class="muted" style="margin-left:8px;">0 выбрано</span>
@@ -69,7 +69,7 @@
   {% endif %}
 {% endblock %}
 
-{% if is_director %}
+{% if is_director or is_manager %}
   <style>
     .group-row.selected {
       background-color: #e3f2fd !important;

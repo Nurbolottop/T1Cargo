@@ -1324,11 +1324,12 @@ def manager_groups_bulk_delete(request):
     print("DEBUG: user is_superuser:", getattr(request.user, 'is_superuser', False))
     print("DEBUG: body:", request.body)
     
-    denied = _require_director(request)
+    # Разрешаем и директорам, и менеджерам
+    denied = _require_manager(request)
     if denied is not None:
-        print("DEBUG: director check failed")
+        print("DEBUG: manager check failed")
         return denied
-    print("DEBUG: director check passed")
+    print("DEBUG: manager check passed")
     
     if request.method != "POST":
         print("DEBUG: not POST method")
