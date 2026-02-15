@@ -46,16 +46,20 @@
           <div class="t">Всего</div>
         </div>
         <div class="box">
-          <div class="n">{{ group_kpi.issued_cnt|default:0 }}</div>
-          <div class="t">Выдано</div>
+          <div class="n">{{ group_kpi.unpriced_cnt|default:0 }}</div>
+          <div class="t">Не посчитано</div>
         </div>
         <div class="box">
           <div class="n">{{ group_kpi.priced_cnt|default:0 }}</div>
           <div class="t">Посчитано</div>
         </div>
         <div class="box">
-          <div class="n">{{ group_kpi.unpriced_cnt|default:0 }}</div>
-          <div class="t">Не посчитано</div>
+          <div class="n">{{ group_kpi.issued_cnt|default:0 }}</div>
+          <div class="t">Выдано</div>
+        </div>
+        <div class="box" style="grid-column: span 1; background: rgba(29,185,84,.15); border-color: rgba(29,185,84,.4);">
+          <div class="n" style="color: #1db954; font-size: 26px;">{{ group_kpi.total_sum|default:0 }}</div>
+          <div class="t" style="color: #1db954; font-weight: 950;">Общая сумма</div>
         </div>
         <div class="box">
           <div class="n">{{ group_kpi.client_found_cnt|default:0 }}</div>
