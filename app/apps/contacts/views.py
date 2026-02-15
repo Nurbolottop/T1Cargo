@@ -1191,30 +1191,11 @@ def manager_groups(request):
     if denied_filial is not None:
         return denied_filial
 
-    # Debug information
-    u = getattr(request, "user", None)
-    print(f"DEBUG manager_groups: user={u}")
-    print(f"DEBUG manager_groups: is_superuser={getattr(u, 'is_superuser', False)}")
-    print(f"DEBUG manager_groups: is_director={_is_director(u)}")
-    print(f"DEBUG manager_groups: is_manager={_is_manager(u)}")
-    
-    try:
-        staff = u.userssh if u and getattr(u, "is_authenticated", False) else None
-        if staff:
-            print(f"DEBUG manager_groups: staff role={staff.role}")
-            print(f"DEBUG manager_groups: staff filial={staff.filial}")
-    except Exception as e:
-        print(f"DEBUG manager_groups: staff error={e}")
-
     groups_qs = tg_models.ShipmentGroup.objects.all().order_by("-created_at")
     if staff_filial is not None:
         groups_qs = groups_qs.filter(filial=staff_filial)
     groups = groups_qs[:300]
-    
-    context = {"nav": "groups", "groups": groups, **_role_ctx(request)}
-    print(f"DEBUG manager_groups: context is_director={context.get('is_director')}")
-    
-    return render(request, "contacts/manager/groups.html", context)
+    return render(request, "contacts/manager/groups.html", {"nav": "groups", "groups": groups, **_role_ctx(request)})
 
 
 @login_required(login_url="/manager/login/")
@@ -1313,86 +1294,6 @@ def manager_group_delete(request, group_id: int):
         group.delete()
 
     return redirect("manager_groups")
-
-
-@login_required(login_url="/manager/login/")
-@csrf_protect
-def manager_groups_bulk_delete(request):
-    print("DEBUG: bulk_delete view called")
-    print("DEBUG: method:", request.method)
-    print("DEBUG: user:", request.user)
-    print("DEBUG: user is_superuser:", getattr(request.user, 'is_superuser', False))
-    print("DEBUG: body:", request.body)
-    
-    # Разрешаем и директорам, и менеджерам
-    denied = _require_manager(request)
-    if denied is not None:
-        print("DEBUG: manager check failed")
-        return denied
-    print("DEBUG: manager check passed")
-    
-    if request.method != "POST":
-        print("DEBUG: not POST method")
-        return JsonResponse({"ok": False, "error": "method_not_allowed"}, status=405)
-
-    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
-    if denied_filial is not None:
-        print("DEBUG: filial check failed")
-        return denied_filial
-    print("DEBUG: staff_filial:", staff_filial)
-
-    import json
-    try:
-        payload = json.loads(request.body.decode("utf-8") or "{}")
-        print("DEBUG: parsed payload:", payload)
-    except json.JSONDecodeError as e:
-        print("DEBUG: JSON decode error:", e)
-        return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
-
-    group_ids_raw = payload.get("group_ids")
-    if not isinstance(group_ids_raw, list):
-        print("DEBUG: group_ids not a list")
-        return JsonResponse({"ok": False, "error": "group_ids_required"}, status=400)
-
-    group_ids = []
-    for gid in group_ids_raw:
-        try:
-            group_ids.append(int(gid))
-        except Exception:
-            continue
-
-    if not group_ids:
-        print("DEBUG: no valid group ids")
-        return JsonResponse({"ok": False, "error": "no_valid_ids"}, status=400)
-
-    print("DEBUG: final group_ids:", group_ids)
-
-    # Check what groups exist
-    all_groups = tg_models.ShipmentGroup.objects.filter(id__in=group_ids)
-    print("DEBUG: found groups count:", all_groups.count())
-    for g in all_groups:
-        print(f"DEBUG: group {g.id}: {g.name}, filial: {g.filial_id}")
-
-    groups_qs = tg_models.ShipmentGroup.objects.filter(id__in=group_ids)
-    if staff_filial is not None:
-        groups_qs = groups_qs.filter(filial_id=staff_filial.id)
-        print("DEBUG: after filial filter count:", groups_qs.count())
-
-    if groups_qs.count() == 0:
-        print("DEBUG: no groups found to delete")
-        return JsonResponse({"ok": False, "error": "no_groups_found"}, status=404)
-
-    print("DEBUG: groups to delete count:", groups_qs.count())
-
-    with transaction.atomic():
-        # Delete all shipments in the selected groups
-        deleted_shipments, _ = tg_models.Shipment.objects.filter(group__in=groups_qs).delete()
-        # Delete the groups themselves
-        deleted_groups, _ = groups_qs.delete()
-
-    print("DEBUG: deleted", deleted_groups, "groups and", deleted_shipments, "shipments")
-
-    return JsonResponse({"ok": True, "deleted_groups": deleted_groups, "deleted_shipments": deleted_shipments})
 
 
 @login_required(login_url="/manager/login/")

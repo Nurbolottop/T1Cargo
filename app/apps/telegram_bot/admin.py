@@ -219,11 +219,30 @@ class AuthUserAdmin(DjangoUserAdmin):
 
 
 
+class ShipmentGroupInline(admin.TabularInline):
+    model = tg_models.Shipment
+    extra = 0
+    fields = (
+        "tracking_number",
+        "user",
+        "status",
+        "weight_kg",
+        "total_price",
+        "created_at",
+    )
+    readonly_fields = ("created_at",)
+    show_change_link = True
+    can_delete = True
+
+
 @admin.register(tg_models.ShipmentGroup)
 class ShipmentGroupAdmin(admin.ModelAdmin):
-    list_display = ("name", "status", "sent_date", "created_at")
-    list_filter = ("status", "created_at")
+    list_display = ("name", "status", "sent_date", "filial", "created_at", "shipment_count")
+    list_filter = ("status", "filial", "created_at")
     search_fields = ("name",)
+    inlines = (ShipmentGroupInline,)
+    actions = ("delete_selected_with_shipments",)
+    
     fieldsets = (
         (
             "Основное",
@@ -242,4 +261,34 @@ class ShipmentGroupAdmin(admin.ModelAdmin):
             {"fields": ("created_at", "updated_at")},
         ),
     )
+    readonly_fields = ("created_at", "updated_at")
+    
+    def shipment_count(self, obj):
+        return obj.shipments.count()
+    shipment_count.short_description = "Кол-во посылок"
+    
+    def delete_model(self, request, obj):
+        # Delete all shipments in this group first
+        shipment_count = obj.shipments.count()
+        obj.shipments.all().delete()
+        # Then delete the group
+        super().delete_model(request, obj)
+        self.message_user(request, f"Группа удалена. Вместе с ней удалено {shipment_count} посылок.")
+    
+    @admin.action(description="Удалить выбранные группы с посылками")
+    def delete_selected_with_shipments(self, request, queryset):
+        total_groups = queryset.count()
+        total_shipments = 0
+        for group in queryset:
+            total_shipments += group.shipments.count()
+            group.shipments.all().delete()
+        queryset.delete()
+        self.message_user(request, f"Удалено {total_groups} групп и {total_shipments} посылок.")
+    
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        # Remove default delete_selected action to avoid confusion
+        if 'delete_selected' in actions:
+            del actions['delete_selected']
+        return actions
 
