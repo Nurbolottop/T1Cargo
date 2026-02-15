@@ -2832,90 +2832,117 @@ def manager_shipment_detail(request, shipment_id: int):
         return HttpResponseForbidden("Нет доступа")
 
     if request.method == "POST":
-        denied_write = _require_director(request)
+        # Allow both manager and director to change client
+        denied_write = _require_manager(request)
         if denied_write is not None:
             return denied_write
-        status = (request.POST.get("status") or "").strip()
-        weight_kg = (request.POST.get("weight_kg") or "").strip()
-        price_per_kg = (request.POST.get("price_per_kg") or "").strip()
-        total_price = (request.POST.get("total_price") or "").strip()
-        arrival_date = (request.POST.get("arrival_date") or "").strip()
+        
+        # Check if user is director for full edit access
+        is_director_user = _require_director(request) is None
+        
         user_id = (request.POST.get("user_id") or "").strip()
-
-        # Update client if provided
+        client_code = (request.POST.get("client_code") or "").strip()
+        
+        # Update client if provided (allowed for both manager and director)
+        # Support both user_id (from dropdown) and client_code (from input)
+        new_user = None
         if user_id:
             try:
                 new_user = tg_models.User.objects.get(id=int(user_id))
-                shipment.user = new_user
-                shipment.client_code_raw = new_user.client_code
             except (tg_models.User.DoesNotExist, ValueError):
                 pass
+        elif client_code:
+            # Try to find user by client code (support both full code "PIJU-678" and just "678")
+            code = client_code.strip().upper()
+            users_qs = tg_models.User.objects.exclude(client_code__isnull=True).exclude(client_code="")
+            if staff_filial is not None:
+                users_qs = users_qs.filter(filial=staff_filial)
+            
+            # First try exact match
+            new_user = users_qs.filter(client_code__iexact=code).first()
+            
+            # If not found and code doesn't contain "-", try suffix match
+            if not new_user and "-" not in code:
+                suffix = f"-{code}"
+                new_user = users_qs.filter(client_code__iendswith=suffix).first()
+        
+        if new_user:
+            shipment.user = new_user
+            shipment.client_code_raw = new_user.client_code
+        
+        # Only director can update other fields
+        if is_director_user:
+            status = (request.POST.get("status") or "").strip()
+            weight_kg = (request.POST.get("weight_kg") or "").strip()
+            price_per_kg = (request.POST.get("price_per_kg") or "").strip()
+            total_price = (request.POST.get("total_price") or "").strip()
+            arrival_date = (request.POST.get("arrival_date") or "").strip()
 
-        status_changed = False
-        if status and status in dict(tg_models.Shipment.Status.choices):
-            status = str(status)
-            if shipment.status != status:
-                status_changed = True
-            shipment.status = status
-            if status_changed:
-                if status == tg_models.Shipment.Status.ISSUED:
-                    if getattr(shipment, "issued_at", None) is None:
-                        shipment.issued_at = timezone.now()
-                else:
-                    shipment.issued_at = None
+            status_changed = False
+            if status and status in dict(tg_models.Shipment.Status.choices):
+                status = str(status)
+                if shipment.status != status:
+                    status_changed = True
+                shipment.status = status
+                if status_changed:
+                    if status == tg_models.Shipment.Status.ISSUED:
+                        if getattr(shipment, "issued_at", None) is None:
+                            shipment.issued_at = timezone.now()
+                    else:
+                        shipment.issued_at = None
 
-        if weight_kg:
-            try:
-                shipment.weight_kg = Decimal(weight_kg.replace(",", "."))
-            except InvalidOperation:
-                messages.error(request, "Вес должен быть десятичным числом (например 2.5)")
-                return render(
-                    request,
-                    "contacts/manager/shipment_detail.html",
-                    {
-                        "nav": "shipments",
-                        "shipment": shipment,
-                        "statuses": tg_models.Shipment.Status.choices,
-                        **_role_ctx(request),
-                    },
-                )
+            if weight_kg:
+                try:
+                    shipment.weight_kg = Decimal(weight_kg.replace(",", "."))
+                except InvalidOperation:
+                    messages.error(request, "Вес должен быть десятичным числом (например 2.5)")
+                    return render(
+                        request,
+                        "contacts/manager/shipment_detail.html",
+                        {
+                            "nav": "shipments",
+                            "shipment": shipment,
+                            "statuses": tg_models.Shipment.Status.choices,
+                            **_role_ctx(request),
+                        },
+                    )
 
-        if price_per_kg:
-            try:
-                shipment.price_per_kg = Decimal(price_per_kg.replace(",", "."))
-            except InvalidOperation:
-                messages.error(request, "Цена за кг должна быть десятичным числом (например 220.00)")
-                return render(
-                    request,
-                    "contacts/manager/shipment_detail.html",
-                    {
-                        "nav": "shipments",
-                        "shipment": shipment,
-                        "statuses": tg_models.Shipment.Status.choices,
-                        **_role_ctx(request),
-                    },
-                )
+            if price_per_kg:
+                try:
+                    shipment.price_per_kg = Decimal(price_per_kg.replace(",", "."))
+                except InvalidOperation:
+                    messages.error(request, "Цена за кг должна быть десятичным числом (например 220.00)")
+                    return render(
+                        request,
+                        "contacts/manager/shipment_detail.html",
+                        {
+                            "nav": "shipments",
+                            "shipment": shipment,
+                            "statuses": tg_models.Shipment.Status.choices,
+                            **_role_ctx(request),
+                        },
+                    )
 
-        if total_price:
-            try:
-                shipment.total_price = Decimal(total_price.replace(",", "."))
-            except InvalidOperation:
-                messages.error(request, "Итоговая стоимость должна быть десятичным числом (например 4400.00)")
-                return render(
-                    request,
-                    "contacts/manager/shipment_detail.html",
-                    {
-                        "nav": "shipments",
-                        "shipment": shipment,
-                        "statuses": tg_models.Shipment.Status.choices,
-                        **_role_ctx(request),
-                    },
-                )
-        if arrival_date:
-            try:
-                shipment.arrival_date = timezone.datetime.fromisoformat(arrival_date).date()
-            except Exception:
-                pass
+            if total_price:
+                try:
+                    shipment.total_price = Decimal(total_price.replace(",", "."))
+                except InvalidOperation:
+                    messages.error(request, "Итоговая стоимость должна быть десятичным числом (например 4400.00)")
+                    return render(
+                        request,
+                        "contacts/manager/shipment_detail.html",
+                        {
+                            "nav": "shipments",
+                            "shipment": shipment,
+                            "statuses": tg_models.Shipment.Status.choices,
+                            **_role_ctx(request),
+                        },
+                    )
+            if arrival_date:
+                try:
+                    shipment.arrival_date = timezone.datetime.fromisoformat(arrival_date).date()
+                except Exception:
+                    pass
 
         shipment.save()
         return redirect("manager_shipment_detail", shipment_id=shipment.id)

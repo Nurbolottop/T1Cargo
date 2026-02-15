@@ -112,6 +112,23 @@
     {% else %}
       <div class="card" style="margin-top:12px;">
         <h3 class="h">Детали</h3>
+        
+        {% if is_manager %}
+        <form method="post" style="margin-bottom:16px;">
+          {% csrf_token %}
+          <div class="form-row">
+            <div class="col-6">
+              <label>Код клиента (только номер, например: 678)</label>
+              <input type="text" name="client_code" value="{% if shipment.user %}{{ shipment.user.client_code }}{% endif %}" placeholder="Введите код клиента" />
+              <div class="muted" style="font-size:11px; margin-top:4px;">Введите только номер (например: 678) или полный код (например: PIJU-678)</div>
+            </div>
+            <div class="col-6" style="display:flex; align-items:flex-end;">
+              <button type="submit" class="btn accent">Изменить клиента</button>
+            </div>
+          </div>
+        </form>
+        {% endif %}
+        
         <div class="form-row">
           <div class="col-6">
             <label>Статус</label>
