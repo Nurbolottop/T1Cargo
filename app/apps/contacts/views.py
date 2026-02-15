@@ -1155,6 +1155,15 @@ def manager_client_delete(request, user_id: int):
     client = get_object_or_404(tg_models.User, id=user_id)
     if staff_filial is not None and client.filial_id != staff_filial.id:
         return HttpResponseForbidden("Нет доступа")
+    
+    # Reset client's shipments to unknown client status before deleting
+    client_code = client.client_code
+    tg_models.Shipment.objects.filter(user=client).update(
+        user=None,
+        import_status=tg_models.Shipment.ImportStatus.CLIENT_UNKNOWN,
+        client_code_raw=client_code  # Ensure client_code_raw is preserved
+    )
+    
     client.delete()
     return redirect("manager_clients")
 
@@ -1238,12 +1247,15 @@ def manager_group_detail(request, group_id: int):
     agg_priced = shipments_qs.aggregate(
         priced_cnt=Count("id", filter=Q(total_price__gt=0)),
         unpriced_cnt=Count("id", filter=(Q(total_price__isnull=True) | Q(total_price__lte=0))),
-        issued_priced_cnt=Count("id", filter=(Q(status=tg_models.Shipment.Status.ISSUED) & Q(total_price__gt=0))),
-        issued_unpriced_cnt=Count(
-            "id",
-            filter=(Q(status=tg_models.Shipment.Status.ISSUED) & (Q(total_price__isnull=True) | Q(total_price__lte=0))),
-        ),
     )
+    
+    # Client status metrics
+    agg_client_status = shipments_qs.aggregate(
+        client_found_cnt=Count("id", filter=Q(user__isnull=False)),
+        client_not_found_cnt=Count("id", filter=Q(import_status=tg_models.Shipment.ImportStatus.CLIENT_NOT_FOUND)),
+        client_unknown_cnt=Count("id", filter=Q(import_status=tg_models.Shipment.ImportStatus.CLIENT_UNKNOWN)),
+    )
+    
     group_kpi = {
         "total_cnt": int(agg_all.get("total_cnt") or 0),
         "issued_cnt": int(agg_issued.get("issued_cnt") or 0),
@@ -1251,8 +1263,9 @@ def manager_group_detail(request, group_id: int):
         "issued_sum": agg_issued.get("issued_sum") or Decimal("0"),
         "priced_cnt": int(agg_priced.get("priced_cnt") or 0),
         "unpriced_cnt": int(agg_priced.get("unpriced_cnt") or 0),
-        "issued_priced_cnt": int(agg_priced.get("issued_priced_cnt") or 0),
-        "issued_unpriced_cnt": int(agg_priced.get("issued_unpriced_cnt") or 0),
+        "client_found_cnt": int(agg_client_status.get("client_found_cnt") or 0),
+        "client_not_found_cnt": int(agg_client_status.get("client_not_found_cnt") or 0),
+        "client_unknown_cnt": int(agg_client_status.get("client_unknown_cnt") or 0),
     }
 
     has_unsorted = shipments_qs.exclude(status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.ISSUED]).exists()

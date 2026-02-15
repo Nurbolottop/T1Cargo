@@ -146,6 +146,7 @@ class Shipment(models.Model):
         OK = "ok", "Ок"
         NO_CLIENT_CODE = "no_client_code", "Неизвестный клиент"
         CLIENT_NOT_FOUND = "client_not_found", "Клиент не найден"
+        CLIENT_UNKNOWN = "client_unknown", "Клиент удалён"
 
     filial = models.ForeignKey(
         base_models.Filial,
@@ -211,8 +212,10 @@ def attach_orphan_shipments_to_user(user_obj: "User") -> int:
 
     qs = Shipment.objects.filter(
         user__isnull=True,
-        import_status=Shipment.ImportStatus.CLIENT_NOT_FOUND,
         filial_id=filial_id,
+    ).filter(
+        Q(import_status=Shipment.ImportStatus.CLIENT_NOT_FOUND) |
+        Q(import_status=Shipment.ImportStatus.CLIENT_UNKNOWN)
     )
 
     code_match = Q(client_code_raw__iexact=client_code)
