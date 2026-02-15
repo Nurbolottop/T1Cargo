@@ -32,6 +32,11 @@ urlpatterns = [
         name="manager_client_pickup_bulk_issue",
     ),
     path(
+        "manager/clients/<int:user_id>/issue-all/",
+        views.manager_client_issue_all,
+        name="manager_client_issue_all",
+    ),
+    path(
         "manager/clients/<int:user_id>/shipments/<int:shipment_id>/issued/",
         views.manager_client_shipment_set_issued,
         name="manager_client_shipment_set_issued",

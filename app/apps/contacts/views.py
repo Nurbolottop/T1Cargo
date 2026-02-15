@@ -1141,6 +1141,61 @@ def manager_client_pickup_bulk_issue(request, user_id: int):
 
 @login_required(login_url="/manager/login/")
 @csrf_protect
+def manager_client_issue_all(request, user_id: int):
+    """Issue all ready (warehouse) shipments for a client at once."""
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    client = get_object_or_404(tg_models.User, id=user_id)
+    if staff_filial is not None and client.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    # Get all ready shipments for this client
+    qs = tg_models.Shipment.objects.filter(
+        user=client,
+        status=tg_models.Shipment.Status.WAREHOUSE
+    )
+    if staff_filial is not None:
+        qs = qs.filter(filial=staff_filial)
+
+    shipments = list(qs)
+    if not shipments:
+        messages.info(request, "Нет посылок готовых к выдаче.")
+        return redirect("manager_client_detail", user_id=client.id)
+
+    now = timezone.now()
+    issued_count = 0
+    for sh in shipments:
+        sh.status = tg_models.Shipment.Status.ISSUED
+        sh.issued_at = now
+        sh.save(update_fields=["status", "issued_at", "updated_at"])
+        issued_count += 1
+
+    # Send Telegram notifications
+    if issued_count:
+        token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+        if token:
+            for sh in shipments:
+                if sh.user and getattr(sh.user, "telegram_id", None):
+                    text = _shipment_notify_text_issued(tracking=sh.tracking_number)
+                    try:
+                        _send_telegram_message(token=token, chat_id=int(sh.user.telegram_id), text=text)
+                    except Exception:
+                        pass
+
+    messages.success(request, f"Выдано {issued_count} посылок.")
+    return redirect("manager_client_detail", user_id=client.id)
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
 def manager_client_delete(request, user_id: int):
     denied = _require_editor_role(request)
     if denied is not None:
@@ -2772,7 +2827,7 @@ def manager_shipment_detail(request, shipment_id: int):
     if denied_filial is not None:
         return denied_filial
 
-    shipment = get_object_or_404(tg_models.Shipment.objects.select_related("user"), id=shipment_id)
+    shipment = get_object_or_404(tg_models.Shipment.objects.select_related("user", "group"), id=shipment_id)
     if staff_filial is not None and shipment.filial_id != staff_filial.id:
         return HttpResponseForbidden("Нет доступа")
 

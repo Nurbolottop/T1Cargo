@@ -179,6 +179,14 @@
         <span>• Готово:</span><b id="clientStatsReady">{{ shipments_stats.ready_cnt|default:'0' }}</b>
         <span>• Сумма:</span><b id="clientStatsSum">{{ shipments_stats.total_sum|default:'0' }}</b>
       </div>
+      {% if is_manager or is_director %}
+        {% if shipments_stats.ready_cnt > 0 %}
+          <form method="post" action="{% url 'manager_client_issue_all' user_id=client.id %}" style="margin:0;" onsubmit="return confirm('Выдать все готовые посылки клиенту?');">
+            {% csrf_token %}
+            <button class="btn" type="submit" style="background: rgba(16,185,129,.95); border-color: rgba(16,185,129,.95); color: rgba(255,255,255,1); font-weight:850;">Выдать все</button>
+          </form>
+        {% endif %}
+      {% endif %}
     </div>
 
     {% if is_manager or is_director %}
