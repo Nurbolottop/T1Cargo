@@ -1191,11 +1191,30 @@ def manager_groups(request):
     if denied_filial is not None:
         return denied_filial
 
+    # Debug information
+    u = getattr(request, "user", None)
+    print(f"DEBUG manager_groups: user={u}")
+    print(f"DEBUG manager_groups: is_superuser={getattr(u, 'is_superuser', False)}")
+    print(f"DEBUG manager_groups: is_director={_is_director(u)}")
+    print(f"DEBUG manager_groups: is_manager={_is_manager(u)}")
+    
+    try:
+        staff = u.userssh if u and getattr(u, "is_authenticated", False) else None
+        if staff:
+            print(f"DEBUG manager_groups: staff role={staff.role}")
+            print(f"DEBUG manager_groups: staff filial={staff.filial}")
+    except Exception as e:
+        print(f"DEBUG manager_groups: staff error={e}")
+
     groups_qs = tg_models.ShipmentGroup.objects.all().order_by("-created_at")
     if staff_filial is not None:
         groups_qs = groups_qs.filter(filial=staff_filial)
     groups = groups_qs[:300]
-    return render(request, "contacts/manager/groups.html", {"nav": "groups", "groups": groups, **_role_ctx(request)})
+    
+    context = {"nav": "groups", "groups": groups, **_role_ctx(request)}
+    print(f"DEBUG manager_groups: context is_director={context.get('is_director')}")
+    
+    return render(request, "contacts/manager/groups.html", context)
 
 
 @login_required(login_url="/manager/login/")
