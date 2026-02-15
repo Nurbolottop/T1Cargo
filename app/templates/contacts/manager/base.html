@@ -5,7 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>{% block title %}Менеджер панель{% endblock %}</title>
   <style>
-    :root { --bg:#070b15; --card:#0c1324; --text:#e6e9ef; --muted:#99a3b3; --border:#1f2a43; --accent:#e0b13f; --danger:#ef4444; --ring: rgba(224,177,63,.22); }
+    :root { 
+      --bg:#070b15; --card:#0c1324; --text:#e6e9ef; --muted:#99a3b3; --border:#1f2a43; --accent:#e0b13f; --danger:#ef4444; --ring: rgba(224,177,63,.22);
+      --card-bg: rgba(15,26,46,.56);
+      --card-border: rgba(255,255,255,.08);
+      --sidebar-bg: linear-gradient(180deg, rgba(12,19,36,.78) 0%, rgba(10,16,30,.62) 100%);
+      --topbar-bg: rgba(12,19,36,.52);
+      --input-bg: rgba(255,255,255,.028);
+      --input-border: rgba(255,255,255,.10);
+      --btn-hover: rgba(255,255,255,.05);
+      --table-hover: rgba(255,255,255,.035);
+      --shadow: rgba(0,0,0,.32);
+      --scrollbar-thumb: rgba(255,255,255,.10);
+      --keypad-bg: rgba(17,24,39,.98);
+      --accent-text: #111827;
+      --kv-text: rgba(229,231,235,.98);
+    }
+    :root[data-theme="light"] { 
+      --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --accent:#d97706; --danger:#dc2626; --ring: rgba(217,119,6,.22);
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --sidebar-bg: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
+      --topbar-bg: rgba(255,255,255,.85);
+      --input-bg: #ffffff;
+      --input-border: #cbd5e1;
+      --btn-hover: #f1f5f9;
+      --table-hover: #f8fafc;
+      --shadow: rgba(0,0,0,.08);
+      --scrollbar-thumb: rgba(100,116,139,.25);
+      --keypad-bg: #ffffff;
+      --accent-text: #ffffff;
+      --kv-text: #0f172a;
+    }
     * { box-sizing: border-box; }
     body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background: var(--bg); color:var(--text); line-height: 1.35; }
     a { color:inherit; text-decoration:none; }
@@ -13,6 +44,9 @@
     .app {
       min-height: 100vh;
       display: flex;
+      background: var(--bg);
+    }
+    :root[data-theme="dark"] .app {
       background:
         radial-gradient(900px 520px at 12% -8%, rgba(224,177,63,.16), transparent 55%),
         radial-gradient(900px 520px at 92% 6%, rgba(59,130,246,.14), transparent 55%),
@@ -23,8 +57,8 @@
     .sidebar {
       width: 292px;
       padding: 18px 14px;
-      border-right: 1px solid rgba(255,255,255,.07);
-      background: linear-gradient(180deg, rgba(12,19,36,.78) 0%, rgba(10,16,30,.62) 100%);
+      border-right: 1px solid var(--border);
+      background: var(--sidebar-bg);
       backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
@@ -44,23 +78,26 @@
     .sb-title .meta { color: var(--muted); font-weight: 900; font-size: 12px; }
 
     .sb-nav { margin-top: 10px; display:flex; flex-direction:column; gap:8px; padding: 0 6px; flex: 1; }
-    .sb-footer { padding: 12px 6px 6px; border-top: 1px solid rgba(255,255,255,.06); margin-top: 12px; }
+    .sb-footer { padding: 12px 6px 6px; border-top: 1px solid var(--border); margin-top: 12px; }
     .nav-link {
       display:flex;
       align-items:center;
       justify-content:space-between;
       padding: 10px 12px;
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.06);
-      background: rgba(255,255,255,.028);
+      border: 1px solid var(--border);
+      background: var(--input-bg);
       font-weight: 950;
       transition: background .12s ease, border-color .12s ease, transform .12s ease, box-shadow .12s ease;
     }
-    .nav-link:hover { transform: translateY(-1px); background: rgba(255,255,255,.045); border-color: rgba(255,255,255,.14); box-shadow: 0 10px 22px rgba(0,0,0,.22); }
+    .nav-link:hover { transform: translateY(-1px); background: var(--btn-hover); border-color: var(--muted); box-shadow: 0 10px 22px var(--shadow); }
     .nav-link.active { background: rgba(224,177,63,.14); border-color: rgba(224,177,63,.38); color: #f8d778; box-shadow: inset 3px 0 0 rgba(224,177,63,.95); }
-    .nav-link.primary { background: linear-gradient(180deg, rgba(224,177,63,.96), rgba(206,156,45,.94)); color: #111827; border-color: transparent; box-shadow: 0 14px 30px rgba(224,177,63,.18); }
+    :root[data-theme="light"] .nav-link.active { background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.35); color: #b45309; box-shadow: inset 3px 0 0 rgba(217,119,6,.95); }
+    .nav-link.primary { background: linear-gradient(180deg, rgba(224,177,63,.96), rgba(206,156,45,.94)); color: var(--accent-text); border-color: transparent; box-shadow: 0 14px 30px rgba(224,177,63,.18); }
+    :root[data-theme="light"] .nav-link.primary { background: linear-gradient(180deg, #f59e0b, #d97706); color: #ffffff; box-shadow: 0 14px 30px rgba(217,119,6,.18); }
     .nav-link.primary:hover { background: linear-gradient(180deg, rgba(236,195,92,.98), rgba(218,165,38,.96)); }
-    .nav-link.danger { background: rgba(255,255,255,.02); border-color: rgba(255,255,255,.06); }
+    :root[data-theme="light"] .nav-link.primary:hover { background: linear-gradient(180deg, #fbbf24, #f59e0b); }
+    .nav-link.danger { background: var(--input-bg); border-color: var(--border); }
 
     .main { flex: 1; min-width: 0; display:flex; flex-direction:column; }
     .topbar {
@@ -68,8 +105,8 @@
       align-items:center;
       justify-content:space-between;
       padding: 12px 18px;
-      border-bottom: 1px solid rgba(255,255,255,.06);
-      background: rgba(12,19,36,.52);
+      border-bottom: 1px solid var(--border);
+      background: var(--topbar-bg);
       backdrop-filter: blur(12px);
       min-height: 64px;
       height: auto;
@@ -83,8 +120,8 @@
       gap:8px;
       padding: 8px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.08);
-      background: rgba(255,255,255,.028);
+      border: 1px solid var(--border);
+      background: var(--input-bg);
       color: var(--muted);
       font-weight: 950;
       font-size: 12px;
@@ -100,11 +137,11 @@
     }
 
     .card {
-      background: linear-gradient(180deg, rgba(15,26,46,.56), rgba(11,18,32,.44));
-      border: 1px solid rgba(255,255,255,.08);
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
       border-radius: 18px;
       padding: 16px;
-      box-shadow: 0 18px 44px rgba(0,0,0,.32);
+      box-shadow: 0 18px 44px var(--shadow);
     }
     .h { font-weight: 950; margin: 0 0 10px; letter-spacing:.2px; }
     .muted { color: var(--muted); }
@@ -112,8 +149,8 @@
     .kv {
       border-radius: 16px;
       overflow: hidden;
-      border: 1px solid rgba(255,255,255,.06);
-      background: rgba(255,255,255,.02);
+      border: 1px solid var(--border);
+      background: var(--input-bg);
     }
     .kv-row {
       display:flex;
@@ -121,7 +158,7 @@
       justify-content:space-between;
       gap: 18px;
       padding: 12px 14px;
-      border-top: 1px solid rgba(255,255,255,.06);
+      border-top: 1px solid var(--border);
     }
     .kv-row:first-child { border-top: 0; }
     .kv-k {
@@ -136,7 +173,7 @@
     .kv-v {
       text-align: right;
       font-weight: 900;
-      color: rgba(229,231,235,.98);
+      color: var(--kv-text);
       line-height: 1.25;
       word-break: break-word;
       max-width: 52%;
@@ -144,7 +181,7 @@
     .kv-v strong { font-weight: 950; }
 
     .kpi { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:10px; }
-    .kpi .box { background: rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius: 16px; padding: 12px; }
+    .kpi .box { background: var(--input-bg); border:1px solid var(--border); border-radius: 16px; padding: 12px; }
     .kpi .n { font-size: 22px; font-weight: 950; }
     .kpi .t { color: var(--muted); font-size: 12px; font-weight: 950; }
 
@@ -155,30 +192,33 @@
       gap:8px;
       padding: 10px 12px;
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.028);
+      border: 1px solid var(--input-border);
+      background: var(--input-bg);
       color: var(--text);
       font-weight: 950;
       cursor: pointer;
       transition: transform .12s ease, background .12s ease, border-color .12s ease;
       white-space: nowrap;
     }
-    .btn:hover { transform: translateY(-1px); background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.18); }
-    .btn.accent { background: linear-gradient(180deg, rgba(224,177,63,.96), rgba(206,156,45,.94)); color:#111827; border-color: transparent; box-shadow: 0 14px 30px rgba(224,177,63,.18); }
+    .btn:hover { transform: translateY(-1px); background: var(--btn-hover); border-color: var(--muted); }
+    .btn.accent { background: linear-gradient(180deg, rgba(224,177,63,.96), rgba(206,156,45,.94)); color: var(--accent-text); border-color: transparent; box-shadow: 0 14px 30px rgba(224,177,63,.18); }
+    :root[data-theme="light"] .btn.accent { background: linear-gradient(180deg, #f59e0b, #d97706); color: #ffffff; box-shadow: 0 14px 30px rgba(217,119,6,.18); }
     .btn.accent:hover { background: linear-gradient(180deg, rgba(236,195,92,.98), rgba(218,165,38,.96)); }
+    :root[data-theme="light"] .btn.accent:hover { background: linear-gradient(180deg, #fbbf24, #f59e0b); }
 
     input, select {
       width:100%;
       padding: 10px 12px;
       border-radius: 12px;
-      border: 1px solid rgba(255,255,255,.10);
-      background: rgba(255,255,255,.028);
+      border: 1px solid var(--input-border);
+      background: var(--input-bg);
       color: var(--text);
       transition: border-color .12s ease, background .12s ease, box-shadow .12s ease;
     }
-    input:focus, select:focus { outline: none; border-color: rgba(224,177,63,.65); box-shadow: 0 0 0 5px var(--ring); background: rgba(255,255,255,.035); }
+    input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 5px var(--ring); background: var(--input-bg); }
     select { color-scheme: dark; }
-    option { background: #0f1a2e; color: var(--text); }
+    :root[data-theme="light"] select { color-scheme: light; }
+    option { background: var(--bg); color: var(--text); }
     label { display:block; font-size:12px; font-weight: 950; color: var(--muted); margin: 10px 0 6px; }
     .form-row { display:grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
     .col-6 { grid-column: span 6; }
@@ -187,22 +227,27 @@
     .col-12 { grid-column: span 12; }
 
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.07); text-align: left; vertical-align: middle; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
     th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-    tbody tr:hover td { background: rgba(255,255,255,.035); }
+    tbody tr:hover td { background: var(--table-hover); }
     th:last-child, td:last-child { width: 140px; text-align: right; white-space: nowrap; }
 
     .error { background: rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.35); color:#fecdd3; padding:10px 12px; border-radius:12px; font-weight:900; }
+    :root[data-theme="light"] .error { background: rgba(220,38,38,.10); border-color: rgba(220,38,38,.30); color:#991b1b; }
 
-    .msg { padding: 10px 12px; border-radius: 12px; font-weight: 950; border: 1px solid rgba(255,255,255,.10); background: rgba(255,255,255,.03); }
+    .msg { padding: 10px 12px; border-radius: 12px; font-weight: 950; border: 1px solid var(--border); background: var(--input-bg); }
     .msg.success { border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.10); color: rgba(229,231,235,.98); }
+    :root[data-theme="light"] .msg.success { border-color: rgba(22,163,74,.35); background: rgba(22,163,74,.10); color: #166534; }
     .msg.error { border-color: rgba(244,63,94,.35); background: rgba(244,63,94,.12); color: #fecdd3; }
+    :root[data-theme="light"] .msg.error { border-color: rgba(220,38,38,.35); background: rgba(220,38,38,.10); color: #991b1b; }
     .msg.info { border-color: rgba(59,130,246,.35); background: rgba(59,130,246,.10); color: rgba(229,231,235,.98); }
+    :root[data-theme="light"] .msg.info { border-color: rgba(37,99,235,.35); background: rgba(37,99,235,.10); color: #1d4ed8; }
     .msg.warning { border-color: rgba(224,177,63,.45); background: rgba(224,177,63,.12); color: rgba(229,231,235,.98); }
+    :root[data-theme="light"] .msg.warning { border-color: rgba(217,119,6,.45); background: rgba(217,119,6,.10); color: #b45309; }
 
     .sidebar::-webkit-scrollbar, .content::-webkit-scrollbar { width: 10px; height: 10px; }
-    .sidebar::-webkit-scrollbar-thumb, .content::-webkit-scrollbar-thumb { background: rgba(255,255,255,.10); border-radius: 999px; border: 2px solid rgba(0,0,0,.25); }
-    .sidebar::-webkit-scrollbar-thumb:hover, .content::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.16); }
+    .sidebar::-webkit-scrollbar-thumb, .content::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; border: 2px solid transparent; }
+    .sidebar::-webkit-scrollbar-thumb:hover, .content::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
     @media (max-width: 980px){
       .sidebar { display:none; }
@@ -247,6 +292,9 @@
 
       <div class="sb-footer">
         <a class="nav-link {% if nav == 'notifications' %}active{% endif %}" href="{% url 'manager_notifications' %}">Уведомления</a>
+        <button class="nav-link" type="button" id="themeToggle" style="width:100%; text-align:left; cursor:pointer;">
+          <span id="themeToggleText">🌙 Темная тема</span>
+        </button>
         <a class="nav-link danger" href="{% url 'manager_logout' %}">Выход</a>
       </div>
     </aside>
@@ -315,6 +363,51 @@
       <button class="btn accent" type="button" id="numKeypadOk">OK</button>
     </div>
   </div>
+
+  <script>
+    // Theme toggle
+    (function(){
+      const themeToggle = document.getElementById('themeToggle');
+      const themeToggleText = document.getElementById('themeToggleText');
+      const root = document.documentElement;
+      
+      function getTheme() {
+        try {
+          return localStorage.getItem('theme') || 'dark';
+        } catch(e) {
+          return 'dark';
+        }
+      }
+      
+      function setTheme(theme) {
+        root.setAttribute('data-theme', theme);
+        try {
+          localStorage.setItem('theme', theme);
+        } catch(e) {}
+        updateToggleText(theme);
+      }
+      
+      function updateToggleText(theme) {
+        if (themeToggleText) {
+          themeToggleText.textContent = theme === 'light' ? '☀️ Светлая тема' : '🌙 Темная тема';
+        }
+      }
+      
+      function toggleTheme() {
+        const current = getTheme();
+        const next = current === 'light' ? 'dark' : 'light';
+        setTheme(next);
+      }
+      
+      // Initialize theme
+      const savedTheme = getTheme();
+      setTheme(savedTheme);
+      
+      if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+      }
+    })();
+  </script>
 
   <script>
     (function(){
