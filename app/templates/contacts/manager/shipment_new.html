@@ -46,14 +46,20 @@
           </div>
         </div>
 
-        {# Hidden dimensions fields #}
-        <div id="dimensionsWrap" style="display:none;">
-          {{ form.length_cm }}
-          {{ form.width_cm }}
-          {{ form.height_cm }}
+        {# Fields for "По кг" mode #}
+        <div class="col-6" id="kgWeightWrap" style="display:none;">
+          <label>{{ form.weight_kg.label }}</label>
+          {{ form.weight_kg }}
+          {% if form.weight_kg.errors %}<div class="error" style="margin-top:8px;">{{ form.weight_kg.errors }}</div>{% endif %}
+        </div>
+        <div class="col-6" id="kgPriceWrap" style="display:none;">
+          <label>Цена за кг</label>
+          <input type="number" step="0.01" name="price_per_kg" id="pricePerKgInput" value="" readonly style="background: rgba(255,255,255,0.05);" />
+          <div class="muted" style="font-size:11px; margin-top:4px;">Автоматически из группы (двойной клик для редактирования)</div>
         </div>
 
-        <div class="col-6">
+        {# Field for both modes #}
+        <div class="col-6" id="totalPriceWrap">
           <label>{{ form.total_price.label }}</label>
           {{ form.total_price }}
           {% if form.total_price.errors %}<div class="error" style="margin-top:8px;">{{ form.total_price.errors }}</div>{% endif %}
@@ -61,7 +67,6 @@
         
         {# Hidden fields for form submission #}
         <div style="display:none;">
-          {{ form.weight_kg }}
           {{ form.length_cm }}
           {{ form.width_cm }}
           {{ form.height_cm }}
@@ -83,30 +88,55 @@
       const modeEl = document.getElementById('pricingMode');
       const modeButtonsWrap = document.getElementById('pricingModeButtons');
       const trackingInput = document.querySelector('input[name="tracking_number"]');
+      
+      // KG mode fields
+      const kgWeightWrap = document.getElementById('kgWeightWrap');
+      const kgPriceWrap = document.getElementById('kgPriceWrap');
+      const weightInput = document.querySelector('input[name="weight_kg"]');
+      const pricePerKgInput = document.getElementById('pricePerKgInput');
 
-      // Auto-fill price_per_kg when group is selected (hidden field)
-      if (groupSelect) {
-        const priceInput = document.createElement('input');
-        priceInput.type = 'hidden';
-        priceInput.name = 'price_per_kg';
-        priceInput.id = 'hiddenPricePerKg';
-        form.appendChild(priceInput);
-        
-        groupSelect.addEventListener('change', function() {
+      // Auto-fill price_per_kg when group is selected
+      function updatePriceFromGroup() {
+        if (groupSelect && pricePerKgInput) {
           const selected = groupSelect.options[groupSelect.selectedIndex];
           const price = selected.getAttribute('data-price');
           if (price) {
-            priceInput.value = price;
-          }
-        });
-        if (groupSelect.value) {
-          const selected = groupSelect.options[groupSelect.selectedIndex];
-          const price = selected.getAttribute('data-price');
-          if (price) {
-            priceInput.value = price;
+            pricePerKgInput.value = price;
           }
         }
       }
+
+      if (groupSelect) {
+        groupSelect.addEventListener('change', updatePriceFromGroup);
+        updatePriceFromGroup(); // Set on page load
+      }
+
+      // Allow editing price_per_kg on double-click
+      if (pricePerKgInput) {
+        pricePerKgInput.addEventListener('dblclick', function() {
+          this.removeAttribute('readonly');
+          this.style.background = '';
+        });
+        pricePerKgInput.addEventListener('blur', function() {
+          this.setAttribute('readonly', 'readonly');
+          this.style.background = 'rgba(255,255,255,0.05)';
+        });
+      }
+
+      // Calculate total price for kg mode
+      function calculateTotal() {
+        const mode = modeEl ? modeEl.value : '';
+        if (mode === 'kg' && weightInput && pricePerKgInput && totalPriceInput) {
+          const weight = parseFloat(weightInput.value) || 0;
+          const price = parseFloat(pricePerKgInput.value) || 0;
+          if (weight && price) {
+            totalPriceInput.value = (weight * price).toFixed(2);
+          }
+        }
+      }
+
+      if (weightInput) weightInput.addEventListener('input', calculateTotal);
+      if (pricePerKgInput) pricePerKgInput.addEventListener('input', calculateTotal);
 
       // Pricing mode toggle
       function setModeButtonsActive(mode) {
@@ -125,6 +155,16 @@
       function syncMode() {
         const mode = modeEl ? modeEl.value : '';
         setModeButtonsActive(mode);
+
+        // Show/hide fields based on mode
+        if (mode === 'kg') {
+          if (kgWeightWrap) kgWeightWrap.style.display = '';
+          if (kgPriceWrap) kgPriceWrap.style.display = '';
+        } else {
+          // gabarit mode - hide kg fields, only total price visible
+          if (kgWeightWrap) kgWeightWrap.style.display = 'none';
+          if (kgPriceWrap) kgPriceWrap.style.display = 'none';
+        }
       }
 
       if (modeButtonsWrap && modeEl) {
