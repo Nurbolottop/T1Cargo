@@ -13,6 +13,13 @@
     <div class="muted">Список загруженных Excel-групп.</div>
   </div>
 
+  {% if is_director %}
+    <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+      <button class="btn" id="deleteSelectedGroups" disabled>Удалить выбранные</button>
+      <span id="deleteSelectedCount" class="muted" style="margin-left:8px;">0 выбрано</span>
+    </div>
+  {% endif %}
+
   <div class="card" style="margin-top:12px;">
     <table>
       <thead>
@@ -32,10 +39,10 @@
       </thead>
       <tbody>
         {% for g in groups %}
-          <tr data-group-id="{{ g.id }}">
+          <tr data-group-id="{{ g.id }}" class="group-row">
             {% if is_director %}
               <td>
-                <input type="checkbox" class="groupCheckbox" value="{{ g.id }}" />
+                <input type="checkbox" class="groupCheckbox" value="{{ g.id }}" style="transform: scale(1.2); cursor: pointer;" />
               </td>
             {% endif %}
             <td><b>{{ g.name }}</b></td>
@@ -56,84 +63,135 @@
 
   {% if is_director %}
     <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-      <button class="btn" id="deleteSelectedGroups" disabled>Удалить выбранные</button>
-      <span id="deleteSelectedCount" class="muted" style="margin-left:8px;">0 выбрано</span>
+      <button class="btn" id="deleteSelectedGroups2" disabled>Удалить выбранные</button>
+      <span id="deleteSelectedCount2" class="muted" style="margin-left:8px;">0 выбрано</span>
     </div>
   {% endif %}
 {% endblock %}
 
 {% if is_director %}
+  <style>
+    .group-row.selected {
+      background-color: #e3f2fd !important;
+    }
+    .group-row:hover {
+      background-color: #f5f5f5;
+    }
+  </style>
   <script>
     (function(){
       const selectAll = document.getElementById('selectAllGroups');
       const checkboxes = document.querySelectorAll('.groupCheckbox');
       const deleteBtn = document.getElementById('deleteSelectedGroups');
+      const deleteBtn2 = document.getElementById('deleteSelectedGroups2');
       const countSpan = document.getElementById('deleteSelectedCount');
+      const countSpan2 = document.getElementById('deleteSelectedCount2');
+
+      function updateRowHighlight(checkbox) {
+        const row = checkbox.closest('tr');
+        if (checkbox.checked) {
+          row.classList.add('selected');
+        } else {
+          row.classList.remove('selected');
+        }
+      }
 
       function updateCount() {
         const checked = document.querySelectorAll('.groupCheckbox:checked');
         const count = checked.length;
+        
+        // Update both counters
         if (countSpan) countSpan.textContent = count + ' выбрано';
-        if (deleteBtn) deleteBtn.disabled = count === 0;
+        if (countSpan2) countSpan2.textContent = count + ' выбрано';
+        
+        // Update both buttons
+        const disabled = count === 0;
+        if (deleteBtn) deleteBtn.disabled = disabled;
+        if (deleteBtn2) deleteBtn2.disabled = disabled;
       }
 
       if (selectAll) {
         selectAll.addEventListener('change', function(){
           const checked = selectAll.checked;
-          checkboxes.forEach(cb => cb.checked = checked);
+          checkboxes.forEach(cb => {
+            cb.checked = checked;
+            updateRowHighlight(cb);
+          });
           updateCount();
         });
       }
 
       checkboxes.forEach(cb => {
-        cb.addEventListener('change', updateCount);
+        cb.addEventListener('change', function(){
+          updateRowHighlight(cb);
+          updateCount();
+        });
+        // Initialize highlight
+        updateRowHighlight(cb);
       });
 
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', async function(){
-          const checked = Array.from(document.querySelectorAll('.groupCheckbox:checked')).map(cb => cb.value);
-          console.log('Selected group IDs:', checked);
-          if (!checked.length) return;
-          if (!confirm('Удалить выбранные группы и все посылки внутри них?')) return;
+      // Handle both delete buttons
+      [deleteBtn, deleteBtn2].forEach(btn => {
+        if (btn) {
+          btn.addEventListener('click', async function(){
+            const checked = Array.from(document.querySelectorAll('.groupCheckbox:checked')).map(cb => cb.value);
+            console.log('Selected group IDs:', checked);
+            if (!checked.length) return;
+            if (!confirm('Удалить выбранные группы и все посылки внутри них?')) return;
 
-          deleteBtn.disabled = true;
-          deleteBtn.textContent = 'Удаление...';
-
-          const requestBody = JSON.stringify({ group_ids: checked });
-          console.log('Request body:', requestBody);
-          
-          const url = '{% url "manager_groups_bulk_delete" %}';
-          console.log('Request URL:', url);
-          
-          const csrfToken = getCookie('csrftoken');
-          console.log('CSRF Token:', csrfToken);
-
-          try {
-            const resp = await fetch(url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
-              },
-              body: requestBody
-            });
-            console.log('Response status:', resp.status);
-            const data = await resp.json();
-            console.log('Response data:', data);
-            if (data && data.ok) {
-              location.reload();
-            } else {
-              alert('Ошибка при удалении: ' + (data.error || 'неизвестная ошибка'));
+            // Disable both buttons
+            if (deleteBtn) {
+              deleteBtn.disabled = true;
+              deleteBtn.textContent = 'Удаление...';
             }
-          } catch (e) {
-            console.error('Request error:', e);
-            alert('Ошибка сети: ' + e.message);
-          } finally {
-            deleteBtn.disabled = false;
-            deleteBtn.textContent = 'Удалить выбранные';
-          }
-        });
-      }
+            if (deleteBtn2) {
+              deleteBtn2.disabled = true;
+              deleteBtn2.textContent = 'Удаление...';
+            }
+
+            const requestBody = JSON.stringify({ group_ids: checked });
+            console.log('Request body:', requestBody);
+            
+            const url = '{% url "manager_groups_bulk_delete" %}';
+            console.log('Request URL:', url);
+            
+            const csrfToken = getCookie('csrftoken');
+            console.log('CSRF Token:', csrfToken);
+
+            try {
+              const resp = await fetch(url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'X-CSRFToken': csrfToken
+                },
+                body: requestBody
+              });
+              console.log('Response status:', resp.status);
+              const data = await resp.json();
+              console.log('Response data:', data);
+              if (data && data.ok) {
+                location.reload();
+              } else {
+                alert('Ошибка при удалении: ' + (data.error || 'неизвестная ошибка'));
+              }
+            } catch (e) {
+              console.error('Request error:', e);
+              alert('Ошибка сети: ' + e.message);
+            } finally {
+              // Restore both buttons
+              if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.textContent = 'Удалить выбранные';
+              }
+              if (deleteBtn2) {
+                deleteBtn2.disabled = false;
+                deleteBtn2.textContent = 'Удалить выбранные';
+              }
+            }
+          });
+        }
+      });
 
       function getCookie(name) {
         let cookieValue = null;
