@@ -166,7 +166,7 @@
 
   <div class="card" style="margin-top:12px;">
     <h3 class="h">Посылки клиента</h3>
-    <div style="display:flex; gap:10px; margin-bottom:10px;">
+    <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
       {% if is_manager %}
         <a class="btn accent" href="{% url 'manager_shipment_new' %}">+ Добавить посылку</a>
       {% endif %}
@@ -187,6 +187,16 @@
           </form>
         {% endif %}
       {% endif %}
+    </div>
+
+    {# Filter buttons #}
+    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+      <button class="btn accent" type="button" data-filter="all" onclick="filterShipments('all')">Все</button>
+      <button class="btn" type="button" data-filter="in_transit" onclick="filterShipments('in_transit')">В пути</button>
+      <button class="btn" type="button" data-filter="in_kyrgyzstan" onclick="filterShipments('in_kyrgyzstan')">В Кыргызстане</button>
+      <button class="btn" type="button" data-filter="warehouse" onclick="filterShipments('warehouse')">Готов к выдаче</button>
+      <button class="btn" type="button" data-filter="issued" onclick="filterShipments('issued')">Выдано</button>
+      <button class="btn" type="button" onclick="filterShipments('all')">Сбросить</button>
     </div>
 
     {% if is_manager or is_director %}
@@ -287,6 +297,44 @@
   </div>
 
   <script>
+    // Shipment filter function
+    function filterShipments(filter) {
+      const rows = document.querySelectorAll('tbody tr[data-shipment-id]');
+      const buttons = document.querySelectorAll('[data-filter]');
+      
+      // Update button styles
+      buttons.forEach(btn => {
+        if (btn.dataset.filter === filter) {
+          btn.classList.add('accent');
+        } else {
+          btn.classList.remove('accent');
+        }
+      });
+      
+      // Filter rows
+      rows.forEach(row => {
+        const statusCell = row.querySelector('[data-shipment-status]');
+        if (!statusCell) return;
+        
+        const statusText = statusCell.textContent.trim().toLowerCase();
+        
+        let show = false;
+        if (filter === 'all') {
+          show = true;
+        } else if (filter === 'in_transit' && statusText.includes('пути')) {
+          show = true;
+        } else if (filter === 'in_kyrgyzstan' && (statusText.includes('кыргызстане') || statusText.includes('kyrgyzstan'))) {
+          show = true;
+        } else if (filter === 'warehouse' && (statusText.includes('готов') || statusText.includes('warehouse'))) {
+          show = true;
+        } else if (filter === 'issued' && (statusText.includes('выдано') || statusText.includes('issued'))) {
+          show = true;
+        }
+        
+        row.style.display = show ? '' : 'none';
+      });
+    }
+
     (function(){
       const modal = document.getElementById('issuedModal');
       const okBtn = document.getElementById('issuedOk');
