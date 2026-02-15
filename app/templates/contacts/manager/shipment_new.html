@@ -46,32 +46,25 @@
           </div>
         </div>
 
-        <div class="col-12" id="dimensionsWrap" style="display:none;">
-          <div style="display:flex; gap:10px;">
-            <div style="flex:1;">
-              <label>{{ form.length_cm.label }}</label>
-              {{ form.length_cm }}
-            </div>
-            <div style="flex:1;">
-              <label>{{ form.width_cm.label }}</label>
-              {{ form.width_cm }}
-            </div>
-            <div style="flex:1;">
-              <label>{{ form.height_cm.label }}</label>
-              {{ form.height_cm }}
-            </div>
-          </div>
+        {# Hidden dimensions fields #}
+        <div id="dimensionsWrap" style="display:none;">
+          {{ form.length_cm }}
+          {{ form.width_cm }}
+          {{ form.height_cm }}
         </div>
 
-        <div class="col-6" id="weightWrap">
-          <label>{{ form.weight_kg.label }}</label>
-          {{ form.weight_kg }}
-          {% if form.weight_kg.errors %}<div class="error" style="margin-top:8px;">{{ form.weight_kg.errors }}</div>{% endif %}
-        </div>
-        <div class="col-6" id="totalPriceWrap">
+        <div class="col-6">
           <label>{{ form.total_price.label }}</label>
           {{ form.total_price }}
           {% if form.total_price.errors %}<div class="error" style="margin-top:8px;">{{ form.total_price.errors }}</div>{% endif %}
+        </div>
+        
+        {# Hidden fields for form submission #}
+        <div style="display:none;">
+          {{ form.weight_kg }}
+          {{ form.length_cm }}
+          {{ form.width_cm }}
+          {{ form.height_cm }}
         </div>
       </div>
 
@@ -86,15 +79,9 @@
     (function() {
       const form = document.getElementById('shipmentForm');
       const groupSelect = document.getElementById('groupSelect');
-      const pricePerKgInput = document.querySelector('input[name="price_per_kg"]');
-      const weightInput = document.querySelector('input[name="weight_kg"]');
       const totalPriceInput = document.querySelector('input[name="total_price"]');
       const modeEl = document.getElementById('pricingMode');
       const modeButtonsWrap = document.getElementById('pricingModeButtons');
-      const dimensionsWrap = document.getElementById('dimensionsWrap');
-      const lengthInput = document.querySelector('input[name="length_cm"]');
-      const widthInput = document.querySelector('input[name="width_cm"]');
-      const heightInput = document.querySelector('input[name="height_cm"]');
       const trackingInput = document.querySelector('input[name="tracking_number"]');
 
       // Auto-fill price_per_kg when group is selected (hidden field)
@@ -121,34 +108,6 @@
         }
       }
 
-      // Calculate total price automatically
-      function calculateTotal() {
-        const mode = modeEl ? modeEl.value : '';
-        const weight = parseFloat(weightInput ? weightInput.value : 0) || 0;
-        const pricePerKg = parseFloat(document.getElementById('hiddenPricePerKg') ? document.getElementById('hiddenPricePerKg').value : 0) || 0;
-        const length = parseFloat(lengthInput ? lengthInput.value : 0) || 0;
-        const width = parseFloat(widthInput ? widthInput.value : 0) || 0;
-        const height = parseFloat(heightInput ? heightInput.value : 0) || 0;
-
-        let total = 0;
-        if (mode === 'kg' && weight && pricePerKg) {
-          total = weight * pricePerKg;
-        } else if (mode === 'gabarit' && length && width && height && pricePerKg) {
-          const volumetricWeight = (length * width * height) / 5000;
-          total = volumetricWeight * pricePerKg;
-        }
-
-        if (totalPriceInput && total > 0) {
-          totalPriceInput.value = total.toFixed(2);
-        }
-      }
-
-      // Watch inputs for changes
-      if (weightInput) weightInput.addEventListener('input', calculateTotal);
-      if (lengthInput) lengthInput.addEventListener('input', calculateTotal);
-      if (widthInput) widthInput.addEventListener('input', calculateTotal);
-      if (heightInput) heightInput.addEventListener('input', calculateTotal);
-
       // Pricing mode toggle
       function setModeButtonsActive(mode) {
         if (!modeButtonsWrap) return;
@@ -166,15 +125,6 @@
       function syncMode() {
         const mode = modeEl ? modeEl.value : '';
         setModeButtonsActive(mode);
-
-        if (mode === 'gabarit') {
-          if (dimensionsWrap) dimensionsWrap.style.display = '';
-          if (weightInput) weightInput.placeholder = 'Необязательно';
-        } else {
-          if (dimensionsWrap) dimensionsWrap.style.display = 'none';
-          if (weightInput) weightInput.placeholder = '';
-        }
-        calculateTotal();
       }
 
       if (modeButtonsWrap && modeEl) {
