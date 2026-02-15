@@ -89,29 +89,42 @@
       if (deleteBtn) {
         deleteBtn.addEventListener('click', async function(){
           const checked = Array.from(document.querySelectorAll('.groupCheckbox:checked')).map(cb => cb.value);
+          console.log('Selected group IDs:', checked);
           if (!checked.length) return;
           if (!confirm('Удалить выбранные группы и все посылки внутри них?')) return;
 
           deleteBtn.disabled = true;
           deleteBtn.textContent = 'Удаление...';
 
+          const requestBody = JSON.stringify({ group_ids: checked });
+          console.log('Request body:', requestBody);
+          
+          const url = '{% url "manager_groups_bulk_delete" %}';
+          console.log('Request URL:', url);
+          
+          const csrfToken = getCookie('csrftoken');
+          console.log('CSRF Token:', csrfToken);
+
           try {
-            const resp = await fetch('{% url "manager_groups_bulk_delete" %}', {
+            const resp = await fetch(url, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': getCookie('csrftoken')
+                'X-CSRFToken': csrfToken
               },
-              body: JSON.stringify({ group_ids: checked })
+              body: requestBody
             });
+            console.log('Response status:', resp.status);
             const data = await resp.json();
+            console.log('Response data:', data);
             if (data && data.ok) {
               location.reload();
             } else {
-              alert('Ошибка при удалении');
+              alert('Ошибка при удалении: ' + (data.error || 'неизвестная ошибка'));
             }
           } catch (e) {
-            alert('Ошибка сети');
+            console.error('Request error:', e);
+            alert('Ошибка сети: ' + e.message);
           } finally {
             deleteBtn.disabled = false;
             deleteBtn.textContent = 'Удалить выбранные';
