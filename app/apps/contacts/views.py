@@ -2840,6 +2840,16 @@ def manager_shipment_detail(request, shipment_id: int):
         price_per_kg = (request.POST.get("price_per_kg") or "").strip()
         total_price = (request.POST.get("total_price") or "").strip()
         arrival_date = (request.POST.get("arrival_date") or "").strip()
+        user_id = (request.POST.get("user_id") or "").strip()
+
+        # Update client if provided
+        if user_id:
+            try:
+                new_user = tg_models.User.objects.get(id=int(user_id))
+                shipment.user = new_user
+                shipment.client_code_raw = new_user.client_code
+            except (tg_models.User.DoesNotExist, ValueError):
+                pass
 
         status_changed = False
         if status and status in dict(tg_models.Shipment.Status.choices):
@@ -2910,10 +2920,15 @@ def manager_shipment_detail(request, shipment_id: int):
         shipment.save()
         return redirect("manager_shipment_detail", shipment_id=shipment.id)
 
+    # Get clients list for selection (only those with client_code)
+    clients_qs = tg_models.User.objects.exclude(client_code__isnull=True).exclude(client_code="").order_by("client_code")
+    if staff_filial is not None:
+        clients_qs = clients_qs.filter(filial=staff_filial)
+
     return render(
         request,
         "contacts/manager/shipment_detail.html",
-        {"nav": "shipments", "shipment": shipment, "statuses": tg_models.Shipment.Status.choices, **_role_ctx(request)},
+        {"nav": "shipments", "shipment": shipment, "statuses": tg_models.Shipment.Status.choices, "clients": clients_qs, **_role_ctx(request)},
     )
 
 

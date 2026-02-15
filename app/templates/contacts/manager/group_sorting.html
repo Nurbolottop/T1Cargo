@@ -28,17 +28,36 @@
   {% if shipment %}
     <div class="card" style="margin-top:12px;">
       <h3 class="h">Товар</h3>
-      <div class="muted" style="margin-top:6px;">
-        Трек: <b>{{ shipment.tracking_number }}</b>
-        <br />
-        Клиент:
-        {% if shipment.user %}
-          <b>{{ shipment.user.client_code }}</b>
-          {% if shipment.user.full_name %} • {{ shipment.user.full_name }}{% endif %}
-          • Готово к выдаче: <b>{{ client_ready_cnt|default:'0' }}</b>
-        {% else %}
-          <b>{{ shipment.client_code_raw|default:'—' }}</b> • {{ shipment.get_import_status_display }}
+      
+      {# Client Info - Prominent Display #}
+      <div style="background: linear-gradient(135deg, rgba(224,177,63,0.15) 0%, rgba(224,177,63,0.05) 100%); border: 2px solid rgba(224,177,63,0.4); border-radius: 16px; padding: 20px; margin-top:12px; margin-bottom: 20px;">
+        <div style="font-size: 14px; color: var(--muted); margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Клиент</div>
+        <div style="font-size: 28px; font-weight: 950; color: #f8d778; line-height: 1.2;">
+          {% if shipment.user %}
+            {{ shipment.user.client_code }}
+          {% else %}
+            {{ shipment.client_code_raw|default:'—' }}
+          {% endif %}
+        </div>
+        {% if shipment.user and shipment.user.full_name %}
+          <div style="font-size: 20px; font-weight: 700; color: var(--text); margin-top: 8px;">{{ shipment.user.full_name }}</div>
         {% endif %}
+        <div style="display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap;">
+          <div style="background: rgba(0,0,0,0.2); padding: 8px 16px; border-radius: 12px;">
+            <span style="color: var(--muted); font-size: 12px;">Готово к выдаче:</span>
+            <span style="color: #1db954; font-size: 20px; font-weight: 900; margin-left: 8px;">{{ client_ready_cnt|default:'0' }}</span>
+          </div>
+          {% if shipment.user %}
+            <div style="background: rgba(0,0,0,0.2); padding: 8px 16px; border-radius: 12px;">
+              <span style="color: var(--muted); font-size: 12px;">Телефон:</span>
+              <span style="color: var(--text); font-size: 16px; font-weight: 700; margin-left: 8px;">{{ shipment.user.phone|default:'—' }}</span>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="muted" style="font-size: 14px; margin-bottom: 12px;">
+        Трек: <b style="font-size: 18px; color: var(--text);">{{ shipment.tracking_number }}</b>
       </div>
 
       <form method="post" style="margin-top:12px;">
