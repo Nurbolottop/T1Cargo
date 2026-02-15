@@ -2800,8 +2800,24 @@ def manager_shipment_new(request):
     if request.method == "POST":
         form = ShipmentCreateForm(request.POST, staff_filial=effective_filial)
         if form.is_valid():
-            shipment = form.save(staff_filial=effective_filial)
-            return redirect("manager_shipment_detail", shipment_id=shipment.id)
+            # Get quantity for creating multiple shipments with same tracking
+            quantity = (request.POST.get("quantity") or "").strip()
+            try:
+                quantity = int(quantity) if quantity else 1
+                quantity = max(1, min(quantity, 100))  # Limit between 1 and 100
+            except (ValueError, TypeError):
+                quantity = 1
+            
+            # Create shipments
+            first_shipment = None
+            for i in range(quantity):
+                shipment = form.save(staff_filial=effective_filial)
+                if first_shipment is None:
+                    first_shipment = shipment
+            
+            if quantity > 1:
+                messages.success(request, f"Создано {quantity} посылок с трек-номером {first_shipment.tracking_number}")
+            return redirect("manager_shipment_detail", shipment_id=first_shipment.id)
     else:
         initial = {}
         if group_obj is not None:

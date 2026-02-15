@@ -36,6 +36,11 @@
           {{ form.tracking_number }}
           {% if form.tracking_number.errors %}<div class="error" style="margin-top:8px;">{{ form.tracking_number.errors }}</div>{% endif %}
         </div>
+        <div class="col-6">
+          <label>Количество (шт.)</label>
+          <input type="number" name="quantity" id="quantityInput" value="1" min="1" max="100" />
+          <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок с одинаковым треком</div>
+        </div>
 
         <div class="col-6">
           <label>Способ расчёта</label>
