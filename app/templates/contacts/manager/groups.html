@@ -14,6 +14,11 @@
     <table>
       <thead>
         <tr>
+          {% if is_director %}
+            <th style="width:40px;">
+              <input type="checkbox" id="selectAllGroups" title="Выбрать все группы" />
+            </th>
+          {% endif %}
           <th>Группа</th>
           <th>Дата отправки</th>
           <th>Статус</th>
@@ -24,7 +29,12 @@
       </thead>
       <tbody>
         {% for g in groups %}
-          <tr>
+          <tr data-group-id="{{ g.id }}">
+            {% if is_director %}
+              <td>
+                <input type="checkbox" class="groupCheckbox" value="{{ g.id }}" />
+              </td>
+            {% endif %}
             <td><b>{{ g.name }}</b></td>
             <td class="muted">{% if g.sent_date %}{{ g.sent_date|date:'d.m.Y' }}{% else %}—{% endif %}</td>
             <td>{{ g.get_status_display }}</td>
@@ -35,9 +45,94 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="6" class="muted">Группы не найдены.</td></tr>
+          <tr><td colspan="{% if is_director %}7{% else %}6{% endif %}" class="muted">Группы не найдены.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+
+  {% if is_director %}
+    <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+      <button class="btn" id="deleteSelectedGroups" disabled>Удалить выбранные</button>
+      <span id="deleteSelectedCount" class="muted" style="margin-left:8px;">0 выбрано</span>
+    </div>
+  {% endif %}
 {% endblock %}
+
+{% if is_director %}
+  <script>
+    (function(){
+      const selectAll = document.getElementById('selectAllGroups');
+      const checkboxes = document.querySelectorAll('.groupCheckbox');
+      const deleteBtn = document.getElementById('deleteSelectedGroups');
+      const countSpan = document.getElementById('deleteSelectedCount');
+
+      function updateCount() {
+        const checked = document.querySelectorAll('.groupCheckbox:checked');
+        const count = checked.length;
+        if (countSpan) countSpan.textContent = count + ' выбрано';
+        if (deleteBtn) deleteBtn.disabled = count === 0;
+      }
+
+      if (selectAll) {
+        selectAll.addEventListener('change', function(){
+          const checked = selectAll.checked;
+          checkboxes.forEach(cb => cb.checked = checked);
+          updateCount();
+        });
+      }
+
+      checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateCount);
+      });
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', async function(){
+          const checked = Array.from(document.querySelectorAll('.groupCheckbox:checked')).map(cb => cb.value);
+          if (!checked.length) return;
+          if (!confirm('Удалить выбранные группы и все посылки внутри них?')) return;
+
+          deleteBtn.disabled = true;
+          deleteBtn.textContent = 'Удаление...';
+
+          try {
+            const resp = await fetch('{% url "manager_groups_bulk_delete" %}', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+              },
+              body: JSON.stringify({ group_ids: checked })
+            });
+            const data = await resp.json();
+            if (data && data.ok) {
+              location.reload();
+            } else {
+              alert('Ошибка при удалении');
+            }
+          } catch (e) {
+            alert('Ошибка сети');
+          } finally {
+            deleteBtn.disabled = false;
+            deleteBtn.textContent = 'Удалить выбранные';
+          }
+        });
+      }
+
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+              cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
+    })();
+  </script>
+{% endif %}

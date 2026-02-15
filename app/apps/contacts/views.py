@@ -1298,6 +1298,52 @@ def manager_group_delete(request, group_id: int):
 
 @login_required(login_url="/manager/login/")
 @csrf_protect
+def manager_groups_bulk_delete(request):
+    denied = _require_director(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "error": "method_not_allowed"}, status=405)
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    import json
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"ok": False, "error": "bad_json"}, status=400)
+
+    group_ids_raw = payload.get("group_ids")
+    if not isinstance(group_ids_raw, list):
+        return JsonResponse({"ok": False, "error": "group_ids_required"}, status=400)
+
+    group_ids = []
+    for gid in group_ids_raw:
+        try:
+            group_ids.append(int(gid))
+        except Exception:
+            continue
+
+    if not group_ids:
+        return JsonResponse({"ok": False, "error": "no_valid_ids"}, status=400)
+
+    groups_qs = tg_models.ShipmentGroup.objects.filter(id__in=group_ids)
+    if staff_filial is not None:
+        groups_qs = groups_qs.filter(filial_id=staff_filial.id)
+
+    with transaction.atomic():
+        # Delete all shipments in the selected groups
+        deleted_shipments, _ = tg_models.Shipment.objects.filter(group__in=groups_qs).delete()
+        # Delete the groups themselves
+        deleted_groups, _ = groups_qs.delete()
+
+    return JsonResponse({"ok": True, "deleted_groups": deleted_groups, "deleted_shipments": deleted_shipments})
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
 def manager_group_sorting(request, group_id: int):
     denied = _require_editor_role(request)
     if denied is not None:
