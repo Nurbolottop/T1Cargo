@@ -80,9 +80,8 @@ class ShipmentCreateForm(forms.ModelForm):
         instance.user = getattr(self, "_user_obj", None)
         instance.filial = staff_filial if staff_filial is not None else getattr(instance.user, "filial", None)
         instance.group = self.cleaned_data.get("group")
-        # Auto-set status from group
-        if instance.group:
-            instance.status = instance.group.status
+        # Auto-set status to READY_TO_ISSUE for manual creation
+        instance.status = tg_models.Shipment.Status.READY_TO_ISSUE
         if commit:
             instance.save()
         return instance
