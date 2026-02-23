@@ -5,73 +5,129 @@
 {% block page_title %}Сортировка{% endblock %}
 
 {% block content %}
-  <div class="card">
-    <h2 class="h">Сортировка</h2>
-    <div class="muted">Все посылки со статусом <b>"В Кыргызстане"</b>.</div>
-
-    <form method="get" class="form-row" style="margin-top:10px;">
-      {% if is_director and filials %}
-        <div class="col-6">
-          <label>Филиал</label>
-          <select name="filial" onchange="this.form.submit()">
-            <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+  {% if not q %}
+    {# Minimal centered search view when no search query #}
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; padding:20px;">
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="font-size:32px; font-weight:700; margin-bottom:8px;">Сортировка</div>
+        <div class="muted">Введите трек / код клиента / ФИО / телефон</div>
+      </div>
+      
+      <form method="get" style="width:100%; max-width:500px; display:flex; gap:10px;" id="searchForm">
+        {% if is_director and filials %}
+          <select name="filial" style="padding:14px 18px; font-size:16px; border-radius:12px; border:1px solid var(--border); background:var(--input-bg); color:var(--text);">
+            <option value="">Все филиалы</option>
             {% for f in filials %}
               <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
             {% endfor %}
           </select>
+        {% endif %}
+        <input 
+          name="q" 
+          value="{{ q|default:'' }}" 
+          placeholder="Например: TRK123 или T1-1234" 
+          autofocus 
+          id="searchInput"
+          style="flex:1; font-size:18px; padding:14px 18px; border-radius:12px;"
+        />
+        <button class="btn accent" type="submit" style="padding:14px 24px; font-size:16px;">Найти</button>
+      </form>
+    </div>
+  {% else %}
+    {# Full view with search results #}
+    <div class="card">
+      <h2 class="h">Сортировка</h2>
+      <div class="muted">Все посылки со статусом <b>"В Кыргызстане"</b>.</div>
+
+      <form method="get" class="form-row" style="margin-top:10px;">
+        {% if is_director and filials %}
+          <div class="col-6">
+            <label>Филиал</label>
+            <select name="filial" onchange="this.form.submit()">
+              <option value="" {% if not selected_filial %}selected{% endif %}>Все филиалы</option>
+              {% for f in filials %}
+                <option value="{{ f.id }}" {% if selected_filial and selected_filial.id == f.id %}selected{% endif %}>{{ f }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        {% endif %}
+
+        <div class="{% if is_director and filials %}col-6{% else %}col-12{% endif %}">
+          <label>Поиск (трек / код клиента / ФИО / телефон)</label>
+          <input name="q" value="{{ q|default:'' }}" placeholder="Например: TRK123 или T1-1234" />
         </div>
-      {% endif %}
+      </form>
+    </div>
 
-      <div class="{% if is_director and filials %}col-6{% else %}col-12{% endif %}">
-        <label>Поиск (трек / код клиента / ФИО / телефон)</label>
-        <input name="q" value="{{ q|default:'' }}" placeholder="Например: TRK123 или T1-1234" />
-      </div>
-    </form>
-  </div>
-
-  <div class="card" style="margin-top:12px;">
-    <table>
-      <thead>
-        <tr>
-          <th>Трек</th>
-          <th>Клиент</th>
-          <th>Статус</th>
-          <th>Вес</th>
-          <th>Итого</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for sh in shipments %}
+    <div class="card" style="margin-top:12px;">
+      <table>
+        <thead>
           <tr>
-            <td><b>{{ sh.tracking_number }}</b></td>
-            <td>
-              {% if sh.user %}
-                {{ sh.user.client_code|default:'—' }}
-                {% if sh.user.full_name %}<div class="muted">{{ sh.user.full_name }}</div>{% endif %}
-              {% else %}
-                {{ sh.client_code_raw|default:'—' }}
-                <div class="muted">{{ sh.get_import_status_display }}</div>
-              {% endif %}
-            </td>
-            <td>{{ sh.get_status_display }}</td>
-            <td class="muted">{{ sh.weight_kg }}</td>
-            <td class="muted">{{ sh.total_price }}</td>
-            <td class="row-actions">
-              <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:nowrap; white-space:nowrap;">
-                <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
-                {% if sh.group_id %}
-                  <a class="btn accent" href="{% url 'manager_group_sorting' group_id=sh.group_id %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
-                {% else %}
-                  <a class="btn accent" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Сортировать</a>
-                {% endif %}
-              </div>
-            </td>
+            <th>Трек</th>
+            <th>Клиент</th>
+            <th>Статус</th>
+            <th>Вес</th>
+            <th>Итого</th>
+            <th></th>
           </tr>
-        {% empty %}
-          <tr><td colspan="6" class="muted">Посылки не найдены.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+        </thead>
+        <tbody>
+          {% for sh in shipments %}
+            <tr>
+              <td><b>{{ sh.tracking_number }}</b></td>
+              <td>
+                {% if sh.user %}
+                  {{ sh.user.client_code|default:'—' }}
+                  {% if sh.user.full_name %}<div class="muted">{{ sh.user.full_name }}</div>{% endif %}
+                {% else %}
+                  {{ sh.client_code_raw|default:'—' }}
+                  <div class="muted">{{ sh.get_import_status_display }}</div>
+                {% endif %}
+              </td>
+              <td>{{ sh.get_status_display }}</td>
+              <td class="muted">{{ sh.weight_kg }}</td>
+              <td class="muted">{{ sh.total_price }}</td>
+              <td class="row-actions">
+                <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:nowrap; white-space:nowrap;">
+                  <a class="btn" href="{% url 'manager_sorting' %}">Сортировка</a>
+                  {% if sh.group_id %}
+                    <a class="btn accent" href="{% url 'manager_sorting' %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
+                  {% else %}
+                    <a class="btn accent" href="{% url 'manager_sorting' %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
+                  {% endif %}
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="muted">Посылки не найдены.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
+  <script>
+    (function () {
+      const searchInput = document.getElementById('searchInput');
+      const form = document.getElementById('searchForm');
+      if (!searchInput || !form) return;
+
+      let last = (searchInput.value || '').trim();
+      let t = null;
+
+      function shouldAutoSubmit(v) {
+        if (!v) return false;
+        if (v.length < 4) return false;
+        return true;
+      }
+
+      searchInput.addEventListener('input', function () {
+        const v = (searchInput.value || '').trim();
+        if (!shouldAutoSubmit(v) || v === last) return;
+        last = v;
+        if (t) clearTimeout(t);
+        t = setTimeout(() => form.submit(), 300);
+      });
+    })();
+  </script>
 {% endblock %}
