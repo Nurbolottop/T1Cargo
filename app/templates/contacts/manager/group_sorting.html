@@ -2,7 +2,7 @@
 
 {% block title %}Сортировка • {{ group.name }}{% endblock %}
 
-{% block page_title %}Сортировка — {{ group.name }}{% endblock %}
+{% block page_title %}{% endblock %}
 
 {% block content %}
   {% if not shipment %}
@@ -40,15 +40,19 @@
     </div>
   {% else %}
     {# Full view with client info when shipment found #}
-    <div class="card">
-      <h2 class="h">Сортировка</h2>
-      <div class="muted">Введите код клиента и нажмите Enter. Поиск выполняется только в этой группе.</div>
+    <div class="card" style="background: linear-gradient(135deg, var(--card-bg) 0%, rgba(30,41,59,0.8) 100%); border: 1px solid var(--accent); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+        <div>
+          <h2 style="margin:0; font-size:28px; font-weight:700; color: var(--text);">Сортировка — {{ group.name }}</h2>
+          <div class="muted" style="margin-top:4px; font-size:14px;">Группа отправки • Поиск по коду клиента</div>
+        </div>
+        <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2);">← Назад к группе</a>
+      </div>
 
-      <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="clientSearchForm">
-        <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента (например: 823)" autofocus id="clientInput" />
-        <button class="btn accent" type="submit">Найти</button>
-        <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
-        <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
+      <form method="get" style="margin-top:20px; display:flex; gap:12px;" id="clientSearchForm">
+        <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента (например: 823)" autofocus id="clientInput" style="flex:1; font-size:16px; padding:12px 16px; border-radius:10px;" />
+        <button class="btn accent" type="submit" style="padding:12px 24px; font-weight:600;">Найти</button>
+        <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">+ Добавить</a>
       </form>
 
       {% if message %}
@@ -93,51 +97,14 @@
         </div>
       </div>
 
-      <div class="muted" style="font-size: 14px; margin-bottom: 12px;">
-        Трек: <b style="font-size: 18px; color: var(--text);">{{ shipment.tracking_number }}</b>
+      <div style="display:flex; gap:12px; margin-top:16px; flex-wrap:wrap;">
+        {% if shipment.user %}
+          <a class="btn" href="{% url 'manager_group_client_batch_sorting' group_id=group.id user_id=shipment.user.id %}" style="background: rgba(16,185,129,.2); border-color: rgba(16,185,129,.4); color: rgba(16,185,129,1); font-weight:600;">
+            📦 Пакетная сортировка →
+          </a>
+        {% endif %}
+        <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}" style="background: rgba(255,255,255,0.05);">↻ Очистить поиск</a>
       </div>
-
-      <form method="post" style="margin-top:12px;">
-        {% csrf_token %}
-        <input type="hidden" name="client_code" value="{% if shipment.user %}{{ shipment.user.client_code }}{% else %}{{ shipment.client_code_raw|default:q }}{% endif %}" />
-        <div class="form-row">
-          <div class="col-12">
-            <label>Способ расчёта</label>
-            <input type="hidden" name="pricing_mode" id="pricingMode" value="{{ pricing_mode_selected|default:'' }}" />
-            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;" id="pricingModeButtons">
-              <button
-                class="btn {% if pricing_mode_selected == 'kg' %}accent{% endif %}"
-                type="button"
-                data-mode="kg"
-                {% if weight_locked %}disabled{% endif %}
-              >По кг</button>
-              <button
-                class="btn {% if pricing_mode_selected == 'gabarit' %}accent{% endif %}"
-                type="button"
-                data-mode="gabarit"
-                {% if weight_locked %}disabled{% endif %}
-              >По габариту</button>
-            </div>
-          </div>
-          <div class="col-6" id="weightWrap" style="display:none;">
-            <label>Вес (кг)</label>
-            <input name="weight_kg" value="{% if shipment.weight_kg %}{{ shipment.weight_kg }}{% endif %}" {% if weight_locked %}disabled{% endif %} {% if weight_locked %}data-locked="1"{% endif %} id="weightInput" />
-          </div>
-          <div class="col-6" id="defaultPriceWrap" style="display:none;">
-            <label>Цена за кг (по умолчанию)</label>
-            <input value="{{ default_price_per_kg|default:'—' }}" disabled />
-          </div>
-          <div class="col-6" id="totalPriceWrap" style="display:none;">
-            <label>Стоимость (итого)</label>
-            <input name="total_price" value="{% if shipment.total_price %}{{ shipment.total_price }}{% endif %}" {% if weight_locked %}disabled{% endif %} />
-          </div>
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top:12px;">
-          <button class="btn accent" type="submit" {% if weight_locked %}disabled{% endif %}>Сохранить</button>
-          <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Очистить</a>
-        </div>
-      </form>
     </div>
 
   {% endif %}
