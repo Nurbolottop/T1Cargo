@@ -1,0 +1,168 @@
+{% extends "contacts/manager/base.html" %}
+{% load static %}
+{% block content %}
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <div>
+        <h2 class="h" style="margin:0;">Пакетная сортировка: {{ client.client_code }}</h2>
+        <div class="muted" style="font-size:12px; margin-top:4px;">Группа: {{ group.name }}</div>
+      </div>
+      <div>
+        <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">← К сортировке группы</a>
+      </div>
+    </div>
+
+    {% if message %}
+      <div class="success" style="margin-bottom:12px;">{{ message }}</div>
+    {% endif %}
+    {% if error %}
+      <div class="error" style="margin-bottom:12px;">{{ error }}</div>
+    {% endif %}
+
+    {% if all_sorted %}
+      <div class="success" style="text-align:center; padding:24px;">
+        <div style="font-size:18px; font-weight:600; margin-bottom:8px;">✓ Все посылки клиента отсортированы</div>
+        <div class="muted">Нет несортированных посылок для этого клиента в данной группе</div>
+      </div>
+    {% else %}
+      <form method="post" id="batchForm">
+        {% csrf_token %}
+        
+        {# Pricing Mode Selection #}
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+          <div style="font-size:12px; color:var(--muted); margin-bottom:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Способ расчёта</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn accent" id="btnKg" data-mode="kg" onclick="setPricingMode('kg')">По кг</button>
+            <button type="button" class="btn" id="btnGabarit" data-mode="gabarit" onclick="setPricingMode('gabarit')">По габариту</button>
+          </div>
+          <input type="hidden" name="pricing_mode" id="pricingMode" value="kg">
+        </div>
+
+        {# Total Values #}
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+          <div style="font-size:12px; color:var(--muted); margin-bottom:12px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Общие значения для выбранных посылок</div>
+          
+          <div class="form-row" style="margin-bottom:12px;">
+            <div class="col-6" id="totalWeightWrap">
+              <label>Общий вес (кг)</label>
+              <input type="text" name="total_weight_kg" id="totalWeight" placeholder="Например: 15.5" style="width:100%;">
+            </div>
+            <div class="col-6" id="totalPriceWrap" style="display:none;">
+              <label>Общая стоимость</label>
+              <input type="text" name="total_price" id="totalPrice" placeholder="Например: 2500" style="width:100%;">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="col-6">
+              <label>Цена за кг</label>
+              <input type="text" name="price_per_kg" id="pricePerKg" 
+                     value="{{ default_price_per_kg|default:'' }}" 
+                     placeholder="{% if default_price_per_kg %}{{ default_price_per_kg }}{% else %}Авто из филиала{% endif %}" 
+                     style="width:100%;">
+            </div>
+          </div>
+        </div>
+
+        {# Shipments List with Checkboxes #}
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <div style="font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Выберите посылки для сортировки</div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn" onclick="selectAll()">Выбрать все</button>
+              <button type="button" class="btn" onclick="deselectAll()">Снять все</button>
+            </div>
+          </div>
+
+          <table class="table" style="margin:0;">
+            <thead>
+              <tr>
+                <th style="width:40px;">
+                  <input type="checkbox" id="selectAllCheckbox" onclick="toggleAll()">
+                </th>
+                <th>Трек-номер</th>
+                <th>Статус</th>
+                <th style="text-align:right;">Вес</th>
+                <th style="text-align:right;">Сумма</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in shipments %}
+                <tr>
+                  <td>
+                    <input type="checkbox" name="shipment_ids" value="{{ s.id }}" class="shipment-checkbox">
+                  </td>
+                  <td><b>{{ s.tracking_number }}</b></td>
+                  <td>
+                    {% if s.get_status_display %}
+                      <span class="badge">{{ s.get_status_display }}</span>
+                    {% endif %}
+                  </td>
+                  <td style="text-align:right;">
+                    {% if s.weight_kg %}{{ s.weight_kg }} кг{% else %}—{% endif %}
+                  </td>
+                  <td style="text-align:right;">
+                    {% if s.total_price %}{{ s.total_price }}{% else %}—{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="muted" id="selectedCount">Выбрано: 0 посылок</div>
+          <button type="submit" class="btn accent" id="submitBtn" disabled>Отсортировать выбранные</button>
+        </div>
+      </form>
+
+      <script>
+        function setPricingMode(mode) {
+          document.getElementById('pricingMode').value = mode;
+          document.getElementById('btnKg').classList.toggle('accent', mode === 'kg');
+          document.getElementById('btnGabarit').classList.toggle('accent', mode === 'gabarit');
+          
+          if (mode === 'kg') {
+            document.getElementById('totalWeightWrap').style.display = 'block';
+            document.getElementById('totalPriceWrap').style.display = 'none';
+          } else {
+            document.getElementById('totalWeightWrap').style.display = 'block';
+            document.getElementById('totalPriceWrap').style.display = 'block';
+          }
+        }
+
+        function toggleAll() {
+          const master = document.getElementById('selectAllCheckbox');
+          const checkboxes = document.querySelectorAll('.shipment-checkbox');
+          checkboxes.forEach(cb => cb.checked = master.checked);
+          updateSelectedCount();
+        }
+
+        function selectAll() {
+          document.querySelectorAll('.shipment-checkbox').forEach(cb => cb.checked = true);
+          document.getElementById('selectAllCheckbox').checked = true;
+          updateSelectedCount();
+        }
+
+        function deselectAll() {
+          document.querySelectorAll('.shipment-checkbox').forEach(cb => cb.checked = false);
+          document.getElementById('selectAllCheckbox').checked = false;
+          updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+          const count = document.querySelectorAll('.shipment-checkbox:checked').length;
+          document.getElementById('selectedCount').textContent = 'Выбрано: ' + count + ' ' + (count === 1 ? 'посылка' : (count < 5 ? 'посылки' : 'посылок'));
+          document.getElementById('submitBtn').disabled = count === 0;
+        }
+
+        document.querySelectorAll('.shipment-checkbox').forEach(cb => {
+          cb.addEventListener('change', updateSelectedCount);
+        });
+
+        // Initialize
+        setPricingMode('kg');
+      </script>
+    {% endif %}
+  </div>
+{% endblock %}

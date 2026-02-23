@@ -7,10 +7,10 @@
 {% block content %}
   <div class="card">
     <h2 class="h">Сортировка</h2>
-    <div class="muted">Сканируйте/вставьте трек и нажмите Enter. Поиск выполняется только в этой группе.</div>
+    <div class="muted">Введите код клиента и нажмите Enter. Поиск выполняется только в этой группе.</div>
 
-    <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="trackSearchForm">
-      <input name="q" value="{{ q|default:'' }}" placeholder="Трек" autofocus id="trackInput" />
+    <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="clientSearchForm">
+      <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента (например: 823)" autofocus id="clientInput" />
       <button class="btn accent" type="submit">Найти</button>
       <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
       <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
@@ -42,7 +42,7 @@
         {% if shipment.user and shipment.user.full_name %}
           <div style="font-size: 18px; font-weight: 600; color: var(--text); margin-top: 6px; opacity: 0.9;">{{ shipment.user.full_name }}</div>
         {% endif %}
-        <div style="display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
           <div style="background: var(--input-bg); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);">
             <span style="color: var(--muted); font-size: 12px;">Готово к выдаче:</span>
             <span style="color: var(--accent); font-size: 18px; font-weight: 800; margin-left: 8px;">{{ client_ready_cnt|default:'0' }}</span>
@@ -52,6 +52,9 @@
               <span style="color: var(--muted); font-size: 12px;">Телефон:</span>
               <span style="color: var(--text); font-size: 14px; font-weight: 600; margin-left: 8px;">{{ shipment.user.phone|default:'—' }}</span>
             </div>
+            <a class="btn" href="{% url 'manager_group_client_batch_sorting' group_id=group.id user_id=shipment.user.id %}" style="background: rgba(16,185,129,.15); border-color: rgba(16,185,129,.3); color: rgba(16,185,129,1);">
+              Пакетная сортировка →
+            </a>
           {% endif %}
         </div>
       </div>
@@ -62,7 +65,7 @@
 
       <form method="post" style="margin-top:12px;">
         {% csrf_token %}
-        <input type="hidden" name="tracking_number" value="{{ shipment.tracking_number }}" />
+        <input type="hidden" name="client_code" value="{% if shipment.user %}{{ shipment.user.client_code }}{% else %}{{ shipment.client_code_raw|default:q }}{% endif %}" />
         <div class="form-row">
           <div class="col-12">
             <label>Способ расчёта</label>
@@ -106,32 +109,32 @@
 
   <script>
     (function () {
-      const trackInput = document.getElementById('trackInput');
-      const form = document.getElementById('trackSearchForm');
-      if (!trackInput || !form) return;
+      const clientInput = document.getElementById('clientInput');
+      const form = document.getElementById('clientSearchForm');
+      if (!clientInput || !form) return;
 
       const weightInput = document.getElementById('weightInput');
       if (weightInput && !weightInput.disabled) {
         setTimeout(() => weightInput.focus(), 50);
       }
 
-      let last = (trackInput.value || '').trim();
+      let last = (clientInput.value || '').trim();
       let t = null;
 
       function shouldAutoSubmit(v) {
         if (!v) return false;
-        if (v.length < 6) return false;
+        // Client codes can be short (e.g., "823"), so we check for at least 1 digit
         if (!/[0-9]/.test(v)) return false;
-        if (/[А-Яа-яЁё]/.test(v)) return false;
+        // Auto-submit after a short delay for client codes
         return true;
       }
 
-      trackInput.addEventListener('input', function () {
-        const v = (trackInput.value || '').trim();
+      clientInput.addEventListener('input', function () {
+        const v = (clientInput.value || '').trim();
         if (!shouldAutoSubmit(v) || v === last) return;
         last = v;
         if (t) clearTimeout(t);
-        t = setTimeout(() => form.submit(), 120);
+        t = setTimeout(() => form.submit(), 300);
       });
 
       const modeEl = document.getElementById('pricingMode');
