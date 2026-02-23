@@ -3108,7 +3108,7 @@ def manager_group_client_batch_sorting(request, group_id: int, user_id: int):
                 if pricing_mode not in {"kg", "gabarit"}:
                     error = "Выберите способ расчёта."
                 else:
-                    # Get price per kg (from shipment, client filial, or manual input)
+                    # Get price per kg (from manual input or client filial)
                     price_per_kg_value = None
                     try:
                         manual_price = (request.POST.get("price_per_kg") or "").strip()
@@ -3118,137 +3118,126 @@ def manager_group_client_batch_sorting(request, group_id: int, user_id: int):
                         pass
                     
                     if price_per_kg_value is None or price_per_kg_value <= 0:
-                        # Try to get from first shipment or client filial
-                        first_shipment = selected_shipments.first()
-                        if first_shipment and first_shipment.price_per_kg and first_shipment.price_per_kg > 0:
-                            price_per_kg_value = first_shipment.price_per_kg
-                        elif client.filial and client.filial.default_price_per_kg:
+                        # Try to get from client filial
+                        if client.filial and client.filial.default_price_per_kg:
                             price_per_kg_value = client.filial.default_price_per_kg
                     
-                    if price_per_kg_value is None or price_per_kg_value <= 0:
-                        error = "Не задана цена за кг. Укажите вручную или настройте в филиале клиента."
-                    else:
-                        if pricing_mode == "kg":
-                            # Get total weight for all selected shipments
-                            raw_weight = (request.POST.get("total_weight_kg") or "").replace(",", ".").strip()
-                            try:
-                                total_weight = Decimal(raw_weight) if raw_weight else None
-                            except:
-                                total_weight = None
-                            
-                            if total_weight is None or total_weight <= 0:
-                                error = "Укажите общий вес для выбранных посылок."
-                            else:
-                                # Calculate price per shipment
-                                weight_per_shipment = (total_weight / selected_count).quantize(Decimal("0.001"))
-                                total_price_per_shipment = (weight_per_shipment * price_per_kg_value).quantize(Decimal("0.01"))
-                                
-                                with transaction.atomic():
-                                    for shipment in selected_shipments:
-                                        shipment.pricing_mode = tg_models.Shipment.PricingMode.KG
-                                        shipment.weight_kg = weight_per_shipment
-                                        shipment.price_per_kg = price_per_kg_value
-                                        shipment.total_price = total_price_per_shipment
-                                        shipment.status = tg_models.Shipment.Status.WAREHOUSE
-                                        shipment.arrival_date = timezone.now().date()
-                                        shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
-                                
-                                message = f"Отсортировано {selected_count} посылок клиента {client.client_code}. Вес на посылку: {weight_per_shipment} кг, Сумма: {total_price_per_shipment}"
-                                
-                                # Check if all client shipments are sorted
-                                remaining = tg_models.Shipment.objects.filter(
-                                    group=group, 
-                                    user=client,
-                                    status__in=[tg_models.Shipment.Status.ON_THE_WAY, tg_models.Shipment.Status.BISHKEK]
-                                )
-                                if staff_filial is not None:
-                                    remaining = remaining.filter(filial=staff_filial)
-                                
-                                if not remaining.exists():
-                                    try:
-                                        transaction.on_commit(
-                                            lambda: notify_user_group_status_task.delay(
-                                                int(client.id),
-                                                int(group.id),
-                                                str(tg_models.Shipment.Status.WAREHOUSE),
-                                                int(staff_filial.id) if staff_filial is not None else None,
-                                            )
-                                        )
-                                    except Exception:
-                                        pass
-                                
-                                # Refresh shipments list
-                                shipments = list(shipments_qs)
+                    # Get total weight (optional)
+                    raw_weight = (request.POST.get("total_weight_kg") or "").replace(",", ".").strip()
+                    try:
+                        total_weight = Decimal(raw_weight) if raw_weight else None
+                    except:
+                        total_weight = None
+                    
+                    # Calculate weight per shipment if total provided
+                    weight_per_shipment = None
+                    if total_weight and total_weight > 0:
+                        weight_per_shipment = (total_weight / selected_count).quantize(Decimal("0.001"))
+                    
+                    if pricing_mode == "kg":
+                        # Price = weight * price_per_kg for each shipment
+                        if price_per_kg_value is None or price_per_kg_value <= 0:
+                            error = "Укажите цену за кг."
+                        elif weight_per_shipment is None:
+                            error = "Укажите общий вес."
                         else:
-                            # gabarit mode - total price is distributed
-                            raw_total = (request.POST.get("total_price") or "").replace(",", ".").strip()
-                            try:
-                                total_price_value = Decimal(raw_total) if raw_total else None
-                            except:
-                                total_price_value = None
+                            total_price_per_shipment = (weight_per_shipment * price_per_kg_value).quantize(Decimal("0.01"))
                             
-                            if total_price_value is None or total_price_value <= 0:
-                                error = "Укажите общую стоимость для выбранных посылок."
-                            else:
-                                # Get optional total weight
-                                raw_weight = (request.POST.get("total_weight_kg") or "").replace(",", ".").strip()
+                            with transaction.atomic():
+                                for shipment in selected_shipments:
+                                    shipment.pricing_mode = tg_models.Shipment.PricingMode.KG
+                                    shipment.weight_kg = weight_per_shipment
+                                    shipment.price_per_kg = price_per_kg_value
+                                    shipment.total_price = total_price_per_shipment
+                                    shipment.status = tg_models.Shipment.Status.WAREHOUSE
+                                    shipment.arrival_date = timezone.now().date()
+                                    shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
+                            
+                            message = f"Отсортировано {selected_count} посылок. Вес: {weight_per_shipment} кг, Цена: {total_price_per_shipment} сом каждой."
+                            
+                            # Check if all client shipments are sorted
+                            remaining = tg_models.Shipment.objects.filter(
+                                group=group, 
+                                user=client,
+                                status__in=[tg_models.Shipment.Status.ON_THE_WAY, tg_models.Shipment.Status.BISHKEK]
+                            )
+                            if staff_filial is not None:
+                                remaining = remaining.filter(filial=staff_filial)
+                            
+                            if not remaining.exists():
                                 try:
-                                    total_weight = Decimal(raw_weight) if raw_weight else None
-                                except:
-                                    total_weight = None
-                                
-                                price_per_shipment = (total_price_value / selected_count).quantize(Decimal("0.01"))
-                                weight_per_shipment = (total_weight / selected_count).quantize(Decimal("0.001")) if total_weight else None
-                                
-                                with transaction.atomic():
-                                    for shipment in selected_shipments:
-                                        shipment.pricing_mode = tg_models.Shipment.PricingMode.GABARIT
-                                        if weight_per_shipment:
-                                            shipment.weight_kg = weight_per_shipment
-                                        shipment.price_per_kg = price_per_kg_value or Decimal("0")
-                                        shipment.total_price = price_per_shipment
-                                        shipment.status = tg_models.Shipment.Status.WAREHOUSE
-                                        shipment.arrival_date = timezone.now().date()
-                                        shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
-                                
-                                message = f"Отсортировано {selected_count} посылок клиента {client.client_code}. Сумма на посылку: {price_per_shipment}"
-                                
-                                # Check if all client shipments are sorted
-                                remaining = tg_models.Shipment.objects.filter(
-                                    group=group, 
-                                    user=client,
-                                    status__in=[tg_models.Shipment.Status.ON_THE_WAY, tg_models.Shipment.Status.BISHKEK]
-                                )
-                                if staff_filial is not None:
-                                    remaining = remaining.filter(filial=staff_filial)
-                                
-                                if not remaining.exists():
-                                    try:
-                                        transaction.on_commit(
-                                            lambda: notify_user_group_status_task.delay(
-                                                int(client.id),
-                                                int(group.id),
-                                                str(tg_models.Shipment.Status.WAREHOUSE),
-                                                int(staff_filial.id) if staff_filial is not None else None,
-                                            )
+                                    transaction.on_commit(
+                                        lambda: notify_user_group_status_task.delay(
+                                            int(client.id),
+                                            int(group.id),
+                                            str(tg_models.Shipment.Status.WAREHOUSE),
+                                            int(staff_filial.id) if staff_filial is not None else None,
                                         )
-                                    except Exception:
-                                        pass
-                                
-                                # Refresh shipments list
-                                shipments = list(shipments_qs)
+                                    )
+                                except Exception:
+                                    pass
+                            
+                            # Refresh shipments list
+                            shipments = list(shipments_qs)
+                    else:
+                        # gabarit mode - total price is divided among shipments
+                        raw_total = (request.POST.get("total_price") or "").replace(",", ".").strip()
+                        try:
+                            total_price_value = Decimal(raw_total) if raw_total else None
+                        except:
+                            total_price_value = None
+                        
+                        if total_price_value is None or total_price_value <= 0:
+                            error = "Укажите общую стоимость."
+                        else:
+                            # Divide total price by number of shipments
+                            price_per_shipment = (total_price_value / selected_count).quantize(Decimal("0.01"))
+                            
+                            with transaction.atomic():
+                                for shipment in selected_shipments:
+                                    shipment.pricing_mode = tg_models.Shipment.PricingMode.GABARIT
+                                    if weight_per_shipment:
+                                        shipment.weight_kg = weight_per_shipment
+                                    shipment.price_per_kg = price_per_kg_value or Decimal("0")
+                                    shipment.total_price = price_per_shipment
+                                    shipment.status = tg_models.Shipment.Status.WAREHOUSE
+                                    shipment.arrival_date = timezone.now().date()
+                                    shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
+                            
+                            message = f"Отсортировано {selected_count} посылок. Общая сумма {total_price_value} сом разделена: {price_per_shipment} сом каждой."
+                            
+                            # Check if all client shipments are sorted
+                            remaining = tg_models.Shipment.objects.filter(
+                                group=group, 
+                                user=client,
+                                status__in=[tg_models.Shipment.Status.ON_THE_WAY, tg_models.Shipment.Status.BISHKEK]
+                            )
+                            if staff_filial is not None:
+                                remaining = remaining.filter(filial=staff_filial)
+                            
+                            if not remaining.exists():
+                                try:
+                                    transaction.on_commit(
+                                        lambda: notify_user_group_status_task.delay(
+                                            int(client.id),
+                                            int(group.id),
+                                            str(tg_models.Shipment.Status.WAREHOUSE),
+                                            int(staff_filial.id) if staff_filial is not None else None,
+                                        )
+                                    )
+                                except Exception:
+                                    pass
+                            
+                            # Refresh shipments list
+                            shipments = list(shipments_qs)
 
     # Check if all shipments already sorted
     all_sorted = len(shipments) == 0
     
-    # Get default price per kg
+    # Get default price per kg from client filial
     default_price = None
-    if shipments:
-        first = shipments[0]
-        if first.price_per_kg and first.price_per_kg > 0:
-            default_price = first.price_per_kg
-        elif client.filial and client.filial.default_price_per_kg:
-            default_price = client.filial.default_price_per_kg
+    if client.filial and client.filial.default_price_per_kg:
+        default_price = client.filial.default_price_per_kg
 
     return render(
         request,
