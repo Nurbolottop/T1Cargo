@@ -2,68 +2,30 @@
 
 {% block title %}Сортировка • {{ group.name }}{% endblock %}
 
-{% block page_title %}{% endblock %}
+{% block page_title %}Сортировка — {{ group.name }}{% endblock %}
 
 {% block content %}
-  {% if not shipment %}
-    {# Minimal centered search view when no client selected #}
-    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; padding:20px;">
-      <div style="text-align:center; margin-bottom:24px;">
-        <div style="font-size:32px; font-weight:700; margin-bottom:8px;">Сортировка</div>
-        <div class="muted">Введите код клиента и нажмите Enter</div>
-      </div>
-      
-      <form method="get" style="width:100%; max-width:500px; display:flex; gap:10px;" id="clientSearchForm">
-        <input 
-          name="q" 
-          value="{{ q|default:'' }}" 
-          placeholder="Код клиента (например: 823)" 
-          autofocus 
-          id="clientInput"
-          style="flex:1; font-size:18px; padding:14px 18px; border-radius:12px;"
-        />
-        <button class="btn accent" type="submit" style="padding:14px 24px; font-size:16px;">Найти</button>
-      </form>
+  <div class="card">
+    <h2 class="h">Сортировка</h2>
+    <div class="muted">Сканируйте/вставьте трек и нажмите Enter. Поиск выполняется только в этой группе.</div>
 
-      {% if message %}
-        <div class="muted" style="margin-top:16px;">{{ message }}</div>
-      {% endif %}
+    <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="trackSearchForm">
+      <input name="q" value="{{ q|default:'' }}" placeholder="Трек" autofocus id="trackInput" />
+      <button class="btn accent" type="submit">Найти</button>
+      <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
+      <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
+    </form>
 
-      {% if error %}
-        <div class="error" style="margin-top:16px;">{{ error }}</div>
-      {% endif %}
+    {% if message %}
+      <div class="muted" style="margin-top:12px;">{{ message }}</div>
+    {% endif %}
 
-      <div style="margin-top:24px; display:flex; gap:12px;">
-        <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
-        <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
-      </div>
-    </div>
-  {% else %}
-    {# Full view with client info when shipment found #}
-    <div class="card" style="background: linear-gradient(135deg, var(--card-bg) 0%, rgba(30,41,59,0.8) 100%); border: 1px solid var(--accent); box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
-      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
-        <div>
-          <h2 style="margin:0; font-size:28px; font-weight:700; color: var(--text);">Сортировка — {{ group.name }}</h2>
-          <div class="muted" style="margin-top:4px; font-size:14px;">Группа отправки • Поиск по коду клиента</div>
-        </div>
-        <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2);">← Назад к группе</a>
-      </div>
+    {% if error %}
+      <div class="error" style="margin-top:12px;">{{ error }}</div>
+    {% endif %}
+  </div>
 
-      <form method="get" style="margin-top:20px; display:flex; gap:12px;" id="clientSearchForm">
-        <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента (например: 823)" autofocus id="clientInput" style="flex:1; font-size:16px; padding:12px 16px; border-radius:10px;" />
-        <button class="btn accent" type="submit" style="padding:12px 24px; font-weight:600;">Найти</button>
-        <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">+ Добавить</a>
-      </form>
-
-      {% if message %}
-        <div class="muted" style="margin-top:12px;">{{ message }}</div>
-      {% endif %}
-
-      {% if error %}
-        <div class="error" style="margin-top:12px;">{{ error }}</div>
-      {% endif %}
-    </div>
-
+  {% if shipment %}
     <div class="card" style="margin-top:12px;">
       <h3 class="h">Товар</h3>
       
@@ -80,7 +42,7 @@
         {% if shipment.user and shipment.user.full_name %}
           <div style="font-size: 18px; font-weight: 600; color: var(--text); margin-top: 6px; opacity: 0.9;">{{ shipment.user.full_name }}</div>
         {% endif %}
-        <div style="display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap; align-items: center;">
+        <div style="display: flex; gap: 20px; margin-top: 12px; flex-wrap: wrap;">
           <div style="background: var(--input-bg); padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);">
             <span style="color: var(--muted); font-size: 12px;">Готово к выдаче:</span>
             <span style="color: var(--accent); font-size: 18px; font-weight: 800; margin-left: 8px;">{{ client_ready_cnt|default:'0' }}</span>
@@ -90,53 +52,86 @@
               <span style="color: var(--muted); font-size: 12px;">Телефон:</span>
               <span style="color: var(--text); font-size: 14px; font-weight: 600; margin-left: 8px;">{{ shipment.user.phone|default:'—' }}</span>
             </div>
-            <a class="btn" href="{% url 'manager_group_client_batch_sorting' group_id=group.id user_id=shipment.user.id %}" style="background: rgba(16,185,129,.15); border-color: rgba(16,185,129,.3); color: rgba(16,185,129,1);">
-              Пакетная сортировка →
-            </a>
           {% endif %}
         </div>
       </div>
 
-      <div style="display:flex; gap:12px; margin-top:16px; flex-wrap:wrap;">
-        {% if shipment.user %}
-          <a class="btn" href="{% url 'manager_group_client_batch_sorting' group_id=group.id user_id=shipment.user.id %}" style="background: rgba(16,185,129,.2); border-color: rgba(16,185,129,.4); color: rgba(16,185,129,1); font-weight:600;">
-            📦 Пакетная сортировка →
-          </a>
-        {% endif %}
-        <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}" style="background: rgba(255,255,255,0.05);">↻ Очистить поиск</a>
+      <div class="muted" style="font-size: 14px; margin-bottom: 12px;">
+        Трек: <b style="font-size: 18px; color: var(--text);">{{ shipment.tracking_number }}</b>
       </div>
-    </div>
 
+      <form method="post" style="margin-top:12px;">
+        {% csrf_token %}
+        <input type="hidden" name="tracking_number" value="{{ shipment.tracking_number }}" />
+        <div class="form-row">
+          <div class="col-12">
+            <label>Способ расчёта</label>
+            <input type="hidden" name="pricing_mode" id="pricingMode" value="{{ pricing_mode_selected|default:'' }}" />
+            <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;" id="pricingModeButtons">
+              <button
+                class="btn {% if pricing_mode_selected == 'kg' %}accent{% endif %}"
+                type="button"
+                data-mode="kg"
+                {% if weight_locked %}disabled{% endif %}
+              >По кг</button>
+              <button
+                class="btn {% if pricing_mode_selected == 'gabarit' %}accent{% endif %}"
+                type="button"
+                data-mode="gabarit"
+                {% if weight_locked %}disabled{% endif %}
+              >По габариту</button>
+            </div>
+          </div>
+          <div class="col-6" id="weightWrap" style="display:none;">
+            <label>Вес (кг)</label>
+            <input name="weight_kg" value="{% if shipment.weight_kg %}{{ shipment.weight_kg }}{% endif %}" {% if weight_locked %}disabled{% endif %} {% if weight_locked %}data-locked="1"{% endif %} id="weightInput" />
+          </div>
+          <div class="col-6" id="defaultPriceWrap" style="display:none;">
+            <label>Цена за кг (по умолчанию)</label>
+            <input value="{{ default_price_per_kg|default:'—' }}" disabled />
+          </div>
+          <div class="col-6" id="totalPriceWrap" style="display:none;">
+            <label>Стоимость (итого)</label>
+            <input name="total_price" value="{% if shipment.total_price %}{{ shipment.total_price }}{% endif %}" {% if weight_locked %}disabled{% endif %} />
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:12px;">
+          <button class="btn accent" type="submit" {% if weight_locked %}disabled{% endif %}>Сохранить</button>
+          <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Очистить</a>
+        </div>
+      </form>
+    </div>
   {% endif %}
 
   <script>
     (function () {
-      const clientInput = document.getElementById('clientInput');
-      const form = document.getElementById('clientSearchForm');
-      if (!clientInput || !form) return;
+      const trackInput = document.getElementById('trackInput');
+      const form = document.getElementById('trackSearchForm');
+      if (!trackInput || !form) return;
 
       const weightInput = document.getElementById('weightInput');
       if (weightInput && !weightInput.disabled) {
         setTimeout(() => weightInput.focus(), 50);
       }
 
-      let last = (clientInput.value || '').trim();
+      let last = (trackInput.value || '').trim();
       let t = null;
 
       function shouldAutoSubmit(v) {
         if (!v) return false;
-        // Client codes can be short (e.g., "823"), so we check for at least 1 digit
+        if (v.length < 6) return false;
         if (!/[0-9]/.test(v)) return false;
-        // Auto-submit after a short delay for client codes
+        if (/[А-Яа-яЁё]/.test(v)) return false;
         return true;
       }
 
-      clientInput.addEventListener('input', function () {
-        const v = (clientInput.value || '').trim();
+      trackInput.addEventListener('input', function () {
+        const v = (trackInput.value || '').trim();
         if (!shouldAutoSubmit(v) || v === last) return;
         last = v;
         if (t) clearTimeout(t);
-        t = setTimeout(() => form.submit(), 300);
+        t = setTimeout(() => form.submit(), 120);
       });
 
       const modeEl = document.getElementById('pricingMode');

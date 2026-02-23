@@ -17,7 +17,7 @@
       </div>
       <div style="display:flex; gap:10px;">
         {% if has_unsorted %}
-          <a class="btn" href="{% url 'manager_sorting' %}">Сортировка</a>
+          <a class="btn" href="{% url 'manager_group_sorting' group_id=group.id %}">Сортировка</a>
         {% endif %}
         <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}">Добавить посылку</a>
         {% if is_director %}

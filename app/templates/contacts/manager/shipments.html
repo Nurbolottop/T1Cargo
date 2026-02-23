@@ -68,9 +68,9 @@
 
                 {% if sh.status == 'bishkek' %}
                   {% if sh.group_id %}
-                    <a class="btn accent" href="{% url 'manager_sorting' %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
+                    <a class="btn accent" href="{% url 'manager_group_sorting' group_id=sh.group_id %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
                   {% else %}
-                    <a class="btn accent" href="{% url 'manager_sorting' %}?q={{ sh.tracking_number|urlencode }}">Сортировать</a>
+                    <a class="btn accent" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Сортировать</a>
                   {% endif %}
                 {% endif %}
 
@@ -153,7 +153,11 @@
         const a = document.createElement('a');
         a.className = 'btn accent';
         a.textContent = 'Сортировать';
-        a.href = '/manager/sorting/?q=' + encodeURIComponent(tracking);
+        if (groupId) {
+          a.href = '/manager/groups/' + encodeURIComponent(groupId) + '/sorting/?q=' + encodeURIComponent(tracking);
+        } else {
+          a.href = '/manager/shipments/' + encodeURIComponent(shipmentId) + '/';
+        }
         actions.appendChild(a);
       }
 

@@ -47,11 +47,6 @@ urlpatterns = [
     path("manager/groups/<int:group_id>/delete/", views.manager_group_delete, name="manager_group_delete"),
     path("manager/groups/<int:group_id>/bishkek/", views.manager_group_set_bishkek, name="manager_group_set_bishkek"),
     path("manager/groups/<int:group_id>/sorting/", views.manager_group_sorting, name="manager_group_sorting"),
-    path(
-        "manager/groups/<int:group_id>/sorting/client/<int:user_id>/batch/",
-        views.manager_group_client_batch_sorting,
-        name="manager_group_client_batch_sorting",
-    ),
     path("manager/groups/<int:group_id>/shipments/<int:shipment_id>/issued/", views.manager_group_shipment_set_issued, name="manager_group_shipment_set_issued"),
     path("manager/shipments/", views.manager_shipments, name="manager_shipments"),
     path("manager/shipments/unknown/", views.manager_shipments_unknown, name="manager_shipments_unknown"),
