@@ -5,27 +5,61 @@
 {% block page_title %}Сортировка — {{ group.name }}{% endblock %}
 
 {% block content %}
-  <div class="card">
-    <h2 class="h">Сортировка</h2>
-    <div class="muted">Введите код клиента и нажмите Enter. Поиск выполняется только в этой группе.</div>
+  {% if not shipment %}
+    {# Minimal centered search view when no client selected #}
+    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; padding:20px;">
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="font-size:32px; font-weight:700; margin-bottom:8px;">Сортировка</div>
+        <div class="muted">Введите код клиента и нажмите Enter</div>
+      </div>
+      
+      <form method="get" style="width:100%; max-width:500px; display:flex; gap:10px;" id="clientSearchForm">
+        <input 
+          name="q" 
+          value="{{ q|default:'' }}" 
+          placeholder="Код клиента (например: 823)" 
+          autofocus 
+          id="clientInput"
+          style="flex:1; font-size:18px; padding:14px 18px; border-radius:12px;"
+        />
+        <button class="btn accent" type="submit" style="padding:14px 24px; font-size:16px;">Найти</button>
+      </form>
 
-    <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="clientSearchForm">
-      <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента (например: 823)" autofocus id="clientInput" />
-      <button class="btn accent" type="submit">Найти</button>
-      <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
-      <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
-    </form>
+      {% if message %}
+        <div class="muted" style="margin-top:16px;">{{ message }}</div>
+      {% endif %}
 
-    {% if message %}
-      <div class="muted" style="margin-top:12px;">{{ message }}</div>
-    {% endif %}
+      {% if error %}
+        <div class="error" style="margin-top:16px;">{{ error }}</div>
+      {% endif %}
 
-    {% if error %}
-      <div class="error" style="margin-top:12px;">{{ error }}</div>
-    {% endif %}
-  </div>
+      <div style="margin-top:24px; display:flex; gap:12px;">
+        <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
+        <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
+      </div>
+    </div>
+  {% else %}
+    {# Full view with client info when shipment found #}
+    <div class="card">
+      <h2 class="h">Сортировка</h2>
+      <div class="muted">Введите код клиента и нажмите Enter. Поиск выполняется только в этой группе.</div>
 
-  {% if shipment %}
+      <form method="get" style="margin-top:12px; display:flex; gap:10px;" id="clientSearchForm">
+        <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента (например: 823)" autofocus id="clientInput" />
+        <button class="btn accent" type="submit">Найти</button>
+        <a class="btn" href="{% url 'manager_shipment_new' %}?group_id={{ group.id }}{% if q %}&tracking={{ q|urlencode }}{% endif %}">Добавить в группу</a>
+        <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Назад</a>
+      </form>
+
+      {% if message %}
+        <div class="muted" style="margin-top:12px;">{{ message }}</div>
+      {% endif %}
+
+      {% if error %}
+        <div class="error" style="margin-top:12px;">{{ error }}</div>
+      {% endif %}
+    </div>
+
     <div class="card" style="margin-top:12px;">
       <h3 class="h">Товар</h3>
       
@@ -105,6 +139,7 @@
         </div>
       </form>
     </div>
+
   {% endif %}
 
   <script>
