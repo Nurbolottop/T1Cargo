@@ -1875,7 +1875,9 @@ def manager_sorting(request):
     qs = tg_models.Shipment.objects.select_related("user").filter(status=tg_models.Shipment.Status.BISHKEK).order_by("-updated_at")
     if effective_filial is not None:
         qs = qs.filter(filial=effective_filial)
+
     if q:
+        # First check if it's a tracking number (exact match)
         exact = qs.select_related("group").filter(tracking_number__iexact=q).first()
         if exact is not None:
             if getattr(exact, "group_id", None):
@@ -1884,6 +1886,29 @@ def manager_sorting(request):
                     url = f"{url}?q={quote(q)}"
                 return HttpResponseRedirect(url)
             return redirect("manager_shipment_detail", shipment_id=exact.id)
+
+        # Check if it looks like a client code (shorter, typically numeric or with hyphen)
+        # If so, find the client and redirect to their group sorting
+        if len(q) <= 15:  # Client codes are typically shorter than tracking numbers
+            user_qs = tg_models.User.objects.all()
+            if effective_filial is not None:
+                user_qs = user_qs.filter(filial=effective_filial)
+
+            # Try exact match first
+            client = user_qs.filter(client_code__iexact=q).first()
+            # If not found, try suffix match
+            if not client and "-" not in q:
+                client = user_qs.filter(client_code__iendswith=f"-{q}").first()
+
+            if client:
+                # Find client's unsorted shipment in BISHKEK status
+                client_shipment = qs.filter(user=client).first()
+                if client_shipment and getattr(client_shipment, "group_id", None):
+                    url = reverse("manager_group_sorting", kwargs={"group_id": client_shipment.group_id})
+                    url = f"{url}?q={quote(q)}"
+                    return HttpResponseRedirect(url)
+
+        # General search
         qs = qs.filter(
             Q(tracking_number__icontains=q)
             | Q(client_code_raw__icontains=q)
