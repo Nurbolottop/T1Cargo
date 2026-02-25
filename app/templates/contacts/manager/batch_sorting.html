@@ -5,7 +5,7 @@
 {% block page_title %}Пакетная сортировка{% endblock %}
 
 {% block content %}
-  <div class="card" style="max-width:760px; margin:0 auto;">
+  <div class="card" style="max-width:980px; margin:0 auto;">
     <h2 class="h">Пакетная сортировка</h2>
     <div class="muted">Введите код клиента (например: 678 или PIJU-678) и нажмите Enter.</div>
 
@@ -19,4 +19,225 @@
       <div class="error" style="margin-top:12px;">{{ error }}</div>
     {% endif %}
   </div>
+
+  {% if client %}
+    <div class="card" style="max-width:980px; margin:12px auto 0;">
+      <h3 class="h">Клиент</h3>
+      <div class="muted" style="margin-top:6px;">{{ client.client_code }}</div>
+      {% if client.full_name %}<div style="margin-top:6px;"><b>{{ client.full_name }}</b></div>{% endif %}
+    </div>
+
+    <div class="card" style="max-width:980px; margin:12px auto 0;">
+      <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+        <div><b>Количество посылок:</b> {{ shipments|length }}</div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button class="btn" type="button" id="btnClear">Отменить выбор</button>
+          <button class="btn" type="button" id="btnSelectAll">Выбрать все</button>
+          <button class="btn accent" type="button" id="btnSort">Сортировать</button>
+        </div>
+      </div>
+
+      <table style="margin-top:12px;">
+        <thead>
+          <tr>
+            <th>Трек</th>
+            <th>Статус</th>
+            <th>Вес</th>
+            <th>Итого</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sh in shipments %}
+            <tr data-shipment-id="{{ sh.id }}">
+              <td><b>{{ sh.tracking_number }}</b>{% if sh.group %}<div class="muted">{{ sh.group.name }}</div>{% endif %}</td>
+              <td>{{ sh.get_status_display }}</td>
+              <td class="muted">{{ sh.weight_kg }}</td>
+              <td class="muted">{{ sh.total_price }}</td>
+              <td class="row-actions">
+                <label style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+                  <input type="checkbox" class="pick" />
+                  <span class="btn">Выбрать</span>
+                </label>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="muted">Нет посылок со статусом "В Кыргызстане" для этого клиента.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div id="modalOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.35); z-index:10000;"></div>
+    <div id="modal" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%,-50%); width: min(820px, calc(100vw - 24px)); background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; z-index:10001; box-shadow: 0 18px 40px rgba(0,0,0,.35);">
+      <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; padding:14px 14px 0;">
+        <div class="badge" id="modalTitle">Выбрано посылок: 0</div>
+        <button class="btn" type="button" id="modalClose">✕</button>
+      </div>
+
+      <form method="post" action="{% url 'manager_batch_sorting_apply' %}" style="padding:14px;">
+        {% csrf_token %}
+        <input type="hidden" name="client_id" value="{{ client.id }}" />
+        <input type="hidden" name="payload" id="payloadInput" />
+
+        <div class="form-row">
+          <div class="col-12">
+            <label>Способ расчёта</label>
+            <select id="modeSelect" style="max-width:260px;">
+              <option value="kg">По кг</option>
+              <option value="gabarit">По габариту</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="muted" style="margin-top:10px;">Цена за кг (по умолчанию): <b>{{ default_price_per_kg|default:'—' }}</b></div>
+
+        <div style="max-height: 46vh; overflow:auto; margin-top:12px; border: 1px solid var(--border); border-radius: 12px;">
+          <table style="margin:0;">
+            <thead>
+              <tr>
+                <th>Трек</th>
+                <th style="width:180px;" id="colWeight">Вес (кг)</th>
+                <th style="width:180px; display:none;" id="colTotal">Итого</th>
+              </tr>
+            </thead>
+            <tbody id="modalBody"></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end; flex-wrap:wrap;">
+          <button class="btn" type="button" id="modalCancel">Отмена</button>
+          <button class="btn accent" type="submit">Сохранить</button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      (function () {
+        const rows = Array.from(document.querySelectorAll('tr[data-shipment-id]'));
+        const picks = Array.from(document.querySelectorAll('input.pick'));
+        const btnSelectAll = document.getElementById('btnSelectAll');
+        const btnClear = document.getElementById('btnClear');
+        const btnSort = document.getElementById('btnSort');
+
+        const overlay = document.getElementById('modalOverlay');
+        const modal = document.getElementById('modal');
+        const modalClose = document.getElementById('modalClose');
+        const modalCancel = document.getElementById('modalCancel');
+        const modalTitle = document.getElementById('modalTitle');
+        const modeSelect = document.getElementById('modeSelect');
+        const modalBody = document.getElementById('modalBody');
+        const payloadInput = document.getElementById('payloadInput');
+        const colWeight = document.getElementById('colWeight');
+        const colTotal = document.getElementById('colTotal');
+
+        function selectedIds() {
+          const ids = [];
+          rows.forEach((r) => {
+            const cb = r.querySelector('input.pick');
+            if (cb && cb.checked) {
+              const sid = parseInt(r.getAttribute('data-shipment-id') || '0', 10);
+              if (sid) ids.push(sid);
+            }
+          });
+          return ids;
+        }
+
+        function showModal() {
+          const ids = selectedIds();
+          if (!ids.length) return;
+          modalTitle.textContent = 'Выбрано посылок: ' + ids.length;
+          renderModalItems(ids);
+          overlay.style.display = '';
+          modal.style.display = '';
+        }
+
+        function hideModal() {
+          overlay.style.display = 'none';
+          modal.style.display = 'none';
+        }
+
+        function renderModalItems(ids) {
+          const mode = (modeSelect && modeSelect.value) || 'kg';
+          if (colWeight) colWeight.style.display = (mode === 'kg') ? '' : 'none';
+          if (colTotal) colTotal.style.display = (mode === 'gabarit') ? '' : 'none';
+
+          const frag = document.createDocumentFragment();
+          ids.forEach((id) => {
+            const row = document.querySelector('tr[data-shipment-id="' + id + '"]');
+            const tr = document.createElement('tr');
+            const tracking = row ? (row.querySelector('td b') ? row.querySelector('td b').textContent : '') : '';
+
+            const td1 = document.createElement('td');
+            td1.innerHTML = '<b>' + (tracking || ('#' + id)) + '</b>';
+            tr.appendChild(td1);
+
+            const td2 = document.createElement('td');
+            td2.style.width = '180px';
+            if (mode === 'kg') {
+              td2.innerHTML = '<input data-field="weight_kg" data-id="' + id + '" placeholder="например 2.5" />';
+            } else {
+              td2.innerHTML = '<input data-field="total_price" data-id="' + id + '" placeholder="например 350" />';
+            }
+            tr.appendChild(td2);
+
+            frag.appendChild(tr);
+          });
+
+          modalBody.innerHTML = '';
+          modalBody.appendChild(frag);
+        }
+
+        function buildPayload() {
+          const ids = selectedIds();
+          const mode = (modeSelect && modeSelect.value) || 'kg';
+          const items = [];
+          ids.forEach((id) => {
+            const input = modalBody.querySelector('input[data-id="' + id + '"]');
+            const v = input ? (input.value || '').trim() : '';
+            const obj = { id: id };
+            if (mode === 'kg') obj.weight_kg = v;
+            else obj.total_price = v;
+            items.push(obj);
+          });
+          return { pricing_mode: mode, items: items };
+        }
+
+        if (btnSelectAll) {
+          btnSelectAll.addEventListener('click', function () {
+            picks.forEach((cb) => { cb.checked = true; });
+          });
+        }
+        if (btnClear) {
+          btnClear.addEventListener('click', function () {
+            picks.forEach((cb) => { cb.checked = false; });
+          });
+        }
+        if (btnSort) {
+          btnSort.addEventListener('click', function () {
+            showModal();
+          });
+        }
+        if (overlay) overlay.addEventListener('click', hideModal);
+        if (modalClose) modalClose.addEventListener('click', hideModal);
+        if (modalCancel) modalCancel.addEventListener('click', hideModal);
+        if (modeSelect) {
+          modeSelect.addEventListener('change', function () {
+            const ids = selectedIds();
+            if (ids.length) renderModalItems(ids);
+          });
+        }
+
+        if (modal && payloadInput) {
+          modal.addEventListener('submit', function () {
+            try {
+              payloadInput.value = JSON.stringify(buildPayload());
+            } catch (e) {
+              payloadInput.value = '';
+            }
+          });
+        }
+      })();
+    </script>
+  {% endif %}
 {% endblock %}

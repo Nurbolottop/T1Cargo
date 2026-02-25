@@ -2,6 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from decimal import Decimal, InvalidOperation
+import json
 import logging
 import os
 import tempfile
@@ -1889,15 +1890,16 @@ def manager_batch_sorting(request):
 
     q = (request.GET.get("q") or "").strip()
     error = ""
+    client = None
 
     if q:
         q_norm = (q or "").strip().upper()
-        qs = tg_models.User.objects.exclude(client_code__isnull=True).exclude(client_code="")
+        qs = tg_models.User.objects.select_related("filial").exclude(client_code__isnull=True).exclude(client_code="")
         if staff_filial is not None:
             qs = qs.filter(filial=staff_filial)
 
-        user_obj = qs.filter(client_code__iexact=q_norm).first()
-        if user_obj is None and "-" not in q_norm:
+        client = qs.filter(client_code__iexact=q_norm).first()
+        if client is None and "-" not in q_norm:
             suffix = f"-{q_norm}"
             cand = qs.filter(client_code__iendswith=suffix)
             try:
@@ -1905,16 +1907,28 @@ def manager_batch_sorting(request):
             except Exception:
                 cnt = 0
             if cnt == 1:
-                user_obj = cand.first()
+                client = cand.first()
             elif cnt > 1:
-                user_obj = None
+                client = None
                 error = "Найдено несколько клиентов. Уточните код (например PIJU-678)."
 
-        if user_obj is None and not error:
+        if client is None and not error:
             error = "Клиент не найден."
 
-        if user_obj is not None:
-            return redirect("manager_client_detail", user_id=user_obj.id)
+    shipments = []
+    default_price_per_kg = None
+    if client is not None:
+        try:
+            filial_obj = getattr(client, "filial", None)
+            default_price_per_kg = getattr(filial_obj, "default_price_per_kg", None) if filial_obj else None
+        except Exception:
+            default_price_per_kg = None
+
+        shipments_qs = tg_models.Shipment.objects.filter(user=client).select_related("group")
+        if staff_filial is not None:
+            shipments_qs = shipments_qs.filter(filial=staff_filial)
+        shipments_qs = shipments_qs.filter(status=tg_models.Shipment.Status.BISHKEK).order_by("-updated_at")
+        shipments = list(shipments_qs[:5000])
 
     return render(
         request,
@@ -1923,9 +1937,143 @@ def manager_batch_sorting(request):
             "nav": "batch_sorting",
             "q": q,
             "error": error,
+            "client": client,
+            "shipments": shipments,
+            "default_price_per_kg": default_price_per_kg,
             **_role_ctx(request),
         },
     )
+
+
+@login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_batch_sorting_apply(request):
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    payload_raw = (request.POST.get("payload") or "").strip()
+    client_id_raw = (request.POST.get("client_id") or "").strip()
+    try:
+        client_id = int(client_id_raw)
+    except Exception:
+        client_id = 0
+
+    if not client_id:
+        return HttpResponseForbidden("client_required")
+
+    client = get_object_or_404(tg_models.User.objects.select_related("filial"), id=client_id)
+    if staff_filial is not None and client.filial_id != staff_filial.id:
+        return HttpResponseForbidden("Нет доступа")
+
+    try:
+        payload = json.loads(payload_raw) if payload_raw else {}
+    except Exception:
+        payload = {}
+
+    pricing_mode = str((payload.get("pricing_mode") or "").strip())
+    if pricing_mode not in {"kg", "gabarit"}:
+        return HttpResponseForbidden("pricing_mode_required")
+
+    items = payload.get("items") or []
+    if not isinstance(items, list) or not items:
+        return HttpResponseForbidden("items_required")
+
+    shipment_ids: list[int] = []
+    by_id: dict[int, dict] = {}
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        try:
+            sid = int(it.get("id") or 0)
+        except Exception:
+            sid = 0
+        if not sid:
+            continue
+        shipment_ids.append(sid)
+        by_id[sid] = it
+
+    if not shipment_ids:
+        return HttpResponseForbidden("items_required")
+
+    today = timezone.localdate()
+    now = timezone.now()
+
+    default_price = None
+    try:
+        if client.filial and client.filial.default_price_per_kg is not None:
+            default_price = Decimal(str(client.filial.default_price_per_kg))
+    except Exception:
+        default_price = None
+
+    if pricing_mode == "kg" and (default_price is None or default_price <= 0):
+        return HttpResponseForbidden("default_price_per_kg_required")
+
+    with transaction.atomic():
+        qs = tg_models.Shipment.objects.filter(id__in=shipment_ids, user=client)
+        if staff_filial is not None:
+            qs = qs.filter(filial=staff_filial)
+        shipments = list(qs.select_for_update())
+        if not shipments:
+            return HttpResponseForbidden("not_found")
+
+        to_update: list[tg_models.Shipment] = []
+        for sh in shipments:
+            it = by_id.get(int(sh.id)) or {}
+            if pricing_mode == "kg":
+                raw_w = str(it.get("weight_kg") or "").replace(",", ".").strip()
+                try:
+                    w = Decimal(raw_w)
+                except Exception:
+                    w = None
+                if w is None or w <= 0:
+                    continue
+                sh.pricing_mode = tg_models.Shipment.PricingMode.KG
+                sh.weight_kg = w
+                sh.price_per_kg = default_price
+                sh.total_price = (w * default_price).quantize(Decimal("0.01"))
+            else:
+                raw_total = str(it.get("total_price") or "").replace(",", ".").strip()
+                try:
+                    total = Decimal(raw_total)
+                except Exception:
+                    total = None
+                if total is None or total <= 0:
+                    continue
+                sh.pricing_mode = tg_models.Shipment.PricingMode.GABARIT
+                sh.total_price = total.quantize(Decimal("0.01"))
+                if default_price is not None and default_price > 0:
+                    sh.price_per_kg = default_price
+
+            sh.status = tg_models.Shipment.Status.WAREHOUSE
+            sh.arrival_date = today
+            sh.updated_at = now
+            to_update.append(sh)
+
+        if not to_update:
+            return HttpResponseForbidden("no_valid_items")
+
+        tg_models.Shipment.objects.bulk_update(
+            to_update,
+            [
+                "pricing_mode",
+                "weight_kg",
+                "price_per_kg",
+                "total_price",
+                "status",
+                "arrival_date",
+                "updated_at",
+            ],
+        )
+
+    messages.success(request, f"Отсортировано: {len(to_update)}")
+    return redirect(f"{reverse('manager_batch_sorting')}?q={quote((client.client_code or '').strip())}")
 
 
 @login_required(login_url="/manager/login/")
