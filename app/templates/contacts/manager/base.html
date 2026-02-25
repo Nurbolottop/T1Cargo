@@ -245,6 +245,17 @@
     .sidebar::-webkit-scrollbar-thumb, .content::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 999px; border: 2px solid transparent; }
     .sidebar::-webkit-scrollbar-thumb:hover, .content::-webkit-scrollbar-thumb:hover { background: var(--muted); }
 
+    .sb-section-title { color: var(--muted); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; margin: 14px 12px 8px; }
+    .sb-nav .nav-link { padding: 10px 12px; border-radius: 14px; }
+    .sb-nav .nav-link.primary { border-radius: 16px; padding: 12px 12px; }
+    .sb-group { margin: 0 8px; }
+    .sb-group > summary { list-style: none; cursor: pointer; }
+    .sb-group > summary::-webkit-details-marker { display: none; }
+    .sb-group > summary .nav-link { margin: 0; }
+    .sb-sub { margin-left: 12px; margin-top: 6px; display:flex; flex-direction:column; gap:8px; }
+    .sb-sub .nav-link { padding: 9px 12px; opacity: .92; }
+    .sb-sub .nav-link:hover { opacity: 1; }
+
     @media (max-width: 980px){
       .sidebar { display:none; }
       .content { padding: 14px; }
@@ -266,6 +277,7 @@
       </div>
 
       <nav class="sb-nav">
+        <div class="sb-section-title">Общее</div>
         {% if is_director %}
           <a class="nav-link {% if nav == 'dashboard' %}active{% endif %}" href="{% url 'manager_dashboard' %}">Главная</a>
         {% endif %}
@@ -273,18 +285,39 @@
           <a class="nav-link {% if nav == 'analytics' %}active{% endif %}" href="{% url 'manager_analytics' %}">Аналитика</a>
           <a class="nav-link {% if nav == 'penalties' %}active{% endif %}" href="{% url 'manager_penalties' %}">Штрафы</a>
         {% endif %}
+
+        <div class="sb-section-title">Клиенты</div>
         <a class="nav-link {% if nav == 'clients' %}active{% endif %}" href="{% url 'manager_clients' %}">Клиенты</a>
-        <a class="nav-link" href="{% url 'manager_shipments_unknown' %}">↳ Неизвестный клиент</a>
-        <a class="nav-link" href="{% url 'manager_shipments_client_not_found' %}">↳ Клиент не найден</a>
+        <details class="sb-group" {% if nav == 'shipments_unknown' or nav == 'shipments_client_not_found' %}open{% endif %}>
+          <summary>
+            <div class="nav-link">Проблемные клиенты</div>
+          </summary>
+          <div class="sb-sub">
+            <a class="nav-link" href="{% url 'manager_shipments_unknown' %}">Неизвестный клиент</a>
+            <a class="nav-link" href="{% url 'manager_shipments_client_not_found' %}">Клиент не найден</a>
+          </div>
+        </details>
+
+        <div class="sb-section-title">Посылки</div>
         <a class="nav-link {% if nav == 'shipments' %}active{% endif %}" href="{% url 'manager_shipments' %}">Посылки</a>
-        {% if is_manager or is_director %}
-          <a class="nav-link {% if nav == 'sorting' or nav == 'batch_sorting' %}active{% endif %}" href="{% url 'manager_sorting' %}">Сортировка</a>
-          <a class="nav-link" href="{% url 'manager_batch_sorting' %}">↳ Пакетная сортировка</a>
-        {% endif %}
-        <a class="nav-link {% if nav == 'groups' %}active{% endif %}" href="{% url 'manager_groups' %}">Группы отправок</a>
         {% if is_manager or is_director %}
           <a class="nav-link primary" href="{% url 'manager_shipments_add' %}">+ Добавить посылку</a>
         {% endif %}
+
+        <div class="sb-section-title">Сортировка</div>
+        {% if is_manager or is_director %}
+          <details class="sb-group" {% if nav == 'sorting' or nav == 'batch_sorting' %}open{% endif %}>
+            <summary>
+              <a class="nav-link {% if nav == 'sorting' or nav == 'batch_sorting' %}active{% endif %}" href="{% url 'manager_sorting' %}">Сортировка</a>
+            </summary>
+            <div class="sb-sub">
+              <a class="nav-link {% if nav == 'batch_sorting' %}active{% endif %}" href="{% url 'manager_batch_sorting' %}">Пакетная сортировка</a>
+            </div>
+          </details>
+        {% endif %}
+
+        <div class="sb-section-title">Группы</div>
+        <a class="nav-link {% if nav == 'groups' %}active{% endif %}" href="{% url 'manager_groups' %}">Группы отправок</a>
       </nav>
 
       <div class="sb-footer">
