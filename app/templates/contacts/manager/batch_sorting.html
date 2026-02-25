@@ -68,8 +68,8 @@
       </table>
     </div>
 
-    <div id="modalOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.35); z-index:10000;"></div>
-    <div id="modal" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%,-50%); width: min(820px, calc(100vw - 24px)); background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; z-index:10001; box-shadow: 0 18px 40px rgba(0,0,0,.35);">
+    <div id="modalOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.78); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); z-index:10000;"></div>
+    <div id="modal" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%,-50%); width: min(820px, calc(100vw - 24px)); background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; z-index:10001; box-shadow: 0 18px 40px rgba(0,0,0,.55);">
       <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; padding:14px 14px 0;">
         <div class="badge" id="modalTitle">Выбрано посылок: 0</div>
         <button class="btn" type="button" id="modalClose">✕</button>
@@ -92,13 +92,22 @@
 
         <div class="muted" style="margin-top:10px;">Цена за кг (по умолчанию): <b>{{ default_price_per_kg|default:'—' }}</b></div>
 
-        <div style="max-height: 46vh; overflow:auto; margin-top:12px; border: 1px solid var(--border); border-radius: 12px;">
+        <div class="form-row" style="margin-top:12px;">
+          <div class="col-12" id="commonWeightWrap">
+            <label>Вес (кг) для всех выбранных</label>
+            <input id="commonWeight" placeholder="например 2.5" />
+          </div>
+          <div class="col-12" id="commonTotalWrap" style="display:none;">
+            <label>Итого для всех выбранных</label>
+            <input id="commonTotal" placeholder="например 350" />
+          </div>
+        </div>
+
+        <div style="max-height: 42vh; overflow:auto; margin-top:12px; border: 1px solid var(--border); border-radius: 12px;">
           <table style="margin:0;">
             <thead>
               <tr>
-                <th>Трек</th>
-                <th style="width:180px;" id="colWeight">Вес (кг)</th>
-                <th style="width:180px; display:none;" id="colTotal">Итого</th>
+                <th>Трек (выбранные)</th>
               </tr>
             </thead>
             <tbody id="modalBody"></tbody>
@@ -128,8 +137,10 @@
         const modeSelect = document.getElementById('modeSelect');
         const modalBody = document.getElementById('modalBody');
         const payloadInput = document.getElementById('payloadInput');
-        const colWeight = document.getElementById('colWeight');
-        const colTotal = document.getElementById('colTotal');
+        const commonWeightWrap = document.getElementById('commonWeightWrap');
+        const commonTotalWrap = document.getElementById('commonTotalWrap');
+        const commonWeight = document.getElementById('commonWeight');
+        const commonTotal = document.getElementById('commonTotal');
 
         function selectedIds() {
           const ids = [];
@@ -148,19 +159,19 @@
           if (!ids.length) return;
           modalTitle.textContent = 'Выбрано посылок: ' + ids.length;
           renderModalItems(ids);
-          overlay.style.display = '';
-          modal.style.display = '';
+          if (overlay) overlay.style.display = 'block';
+          if (modal) modal.style.display = 'block';
         }
 
         function hideModal() {
-          overlay.style.display = 'none';
-          modal.style.display = 'none';
+          if (overlay) overlay.style.display = 'none';
+          if (modal) modal.style.display = 'none';
         }
 
         function renderModalItems(ids) {
           const mode = (modeSelect && modeSelect.value) || 'kg';
-          if (colWeight) colWeight.style.display = (mode === 'kg') ? '' : 'none';
-          if (colTotal) colTotal.style.display = (mode === 'gabarit') ? '' : 'none';
+          if (commonWeightWrap) commonWeightWrap.style.display = (mode === 'kg') ? '' : 'none';
+          if (commonTotalWrap) commonTotalWrap.style.display = (mode === 'gabarit') ? '' : 'none';
 
           const frag = document.createDocumentFragment();
           ids.forEach((id) => {
@@ -172,15 +183,6 @@
             td1.innerHTML = '<b>' + (tracking || ('#' + id)) + '</b>';
             tr.appendChild(td1);
 
-            const td2 = document.createElement('td');
-            td2.style.width = '180px';
-            if (mode === 'kg') {
-              td2.innerHTML = '<input data-field="weight_kg" data-id="' + id + '" placeholder="например 2.5" />';
-            } else {
-              td2.innerHTML = '<input data-field="total_price" data-id="' + id + '" placeholder="например 350" />';
-            }
-            tr.appendChild(td2);
-
             frag.appendChild(tr);
           });
 
@@ -191,16 +193,10 @@
         function buildPayload() {
           const ids = selectedIds();
           const mode = (modeSelect && modeSelect.value) || 'kg';
-          const items = [];
-          ids.forEach((id) => {
-            const input = modalBody.querySelector('input[data-id="' + id + '"]');
-            const v = input ? (input.value || '').trim() : '';
-            const obj = { id: id };
-            if (mode === 'kg') obj.weight_kg = v;
-            else obj.total_price = v;
-            items.push(obj);
-          });
-          return { pricing_mode: mode, items: items };
+          const obj = { pricing_mode: mode, shipment_ids: ids };
+          if (mode === 'kg') obj.weight_kg = commonWeight ? (commonWeight.value || '').trim() : '';
+          else obj.total_price = commonTotal ? (commonTotal.value || '').trim() : '';
+          return obj;
         }
 
         if (btnSelectAll) {

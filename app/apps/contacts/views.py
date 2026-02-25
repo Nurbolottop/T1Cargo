@@ -1981,23 +1981,45 @@ def manager_batch_sorting_apply(request):
     if pricing_mode not in {"kg", "gabarit"}:
         return HttpResponseForbidden("pricing_mode_required")
 
-    items = payload.get("items") or []
-    if not isinstance(items, list) or not items:
-        return HttpResponseForbidden("items_required")
-
     shipment_ids: list[int] = []
     by_id: dict[int, dict] = {}
-    for it in items:
-        if not isinstance(it, dict):
-            continue
-        try:
-            sid = int(it.get("id") or 0)
-        except Exception:
-            sid = 0
-        if not sid:
-            continue
-        shipment_ids.append(sid)
-        by_id[sid] = it
+    common_weight_raw = None
+    common_total_raw = None
+
+    # New payload format (preferred):
+    # { pricing_mode: 'kg'|'gabarit', shipment_ids: [1,2,3], weight_kg: '2.5' } OR { ..., total_price: '350' }
+    raw_ids = payload.get("shipment_ids")
+    if isinstance(raw_ids, list) and raw_ids:
+        for v in raw_ids:
+            try:
+                sid = int(v or 0)
+            except Exception:
+                sid = 0
+            if sid:
+                shipment_ids.append(sid)
+        if pricing_mode == "kg":
+            common_weight_raw = payload.get("weight_kg")
+        else:
+            common_total_raw = payload.get("total_price")
+
+    # Backward compatible format:
+    # { pricing_mode: 'kg'|'gabarit', items: [{id, weight_kg|total_price}, ...] }
+    if not shipment_ids:
+        items = payload.get("items") or []
+        if not isinstance(items, list) or not items:
+            return HttpResponseForbidden("items_required")
+
+        for it in items:
+            if not isinstance(it, dict):
+                continue
+            try:
+                sid = int(it.get("id") or 0)
+            except Exception:
+                sid = 0
+            if not sid:
+                continue
+            shipment_ids.append(sid)
+            by_id[sid] = it
 
     if not shipment_ids:
         return HttpResponseForbidden("items_required")
@@ -2015,6 +2037,22 @@ def manager_batch_sorting_apply(request):
     if pricing_mode == "kg" and (default_price is None or default_price <= 0):
         return HttpResponseForbidden("default_price_per_kg_required")
 
+    common_weight = None
+    common_total = None
+    if common_weight_raw is not None:
+        raw_w = str(common_weight_raw or "").replace(",", ".").strip()
+        try:
+            common_weight = Decimal(raw_w)
+        except Exception:
+            common_weight = None
+
+    if common_total_raw is not None:
+        raw_total = str(common_total_raw or "").replace(",", ".").strip()
+        try:
+            common_total = Decimal(raw_total)
+        except Exception:
+            common_total = None
+
     with transaction.atomic():
         qs = tg_models.Shipment.objects.filter(id__in=shipment_ids, user=client)
         if staff_filial is not None:
@@ -2025,13 +2063,15 @@ def manager_batch_sorting_apply(request):
 
         to_update: list[tg_models.Shipment] = []
         for sh in shipments:
-            it = by_id.get(int(sh.id)) or {}
             if pricing_mode == "kg":
-                raw_w = str(it.get("weight_kg") or "").replace(",", ".").strip()
-                try:
-                    w = Decimal(raw_w)
-                except Exception:
-                    w = None
+                w = common_weight
+                if w is None:
+                    it = by_id.get(int(sh.id)) or {}
+                    raw_w = str(it.get("weight_kg") or "").replace(",", ".").strip()
+                    try:
+                        w = Decimal(raw_w)
+                    except Exception:
+                        w = None
                 if w is None or w <= 0:
                     continue
                 sh.pricing_mode = tg_models.Shipment.PricingMode.KG
@@ -2039,11 +2079,14 @@ def manager_batch_sorting_apply(request):
                 sh.price_per_kg = default_price
                 sh.total_price = (w * default_price).quantize(Decimal("0.01"))
             else:
-                raw_total = str(it.get("total_price") or "").replace(",", ".").strip()
-                try:
-                    total = Decimal(raw_total)
-                except Exception:
-                    total = None
+                total = common_total
+                if total is None:
+                    it = by_id.get(int(sh.id)) or {}
+                    raw_total = str(it.get("total_price") or "").replace(",", ".").strip()
+                    try:
+                        total = Decimal(raw_total)
+                    except Exception:
+                        total = None
                 if total is None or total <= 0:
                     continue
                 sh.pricing_mode = tg_models.Shipment.PricingMode.GABARIT
