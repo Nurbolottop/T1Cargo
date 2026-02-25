@@ -191,6 +191,8 @@ class Shipment(models.Model):
             models.Index(fields=["group", "filial", "status"], name="shp_grp_fil_status_idx"),
             models.Index(fields=["group", "user", "filial", "status"], name="shp_grp_usr_fil_st_idx"),
             models.Index(fields=["user", "filial", "status"], name="shp_usr_fil_status_idx"),
+            models.Index(fields=["group", "tracking_number"], name="shp_grp_tracking_idx"),
+            models.Index(fields=["tracking_number"], name="shp_tracking_idx"),
         ]
 
     def __str__(self) -> str:

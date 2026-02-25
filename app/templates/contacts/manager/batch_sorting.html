@@ -1,0 +1,22 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Пакетная сортировка • Менеджер{% endblock %}
+
+{% block page_title %}Пакетная сортировка{% endblock %}
+
+{% block content %}
+  <div class="card" style="max-width:760px; margin:0 auto;">
+    <h2 class="h">Пакетная сортировка</h2>
+    <div class="muted">Введите код клиента (например: 678 или PIJU-678) и нажмите Enter.</div>
+
+    <form method="get" style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента" autofocus />
+      <button class="btn accent" type="submit">Найти</button>
+      <a class="btn" href="{% url 'manager_sorting' %}">Назад</a>
+    </form>
+
+    {% if error %}
+      <div class="error" style="margin-top:12px;">{{ error }}</div>
+    {% endif %}
+  </div>
+{% endblock %}

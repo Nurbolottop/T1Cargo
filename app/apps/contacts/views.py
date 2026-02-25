@@ -8,7 +8,7 @@ import tempfile
 import uuid
 from urllib.parse import quote
 from django.db import transaction
-from django.db.models import Count, Q, F, Sum, ExpressionWrapper, DecimalField, Value, Case, When, IntegerField
+from django.db.models import Count, Q, F, Sum, Min, ExpressionWrapper, DecimalField, Value, Case, When, IntegerField
 from django.db import models
 from django.http import HttpResponseForbidden, JsonResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
@@ -1878,6 +1878,57 @@ def manager_sorting(request):
 
 
 @login_required(login_url="/manager/login/")
+def manager_batch_sorting(request):
+    denied = _require_manager(request)
+    if denied is not None:
+        return denied
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    q = (request.GET.get("q") or "").strip()
+    error = ""
+
+    if q:
+        q_norm = (q or "").strip().upper()
+        qs = tg_models.User.objects.exclude(client_code__isnull=True).exclude(client_code="")
+        if staff_filial is not None:
+            qs = qs.filter(filial=staff_filial)
+
+        user_obj = qs.filter(client_code__iexact=q_norm).first()
+        if user_obj is None and "-" not in q_norm:
+            suffix = f"-{q_norm}"
+            cand = qs.filter(client_code__iendswith=suffix)
+            try:
+                cnt = int(cand.count())
+            except Exception:
+                cnt = 0
+            if cnt == 1:
+                user_obj = cand.first()
+            elif cnt > 1:
+                user_obj = None
+                error = "Найдено несколько клиентов. Уточните код (например PIJU-678)."
+
+        if user_obj is None and not error:
+            error = "Клиент не найден."
+
+        if user_obj is not None:
+            return redirect("manager_client_detail", user_id=user_obj.id)
+
+    return render(
+        request,
+        "contacts/manager/batch_sorting.html",
+        {
+            "nav": "batch_sorting",
+            "q": q,
+            "error": error,
+            **_role_ctx(request),
+        },
+    )
+
+
+@login_required(login_url="/manager/login/")
 @csrf_protect
 def manager_shipment_set_bishkek(request, shipment_id: int):
     denied = _require_editor_role(request)
@@ -2178,22 +2229,36 @@ def manager_penalties(request):
 
     effective_filial = selected_filial if is_director else staff_filial
 
-    qs = (
-        tg_models.Shipment.objects.select_related("user", "user__filial")
-        .filter(status=tg_models.Shipment.Status.WAREHOUSE)
-        .exclude(user__isnull=True)
-        .exclude(arrival_date__isnull=True)
+    base_qs = (
+        tg_models.Shipment.objects.filter(
+            status=tg_models.Shipment.Status.WAREHOUSE,
+            user__isnull=False,
+            arrival_date__isnull=False,
+        )
+        .values("user_id")
+        .annotate(min_arrival=Min("arrival_date"))
     )
+    if effective_filial is not None:
+        base_qs = base_qs.filter(user__filial=effective_filial)
 
-    candidates = {}
-    for sh in qs.iterator():
-        user_obj = sh.user
-        if not user_obj:
+    user_ids: list[int] = []
+    min_arrival_map: dict[int, timezone.datetime.date] = {}
+    for row in base_qs.iterator():
+        uid = int(row.get("user_id") or 0)
+        if not uid:
             continue
+        min_arrival = row.get("min_arrival")
+        if min_arrival is None:
+            continue
+        user_ids.append(uid)
+        min_arrival_map[uid] = min_arrival
+
+    users_qs = tg_models.User.objects.select_related("filial").filter(id__in=user_ids)
+
+    rows = []
+    for user_obj in users_qs.iterator():
         filial_obj = getattr(user_obj, "filial", None)
         if filial_obj is None:
-            continue
-        if effective_filial is not None and getattr(filial_obj, "id", None) != getattr(effective_filial, "id", None):
             continue
 
         per_day = getattr(filial_obj, "storage_penalty_per_day", None)
@@ -2206,21 +2271,13 @@ def manager_penalties(request):
         if per_day <= 0:
             continue
 
-        arrived = sh.arrival_date
+        arrived = min_arrival_map.get(int(user_obj.id))
+        if arrived is None:
+            continue
+
         free_until = arrived + timezone.timedelta(days=free_days)
         if today <= free_until:
             continue
-
-        existing = candidates.get(user_obj.id)
-        if not existing or free_until < existing["free_until"]:
-            candidates[user_obj.id] = {"user": user_obj, "filial": filial_obj, "per_day": per_day, "free_until": free_until}
-
-    rows = []
-    for item in candidates.values():
-        user_obj = item["user"]
-        filial_obj = item["filial"]
-        per_day = item["per_day"]
-        free_until = item["free_until"]
 
         last = getattr(user_obj, "storage_penalty_last_charged_date", None)
         start_date = max(last or free_until, free_until)

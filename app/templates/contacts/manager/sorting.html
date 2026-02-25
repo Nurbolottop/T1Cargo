@@ -9,6 +9,10 @@
     <h2 class="h">Сортировка</h2>
     <div class="muted">Все посылки со статусом <b>"В Кыргызстане"</b>.</div>
 
+    <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+      <a class="btn accent" href="{% url 'manager_batch_sorting' %}">Пакетная сортировка</a>
+    </div>
+
     <form method="get" class="form-row" style="margin-top:10px;">
       {% if is_director and filials %}
         <div class="col-6">
