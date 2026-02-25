@@ -27,6 +27,87 @@
       {% if client.full_name %}<div style="margin-top:6px;"><b>{{ client.full_name }}</b></div>{% endif %}
     </div>
 
+    <style>
+      .bs-modal {
+        overflow: hidden;
+      }
+      .bs-modal__head {
+        display:flex;
+        gap:12px;
+        align-items:center;
+        justify-content:space-between;
+        padding:16px 16px 12px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+      }
+      .bs-modal__title {
+        display:flex;
+        gap:10px;
+        align-items:center;
+      }
+      .bs-modal__body {
+        padding: 16px;
+      }
+      .bs-modal__section {
+        margin-top: 12px;
+        padding: 12px;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: rgba(255,255,255,.02);
+      }
+      .bs-modal__footer {
+        position: sticky;
+        bottom: 0;
+        display:flex;
+        gap:10px;
+        justify-content:flex-end;
+        padding: 14px 16px;
+        border-top: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.22));
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      .bs-modal__grid {
+        display:flex;
+        gap:12px;
+        align-items:flex-end;
+        flex-wrap:wrap;
+      }
+      .bs-modal__field {
+        min-width: 240px;
+        flex: 1;
+      }
+      .bs-modal__field input,
+      .bs-modal__field select {
+        width: 100%;
+      }
+      .bs-modal__hint {
+        margin-top: 8px;
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.3;
+      }
+      .bs-modal__list {
+        max-height: 40vh;
+        overflow:auto;
+        margin-top: 10px;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+      }
+      .bs-modal__list table {
+        margin: 0;
+      }
+      .bs-modal__close {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border-radius: 12px;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+      }
+    </style>
+
     <div class="card" style="max-width:980px; margin:12px auto 0;">
       <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
         <div><b>Количество посылок:</b> {{ shipments|length }}</div>
@@ -69,52 +150,61 @@
     </div>
 
     <div id="modalOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.78); backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); z-index:10000;"></div>
-    <div id="modal" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%,-50%); width: min(820px, calc(100vw - 24px)); background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; z-index:10001; box-shadow: 0 18px 40px rgba(0,0,0,.55);">
-      <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; padding:14px 14px 0;">
-        <div class="badge" id="modalTitle">Выбрано посылок: 0</div>
-        <button class="btn" type="button" id="modalClose">✕</button>
+    <div id="modal" class="bs-modal" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%,-50%); width: min(860px, calc(100vw - 24px)); background: var(--card-bg); border: 1px solid var(--border); border-radius: 18px; z-index:10001; box-shadow: 0 22px 60px rgba(0,0,0,.65);">
+      <div class="bs-modal__head">
+        <div class="bs-modal__title">
+          <div class="badge" id="modalTitle">Выбрано посылок: 0</div>
+          <div class="muted" id="perItemHint"></div>
+        </div>
+        <button class="btn bs-modal__close" type="button" id="modalClose">✕</button>
       </div>
 
-      <form method="post" action="{% url 'manager_batch_sorting_apply' %}" style="padding:14px;">
+      <form method="post" action="{% url 'manager_batch_sorting_apply' %}">
         {% csrf_token %}
         <input type="hidden" name="client_id" value="{{ client.id }}" />
         <input type="hidden" name="payload" id="payloadInput" />
+        <div class="bs-modal__body">
+          <div class="bs-modal__grid">
+            <div class="bs-modal__field" style="max-width:280px;">
+              <label>Способ расчёта</label>
+              <select id="modeSelect">
+                <option value="kg">По кг</option>
+                <option value="gabarit">По габариту</option>
+              </select>
+            </div>
+            <div class="bs-modal__field">
+              <div class="muted" style="margin-top:22px;">Цена за кг (по умолчанию): <b>{{ default_price_per_kg|default:'—' }}</b></div>
+            </div>
+          </div>
 
-        <div class="form-row">
-          <div class="col-12">
-            <label>Способ расчёта</label>
-            <select id="modeSelect" style="max-width:260px;">
-              <option value="kg">По кг</option>
-              <option value="gabarit">По габариту</option>
-            </select>
+          <div class="bs-modal__section">
+            <div id="commonWeightWrap">
+              <label>Общий вес (кг) всех выбранных</label>
+              <input id="commonWeight" placeholder="например 5" />
+            </div>
+            <div id="commonTotalWrap" style="display:none;">
+              <label>Общая сумма всех выбранных</label>
+              <input id="commonTotal" placeholder="например 1050" />
+            </div>
+            <div class="bs-modal__hint" id="commonHint">Значение будет распределено поровну между выбранными посылками.</div>
+          </div>
+
+          <div class="bs-modal__section">
+            <div><b>Выбранные треки</b></div>
+            <div class="bs-modal__list">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Трек</th>
+                  </tr>
+                </thead>
+                <tbody id="modalBody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
-        <div class="muted" style="margin-top:10px;">Цена за кг (по умолчанию): <b>{{ default_price_per_kg|default:'—' }}</b></div>
-
-        <div class="form-row" style="margin-top:12px;">
-          <div class="col-12" id="commonWeightWrap">
-            <label>Вес (кг) для всех выбранных</label>
-            <input id="commonWeight" placeholder="например 2.5" />
-          </div>
-          <div class="col-12" id="commonTotalWrap" style="display:none;">
-            <label>Итого для всех выбранных</label>
-            <input id="commonTotal" placeholder="например 350" />
-          </div>
-        </div>
-
-        <div style="max-height: 42vh; overflow:auto; margin-top:12px; border: 1px solid var(--border); border-radius: 12px;">
-          <table style="margin:0;">
-            <thead>
-              <tr>
-                <th>Трек (выбранные)</th>
-              </tr>
-            </thead>
-            <tbody id="modalBody"></tbody>
-          </table>
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top:12px; justify-content:flex-end; flex-wrap:wrap;">
+        <div class="bs-modal__footer">
           <button class="btn" type="button" id="modalCancel">Отмена</button>
           <button class="btn accent" type="submit">Сохранить</button>
         </div>
@@ -141,6 +231,7 @@
         const commonTotalWrap = document.getElementById('commonTotalWrap');
         const commonWeight = document.getElementById('commonWeight');
         const commonTotal = document.getElementById('commonTotal');
+        const perItemHint = document.getElementById('perItemHint');
 
         function selectedIds() {
           const ids = [];
@@ -173,6 +264,10 @@
           if (commonWeightWrap) commonWeightWrap.style.display = (mode === 'kg') ? '' : 'none';
           if (commonTotalWrap) commonTotalWrap.style.display = (mode === 'gabarit') ? '' : 'none';
 
+          if (commonWeight) commonWeight.value = '';
+          if (commonTotal) commonTotal.value = '';
+          updatePerItemHint();
+
           const frag = document.createDocumentFragment();
           ids.forEach((id) => {
             const row = document.querySelector('tr[data-shipment-id="' + id + '"]');
@@ -199,6 +294,33 @@
           return obj;
         }
 
+        function updatePerItemHint() {
+          if (!perItemHint) return;
+          const ids = selectedIds();
+          const n = ids.length || 0;
+          if (!n) {
+            perItemHint.textContent = '';
+            return;
+          }
+          const mode = (modeSelect && modeSelect.value) || 'kg';
+          let raw = '';
+          if (mode === 'kg') raw = commonWeight ? (commonWeight.value || '').trim() : '';
+          else raw = commonTotal ? (commonTotal.value || '').trim() : '';
+          if (!raw) {
+            perItemHint.textContent = '';
+            return;
+          }
+          const normalized = (raw || '').replace(',', '.');
+          const v = parseFloat(normalized);
+          if (!isFinite(v) || v <= 0) {
+            perItemHint.textContent = '';
+            return;
+          }
+          const per = v / n;
+          if (mode === 'kg') perItemHint.textContent = '≈ ' + per.toFixed(3) + ' кг/посылка';
+          else perItemHint.textContent = '≈ ' + per.toFixed(2) + ' /посылка';
+        }
+
         if (btnSelectAll) {
           btnSelectAll.addEventListener('click', function () {
             picks.forEach((cb) => { cb.checked = true; });
@@ -223,6 +345,9 @@
             if (ids.length) renderModalItems(ids);
           });
         }
+
+        if (commonWeight) commonWeight.addEventListener('input', updatePerItemHint);
+        if (commonTotal) commonTotal.addEventListener('input', updatePerItemHint);
 
         if (modal && payloadInput) {
           modal.addEventListener('submit', function () {

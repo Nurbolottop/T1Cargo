@@ -2061,10 +2061,30 @@ def manager_batch_sorting_apply(request):
         if not shipments:
             return HttpResponseForbidden("not_found")
 
+        n = len(shipments)
+        if n <= 0:
+            return HttpResponseForbidden("not_found")
+
+        per_weight = None
+        per_total = None
+        last_weight = None
+        last_total = None
+
+        # If user entered a common value, treat it as TOTAL across all selected shipments.
+        # Distribute evenly; keep the total accurate by adjusting the last item.
+        if pricing_mode == "kg" and common_weight is not None and common_weight > 0:
+            per_weight = (common_weight / Decimal(n)).quantize(Decimal("0.001"))
+            last_weight = (common_weight - (per_weight * Decimal(n - 1))).quantize(Decimal("0.001")) if n > 1 else per_weight
+        if pricing_mode == "gabarit" and common_total is not None and common_total > 0:
+            per_total = (common_total / Decimal(n)).quantize(Decimal("0.01"))
+            last_total = (common_total - (per_total * Decimal(n - 1))).quantize(Decimal("0.01")) if n > 1 else per_total
+
         to_update: list[tg_models.Shipment] = []
-        for sh in shipments:
+        for idx, sh in enumerate(shipments):
             if pricing_mode == "kg":
-                w = common_weight
+                w = None
+                if per_weight is not None:
+                    w = last_weight if (idx == n - 1) else per_weight
                 if w is None:
                     it = by_id.get(int(sh.id)) or {}
                     raw_w = str(it.get("weight_kg") or "").replace(",", ".").strip()
@@ -2079,7 +2099,9 @@ def manager_batch_sorting_apply(request):
                 sh.price_per_kg = default_price
                 sh.total_price = (w * default_price).quantize(Decimal("0.01"))
             else:
-                total = common_total
+                total = None
+                if per_total is not None:
+                    total = last_total if (idx == n - 1) else per_total
                 if total is None:
                     it = by_id.get(int(sh.id)) or {}
                     raw_total = str(it.get("total_price") or "").replace(",", ".").strip()
