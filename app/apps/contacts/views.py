@@ -2512,6 +2512,7 @@ def manager_penalties(request):
                 "id": user_obj.id,
                 "user": user_obj,
                 "filial": filial_obj,
+                "per_day": per_day,
                 "days_overdue": days_overdue,
                 "to_charge": to_charge,
                 "storage_penalty_total": storage_penalty_total,

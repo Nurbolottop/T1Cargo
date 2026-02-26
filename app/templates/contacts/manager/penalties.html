@@ -12,7 +12,7 @@
     </div>
 
     <div class="muted" style="margin-top:8px;">
-      Бесплатное хранение — <b>{{ free_days }}</b> дня. Далее начисляется: <b>штраф_в_день * вес</b> за каждый день.
+      Бесплатное хранение — <b>{{ free_days }}</b> дня. Далее начисляется <b>фиксированный штраф за день</b> за каждый день просрочки.
     </div>
 
     {% if is_director and filials %}
@@ -34,6 +34,7 @@
         <tr>
           <th>Клиент</th>
           <th>Филиал</th>
+          <th>Штраф/день</th>
           <th>Дней просрочки</th>
           <th>Последнее начисление</th>
           <th>К начислению</th>
@@ -51,6 +52,7 @@
               {% endif %}
             </td>
             <td class="muted">{{ r.filial|default:'—' }}</td>
+            <td class="muted">{{ r.per_day|default:'—' }}</td>
             <td class="muted">{{ r.days_overdue }}</td>
             <td class="muted">{% if r.storage_penalty_last_charged_date %}{{ r.storage_penalty_last_charged_date|date:'d.m.Y' }}{% else %}—{% endif %}</td>
             <td class="muted">{{ r.to_charge }}</td>
@@ -62,7 +64,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="7" class="muted">Сейчас нет клиентов, по которым начисляется штраф.</td></tr>
+          <tr><td colspan="8" class="muted">Сейчас нет клиентов, по которым начисляется штраф.</td></tr>
         {% endfor %}
       </tbody>
     </table>
