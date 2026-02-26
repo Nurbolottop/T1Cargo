@@ -153,6 +153,9 @@
       box-shadow: 0 18px 44px var(--shadow);
     }
     .topbar .title { font-weight: 950; }
+    .topbar-actions { display:flex; align-items:center; gap:10px; margin-left:auto; flex-wrap:wrap; justify-content:flex-end; }
+    .topbar-actions .btn { padding: 9px 12px; border-radius: 999px; }
+    .topbar-actions .btn.danger { border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.10); }
     .badge {
       display:inline-flex;
       align-items:center;
@@ -363,18 +366,13 @@
       </nav>
 
       <div class="sb-footer">
-        <a class="nav-link {% if nav == 'notifications' %}active{% endif %}" href="{% url 'manager_notifications' %}">Уведомления</a>
-        <button class="nav-link" type="button" id="themeToggle" style="width:100%; text-align:left; cursor:pointer;">
-          <span id="themeToggleText">🌙 Темная тема</span>
-        </button>
-        <a class="nav-link danger" href="{% url 'manager_logout' %}">Выход</a>
       </div>
     </aside>
 
     <main class="main">
       <div class="topbar">
         <div class="title">{% block page_title %}Панель{% endblock %}</div>
-        <div style="display:flex; align-items:center; gap:10px; margin-left:auto; flex-wrap:wrap; justify-content:flex-end;">
+        <div class="topbar-actions">
           <div class="badge">
             {% if nav != 'dashboard' and filial_display %}<span>Филиал:</span><b>{{ filial_display }}</b><span>•</span>{% endif %}
             <span>Пользователь:</span>
@@ -394,6 +392,12 @@
               </form>
             </div>
           {% endif %}
+
+          <a class="btn" href="{% url 'manager_notifications' %}">Уведомления</a>
+          <button class="btn" type="button" id="themeToggle" style="cursor:pointer;">
+            <span id="themeToggleText">🌙 Темная тема</span>
+          </button>
+          <a class="btn danger" href="{% url 'manager_logout' %}">Выход</a>
         </div>
       </div>
 
