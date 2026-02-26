@@ -41,23 +41,44 @@
     body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background: var(--bg); color:var(--text); line-height: 1.35; }
     a { color:inherit; text-decoration:none; }
 
-    .app {
+    .app-shell {
       min-height: 100vh;
+      padding: 18px;
+      display:flex;
+    }
+    .app-shell-inner {
+      width: 100%;
+      min-height: calc(100vh - 36px);
+      border-radius: 28px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(10,16,30,.30);
+      box-shadow: 0 28px 90px rgba(0,0,0,.55);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      overflow: hidden;
+      display:flex;
+    }
+
+    .app {
       display: flex;
-      background: var(--bg);
+      gap: 14px;
+      padding: 14px;
+      width: 100%;
+      background: transparent;
     }
     :root[data-theme="dark"] .app {
       background:
         radial-gradient(900px 520px at 12% -8%, rgba(224,177,63,.16), transparent 55%),
         radial-gradient(900px 520px at 92% 6%, rgba(59,130,246,.14), transparent 55%),
         radial-gradient(900px 520px at 50% 120%, rgba(16,185,129,.10), transparent 55%),
-        var(--bg);
+        transparent;
     }
 
     .sidebar {
       width: 292px;
       padding: 18px 14px;
-      border-right: 1px solid var(--border);
+      border: 1px solid var(--border);
+      border-radius: 22px;
       background: var(--sidebar-bg);
       backdrop-filter: blur(12px);
       position: sticky;
@@ -115,7 +136,22 @@
     :root[data-theme="light"] .msg.warning { border-color: rgba(217,119,6,.45); background: rgba(217,119,6,.10); color: #b45309; }
 
     .main { flex: 1; min-width: 0; display:flex; flex-direction:column; }
-    .topbar { border-bottom: 1px solid var(--border); background: var(--topbar-bg); }
+    .topbar {
+      position: sticky;
+      top: 14px;
+      z-index: 2000;
+      margin: 0;
+      padding: 14px 16px;
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      background: var(--topbar-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 18px 44px var(--shadow);
+    }
     .topbar .title { font-weight: 950; }
     .badge {
       display:inline-flex;
@@ -136,7 +172,7 @@
       max-width: 1120px;
       width: 100%;
       margin: 0 auto;
-      padding: 18px;
+      padding: 14px 4px 18px;
     }
 
     .card {
@@ -258,6 +294,10 @@
 
     @media (max-width: 980px){
       .sidebar { display:none; }
+      .app-shell { padding: 0; }
+      .app-shell-inner { border-radius: 0; border-left: 0; border-right: 0; border-top: 0; border-bottom: 0; box-shadow: none; min-height: 100vh; }
+      .app { padding: 0; gap: 0; }
+      .topbar { position: static; border-radius: 0; border-left: 0; border-right: 0; box-shadow: none; }
       .content { padding: 14px; }
       .kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .col-6,.col-4,.col-3 { grid-column: span 12; }
@@ -266,7 +306,9 @@
   </style>
 </head>
 <body>
-  <div class="app">
+  <div class="app-shell">
+    <div class="app-shell-inner">
+      <div class="app">
     <aside class="sidebar">
       <div class="sb-title">
         <div class="name">CargoBot</div>
@@ -366,6 +408,8 @@
         {% block content %}{% endblock %}
       </div>
     </main>
+      </div>
+    </div>
   </div>
 
   <div id="numKeypadOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.22); z-index:9999;"></div>
