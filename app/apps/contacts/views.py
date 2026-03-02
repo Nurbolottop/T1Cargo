@@ -1917,6 +1917,9 @@ def manager_batch_sorting(request):
 
     shipments = []
     default_price_per_kg = None
+    total_items = 0
+    ready_for_pickup = 0
+    
     if client is not None:
         try:
             filial_obj = getattr(client, "filial", None)
@@ -1931,21 +1934,17 @@ def manager_batch_sorting(request):
         shipments = list(shipments_qs[:5000])
         
         # Calculate total items and ready for pickup
-        total_items = 0
-        ready_for_pickup = 0
+        # Total items - all shipments for this client
+        total_shipments_qs = tg_models.Shipment.objects.filter(user=client)
+        if staff_filial is not None:
+            total_shipments_qs = total_shipments_qs.filter(filial=staff_filial)
+        total_items = total_shipments_qs.count()
         
-        if client:
-            # Total items - all shipments for this client
-            total_shipments_qs = tg_models.Shipment.objects.filter(user=client)
-            if staff_filial is not None:
-                total_shipments_qs = total_shipments_qs.filter(filial=staff_filial)
-            total_items = total_shipments_qs.count()
-            
-            # Ready for pickup - shipments with WAREHOUSE status
-            ready_shipments_qs = tg_models.Shipment.objects.filter(user=client, status=tg_models.Shipment.Status.WAREHOUSE)
-            if staff_filial is not None:
-                ready_shipments_qs = ready_shipments_qs.filter(filial=staff_filial)
-            ready_for_pickup = ready_shipments_qs.count()
+        # Ready for pickup - shipments with WAREHOUSE status
+        ready_shipments_qs = tg_models.Shipment.objects.filter(user=client, status=tg_models.Shipment.Status.WAREHOUSE)
+        if staff_filial is not None:
+            ready_shipments_qs = ready_shipments_qs.filter(filial=staff_filial)
+        ready_for_pickup = ready_shipments_qs.count()
 
     return render(
         request,
