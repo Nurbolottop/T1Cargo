@@ -1559,6 +1559,20 @@ def manager_group_sorting(request, group_id: int):
                         shipment.arrival_date = timezone.now().date()
                         shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
 
+                        # Send notification immediately for this shipment
+                        try:
+                            transaction.on_commit(
+                                lambda: notify_user_arrival_task(
+                                    user_id=int(shipment.user_id),
+                                    tracking=shipment.tracking_number,
+                                    shipment_status=str(tg_models.Shipment.Status.WAREHOUSE),
+                                    weight_kg=float(shipment.weight_kg) if shipment.weight_kg and shipment.weight_kg > 0 else None,
+                                    total_price=float(shipment.total_price) if shipment.total_price else None
+                                )
+                            )
+                        except Exception:
+                            pass
+
                         if shipment.user_id:
                             remaining_user_unsorted = tg_models.Shipment.objects.filter(group=group, user_id=shipment.user_id)
                             if staff_filial is not None:
@@ -1621,6 +1635,20 @@ def manager_group_sorting(request, group_id: int):
                         shipment.status = tg_models.Shipment.Status.WAREHOUSE
                         shipment.arrival_date = timezone.now().date()
                         shipment.save(update_fields=["pricing_mode", "weight_kg", "price_per_kg", "total_price", "status", "arrival_date", "updated_at"])
+
+                        # Send notification immediately for this shipment
+                        try:
+                            transaction.on_commit(
+                                lambda: notify_user_arrival_task(
+                                    user_id=int(shipment.user_id),
+                                    tracking=shipment.tracking_number,
+                                    shipment_status=str(tg_models.Shipment.Status.WAREHOUSE),
+                                    weight_kg=float(shipment.weight_kg) if shipment.weight_kg and shipment.weight_kg > 0 else None,
+                                    total_price=float(shipment.total_price) if shipment.total_price else None
+                                )
+                            )
+                        except Exception:
+                            pass
 
                         if shipment.user_id:
                             remaining_user_unsorted = tg_models.Shipment.objects.filter(group=group, user_id=shipment.user_id)

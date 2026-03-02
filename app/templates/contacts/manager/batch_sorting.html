@@ -433,6 +433,21 @@
             }
           });
         }
+        
+        // Check if sorting was successful and clear client code
+        const urlParams = new URLSearchParams(window.location.search);
+        const qParam = urlParams.get('q');
+        
+        // If there's a success message and q parameter exists, clear the field
+        const successMessages = document.querySelectorAll('.success, .info');
+        if (successMessages.length > 0 && qParam) {
+          setTimeout(() => {
+            if (clientCodeInput) {
+              clientCodeInput.value = '';
+              clientCodeInput.focus();
+            }
+          }, 100);
+        }
       })();
     </script>
   {% endif %}
