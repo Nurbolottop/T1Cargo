@@ -237,7 +237,7 @@ class ShipmentGroupInline(admin.TabularInline):
 
 @admin.register(tg_models.ShipmentGroup)
 class ShipmentGroupAdmin(admin.ModelAdmin):
-    list_display = ("name", "status", "sent_date", "filial", "created_at", "shipment_count")
+    list_display = ("name", "status", "sent_date", "filial", "price_per_kg", "created_at", "shipment_count")
     list_filter = ("status", "filial", "created_at")
     search_fields = ("name",)
     inlines = (ShipmentGroupInline,)
@@ -253,6 +253,7 @@ class ShipmentGroupAdmin(admin.ModelAdmin):
                     "bishkek_marked",
                     "status",
                     "filial",
+                    "price_per_kg",
                 )
             },
         ),
