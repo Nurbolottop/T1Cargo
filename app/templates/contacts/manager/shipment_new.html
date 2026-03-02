@@ -43,15 +43,17 @@
         
         <div id="trackingNumbersContainer">
           <div class="form-row tracking-row" data-row-id="1">
-            <div class="col-10">
+            <div class="col-12">
               <label>Трек-номер 1</label>
-              <input type="text" name="tracking_number_1" id="tracking_number_1" required style="width: 100%;" />
+              <input type="text" name="tracking_number_1" id="tracking_number_1" required style="width: 100%; font-size: 14px; padding: 12px;" />
               <div class="muted" style="font-size:11px; margin-top:4px;">Введите трек-номер первой посылки</div>
             </div>
-            <div class="col-2">
-              <label>Кол-во</label>
-              <input type="number" name="quantity_1" id="quantity_1" value="1" min="1" max="100" style="width: 100%;" />
-              <div class="muted" style="font-size:11px; margin-top:4px;">шт.</div>
+          </div>
+          <div class="form-row" style="margin-top: 8px;">
+            <div class="col-12">
+              <label>Количество (шт.)</label>
+              <input type="number" name="quantity_1" id="quantity_1" value="1" min="1" max="100" style="width: 120px; font-size: 14px; padding: 12px;" />
+              <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок с одинаковым трек-номером</div>
             </div>
           </div>
         </div>
@@ -146,19 +148,29 @@
         newRow.style.marginTop = '12px';
         
         newRow.innerHTML = `
-          <div class="col-10">
+          <div class="col-12">
             <label>Трек-номер ${trackingRowCount}</label>
-            <input type="text" name="tracking_number_${trackingRowCount}" id="tracking_number_${trackingRowCount}" style="width: 100%;" />
+            <input type="text" name="tracking_number_${trackingRowCount}" id="tracking_number_${trackingRowCount}" style="width: 100%; font-size: 14px; padding: 12px;" />
             <div class="muted" style="font-size:11px; margin-top:4px;">Введите трек-номер ${trackingRowCount === 2 ? 'второй' : trackingRowCount === 3 ? 'третьей' : 'четвертой'} посылки</div>
           </div>
-          <div class="col-2">
-            <label>Кол-во</label>
-            <input type="number" name="quantity_${trackingRowCount}" id="quantity_${trackingRowCount}" value="1" min="1" max="100" style="width: 100%;" />
-            <div class="muted" style="font-size:11px; margin-top:4px;">шт.</div>
+        `;
+        
+        // Add quantity row
+        const quantityRow = document.createElement('div');
+        quantityRow.className = 'form-row';
+        quantityRow.style.marginTop = '8px';
+        quantityRow.setAttribute('data-quantity-row', trackingRowCount);
+        
+        quantityRow.innerHTML = `
+          <div class="col-12">
+            <label>Количество (шт.)</label>
+            <input type="number" name="quantity_${trackingRowCount}" id="quantity_${trackingRowCount}" value="1" min="1" max="100" style="width: 120px; font-size: 14px; padding: 12px;" />
+            <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок с одинаковым трек-номером</div>
           </div>
         `;
         
         trackingNumbersContainer.appendChild(newRow);
+        trackingNumbersContainer.appendChild(quantityRow);
         updateTrackingButtons();
       }
 
@@ -167,11 +179,17 @@
         if (trackingRowCount <= 1) return;
         
         const lastRow = trackingNumbersContainer.querySelector(`[data-row-id="${trackingRowCount}"]`);
+        const lastQuantityRow = trackingNumbersContainer.querySelector(`[data-quantity-row="${trackingRowCount}"]`);
+        
         if (lastRow) {
           lastRow.remove();
-          trackingRowCount--;
-          updateTrackingButtons();
         }
+        if (lastQuantityRow) {
+          lastQuantityRow.remove();
+        }
+        
+        trackingRowCount--;
+        updateTrackingButtons();
       }
 
       // Update visibility of add/remove buttons
