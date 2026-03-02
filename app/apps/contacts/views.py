@@ -1929,6 +1929,23 @@ def manager_batch_sorting(request):
             shipments_qs = shipments_qs.filter(filial=staff_filial)
         shipments_qs = shipments_qs.filter(status=tg_models.Shipment.Status.BISHKEK).order_by("-updated_at")
         shipments = list(shipments_qs[:5000])
+        
+        # Calculate total items and ready for pickup
+        total_items = 0
+        ready_for_pickup = 0
+        
+        if client:
+            # Total items - all shipments for this client
+            total_shipments_qs = tg_models.Shipment.objects.filter(user=client)
+            if staff_filial is not None:
+                total_shipments_qs = total_shipments_qs.filter(filial=staff_filial)
+            total_items = total_shipments_qs.count()
+            
+            # Ready for pickup - shipments with WAREHOUSE status
+            ready_shipments_qs = tg_models.Shipment.objects.filter(user=client, status=tg_models.Shipment.Status.WAREHOUSE)
+            if staff_filial is not None:
+                ready_shipments_qs = ready_shipments_qs.filter(filial=staff_filial)
+            ready_for_pickup = ready_shipments_qs.count()
 
     return render(
         request,
@@ -1940,6 +1957,8 @@ def manager_batch_sorting(request):
             "client": client,
             "shipments": shipments,
             "default_price_per_kg": default_price_per_kg,
+            "total_items": total_items,
+            "ready_for_pickup": ready_for_pickup,
             **_role_ctx(request),
         },
     )
