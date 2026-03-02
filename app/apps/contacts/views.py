@@ -2440,6 +2440,27 @@ def manager_analytics(request):
 
     day_map = {row["d"]: {"cnt": row["cnt"], "total": row["total"]} for row in per_day_rows}
 
+    # Calculate sorted shipments (WAREHOUSE status) by arrival_date
+    sorted_qs = tg_models.Shipment.objects.select_related("user").filter(
+        status=tg_models.Shipment.Status.WAREHOUSE,
+        arrival_date__gte=first_day,
+        arrival_date__lt=next_month,
+    )
+    if effective_filial is not None:
+        sorted_qs = sorted_qs.filter(filial=effective_filial)
+
+    sorted_per_day = (
+        sorted_qs.annotate(d=F("arrival_date"))
+        .values("d")
+        .annotate(
+            sorted_cnt=Count("id"),
+            sorted_total=Coalesce(Sum("total_price", output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
+        )
+        .order_by("d")
+    )
+
+    sorted_day_map = {row["d"]: {"sorted_cnt": row["sorted_cnt"], "sorted_total": row["sorted_total"]} for row in sorted_per_day}
+
     if selected_day is None:
         selected_day = today if (today >= first_day and today < next_month) else first_day
 
@@ -2471,6 +2492,7 @@ def manager_analytics(request):
     )
 
     selected_meta = day_map.get(selected_day) or {"cnt": 0, "total": 0}
+    selected_sorted_meta = sorted_day_map.get(selected_day) or {"sorted_cnt": 0, "sorted_total": 0}
 
     calendar_cells = []
     # start from Monday
@@ -2479,12 +2501,15 @@ def manager_analytics(request):
     while cur < next_month or cur.weekday() != 0:
         is_current_month = (cur.month == first_day.month and cur.year == first_day.year)
         meta = day_map.get(cur)
+        sorted_meta = sorted_day_map.get(cur)
         calendar_cells.append(
             {
                 "date": cur,
                 "in_month": is_current_month,
                 "cnt": (meta or {}).get("cnt", 0),
                 "total": (meta or {}).get("total", 0),
+                "sorted_cnt": (sorted_meta or {}).get("sorted_cnt", 0),
+                "sorted_total": (sorted_meta or {}).get("sorted_total", 0),
                 "is_selected": (cur == selected_day),
             }
         )
@@ -2503,6 +2528,8 @@ def manager_analytics(request):
             "selected_day": selected_day,
             "selected_cnt": selected_meta.get("cnt", 0),
             "selected_total": selected_meta.get("total", 0),
+            "selected_sorted_cnt": selected_sorted_meta.get("sorted_cnt", 0),
+            "selected_sorted_total": selected_sorted_meta.get("sorted_total", 0),
             "selected_delivery": selected_breakdown.get("delivery", 0),
             "selected_penalty": 0,
             "office_cnt": office_stats.get("cnt", 0),

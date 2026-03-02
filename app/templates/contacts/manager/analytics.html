@@ -68,6 +68,11 @@
           </div>
           <div class="cal-total">
             {% if c.total %}{{ c.total }}{% else %}—{% endif %}
+            {% if c.sorted_total %}
+              <div style="font-size:10px; color: rgba(34,197,94,1); font-weight:600; margin-top:2px;">
+                +{{ c.sorted_total }}
+              </div>
+            {% endif %}
           </div>
         </a>
       {% endfor %}
@@ -80,6 +85,10 @@
       <div style="display:flex; gap:10px;">
         <div class="badge"><span>Забрали:</span><b>{{ selected_cnt }}</b></div>
         <div class="badge"><span>Сумма за день:</span><b>{{ selected_total }}</b></div>
+        {% if selected_sorted_cnt > 0 %}
+        <div class="badge" style="background: rgba(34,197,94,.15); color: rgba(34,197,94,1);"><span>Отсортировано:</span><b>{{ selected_sorted_cnt }}</b></div>
+        <div class="badge" style="background: rgba(34,197,94,.15); color: rgba(34,197,94,1);"><span>Сумма сортировки:</span><b>{{ selected_sorted_total }}</b></div>
+        {% endif %}
         <div class="badge"><span>Осталось на складе:</span><b>{{ office_cnt }}</b></div>
       </div>
     </div>
