@@ -806,6 +806,29 @@ def manager_client_detail(request, user_id: int):
     # For "Итого к оплате" we want only ready shipments, not including debt
     # So we'll use delivery_due instead of total_due
     total_to_pay = delivery_due
+    
+    # Calculate today's sorted shipments total
+    today_sorted_total = Decimal("0")
+    today_sorted_count = 0
+    try:
+        from django.utils import timezone
+        today = timezone.now().date()
+        today_sorted_qs = tg_models.Shipment.objects.filter(
+            user=client,
+            status=tg_models.Shipment.Status.WAREHOUSE,
+            arrival_date=today
+        )
+        if staff_filial is not None:
+            today_sorted_qs = today_sorted_qs.filter(filial=staff_filial)
+        
+        today_sorted_count = today_sorted_qs.count()
+        today_sorted_total = today_sorted_qs.aggregate(
+            total=Sum('total_price')
+        )['total'] or Decimal("0")
+    except Exception as e:
+        logger.error(f"Error calculating today's sorted shipments: {e}")
+        today_sorted_total = Decimal("0")
+        today_sorted_count = 0
     return render(
         request,
         "contacts/manager/client_detail.html",
@@ -819,6 +842,8 @@ def manager_client_detail(request, user_id: int):
             "delivery_due": delivery_due,
             "total_due": total_due,
             "total_to_pay": total_to_pay,
+            "today_sorted_total": today_sorted_total,
+            "today_sorted_count": today_sorted_count,
             **_role_ctx(request),
         },
     )
