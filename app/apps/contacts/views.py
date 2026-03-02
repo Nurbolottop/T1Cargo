@@ -3338,6 +3338,10 @@ def manager_shipment_detail(request, shipment_id: int):
         ready_shipments_qs = tg_models.Shipment.objects.filter(
             user=shipment.user,
             status=tg_models.Shipment.Status.WAREHOUSE
+        ).exclude(
+            total_price__isnull=True
+        ).exclude(
+            total_price=0
         )
         if staff_filial is not None:
             ready_shipments_qs = ready_shipments_qs.filter(filial=staff_filial)
@@ -3347,7 +3351,9 @@ def manager_shipment_detail(request, shipment_id: int):
             total_ready_amount = ready_shipments_qs.aggregate(
                 total=Sum('total_price')
             )['total'] or Decimal("0")
-        except Exception:
+        except Exception as e:
+            # Log error for debugging
+            logger.error(f"Error calculating ready shipments total: {e}")
             total_ready_amount = Decimal("0")
             ready_shipments_count = 0
 
