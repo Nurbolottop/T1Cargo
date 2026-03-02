@@ -802,6 +802,10 @@ def manager_client_detail(request, user_id: int):
     except Exception:
         debt_value = Decimal("0")
     total_due = (delivery_due + debt_value).quantize(Decimal("0.01"))
+    
+    # For "Итого к оплате" we want only ready shipments, not including debt
+    # So we'll use delivery_due instead of total_due
+    total_to_pay = delivery_due
     return render(
         request,
         "contacts/manager/client_detail.html",
@@ -814,6 +818,7 @@ def manager_client_detail(request, user_id: int):
             "form": form,
             "delivery_due": delivery_due,
             "total_due": total_due,
+            "total_to_pay": total_to_pay,
             **_role_ctx(request),
         },
     )
