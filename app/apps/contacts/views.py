@@ -2136,6 +2136,8 @@ def manager_batch_sorting_apply(request):
                 sh.total_price = total.quantize(Decimal("0.01"))
                 if default_price is not None and default_price > 0:
                     sh.price_per_kg = default_price
+                # Set weight_kg to 0 for gabarit mode to avoid NULL constraint
+                sh.weight_kg = Decimal("0")
 
             sh.status = tg_models.Shipment.Status.WAREHOUSE
             sh.arrival_date = today
@@ -2161,10 +2163,17 @@ def manager_batch_sorting_apply(request):
         # Send SMS/Telegram notifications for updated shipments
         for shipment in to_update:
             try:
+                # For gabarit mode, don't show weight (it's 0), for kg mode show actual weight
+                weight_to_send = None
+                if shipment.pricing_mode == tg_models.Shipment.PricingMode.KG and shipment.weight_kg:
+                    weight_to_send = float(shipment.weight_kg)
+                
                 notify_user_arrival_task(
                     user_id=client.id,
                     tracking=shipment.tracking_number,
-                    shipment_status=tg_models.Shipment.Status.WAREHOUSE
+                    shipment_status=tg_models.Shipment.Status.WAREHOUSE,
+                    weight_kg=weight_to_send,
+                    total_price=float(shipment.total_price) if shipment.total_price else None
                 )
             except Exception as e:
                 # Log error but don't fail the whole operation

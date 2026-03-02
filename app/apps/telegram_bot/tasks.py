@@ -337,7 +337,7 @@ def remind_ready_for_pickup_task(self, filial_id: Optional[int] = None) -> dict:
     return {"total": total, "sent": sent, "failed": failed}
 
 
-def _send_user_arrival_notification(user_id: int, tracking: str, shipment_status: str) -> bool:
+def _send_user_arrival_notification(user_id: int, tracking: str, shipment_status: str, weight_kg=None, total_price=None) -> bool:
     token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
     if not token:
         return False
@@ -351,7 +351,7 @@ def _send_user_arrival_notification(user_id: int, tracking: str, shipment_status
         return False
 
     if shipment_status == tg_models.Shipment.Status.WAREHOUSE:
-        text = _shipment_notify_text_ready_for_pickup(tracking=tracking)
+        text = _shipment_notify_text_ready_for_pickup(tracking=tracking, weight_kg=weight_kg, total_price=total_price)
     elif shipment_status == tg_models.Shipment.Status.ON_THE_WAY:
         text = _shipment_notify_text_in_transit(tracking=tracking)
     else:
@@ -402,9 +402,9 @@ def _shipment_notify_text_ready_for_pickup(tracking: str, weight_kg=None, total_
 
 
 @shared_task
-def notify_user_arrival_task(user_id: int, tracking: str, shipment_status: str) -> bool:
+def notify_user_arrival_task(user_id: int, tracking: str, shipment_status: str, weight_kg=None, total_price=None) -> bool:
     try:
-        return _send_user_arrival_notification(user_id=user_id, tracking=tracking, shipment_status=shipment_status)
+        return _send_user_arrival_notification(user_id=user_id, tracking=tracking, shipment_status=shipment_status, weight_kg=weight_kg, total_price=total_price)
     except Exception as e:
         logger.exception(
             "notify_user_arrival_task failed (user_id=%s, tracking=%s): %s",
