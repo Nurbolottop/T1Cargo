@@ -43,15 +43,15 @@
         
         <div id="trackingNumbersContainer">
           <div class="form-row tracking-row" data-row-id="1">
-            <div class="col-9">
+            <div class="col-10">
               <label>Трек-номер 1</label>
-              <input type="text" name="tracking_number_1" id="tracking_number_1" required />
+              <input type="text" name="tracking_number_1" id="tracking_number_1" required style="width: 100%;" />
               <div class="muted" style="font-size:11px; margin-top:4px;">Введите трек-номер первой посылки</div>
             </div>
-            <div class="col-3">
-              <label>Количество (шт.)</label>
-              <input type="number" name="quantity_1" id="quantity_1" value="1" min="1" max="100" />
-              <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок</div>
+            <div class="col-2">
+              <label>Кол-во</label>
+              <input type="number" name="quantity_1" id="quantity_1" value="1" min="1" max="100" style="width: 100%;" />
+              <div class="muted" style="font-size:11px; margin-top:4px;">шт.</div>
             </div>
           </div>
         </div>
@@ -146,15 +146,15 @@
         newRow.style.marginTop = '12px';
         
         newRow.innerHTML = `
-          <div class="col-9">
+          <div class="col-10">
             <label>Трек-номер ${trackingRowCount}</label>
-            <input type="text" name="tracking_number_${trackingRowCount}" id="tracking_number_${trackingRowCount}" />
+            <input type="text" name="tracking_number_${trackingRowCount}" id="tracking_number_${trackingRowCount}" style="width: 100%;" />
             <div class="muted" style="font-size:11px; margin-top:4px;">Введите трек-номер ${trackingRowCount === 2 ? 'второй' : trackingRowCount === 3 ? 'третьей' : 'четвертой'} посылки</div>
           </div>
-          <div class="col-3">
-            <label>Количество (шт.)</label>
-            <input type="number" name="quantity_${trackingRowCount}" id="quantity_${trackingRowCount}" value="1" min="1" max="100" />
-            <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок</div>
+          <div class="col-2">
+            <label>Кол-во</label>
+            <input type="number" name="quantity_${trackingRowCount}" id="quantity_${trackingRowCount}" value="1" min="1" max="100" style="width: 100%;" />
+            <div class="muted" style="font-size:11px; margin-top:4px;">шт.</div>
           </div>
         `;
         
