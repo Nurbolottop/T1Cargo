@@ -401,6 +401,83 @@ def _shipment_notify_text_ready_for_pickup(tracking: str, weight_kg=None, total_
     )
 
 
+def _shipment_notify_text_ready_for_pickup_batch_total(shipments: list) -> str:
+    """Send one message for all shipments with total weight and price"""
+    if not shipments:
+        return ""
+    
+    total_weight = Decimal("0")
+    total_price = Decimal("0")
+    tracking_numbers = []
+    
+    for shipment in shipments:
+        tracking_numbers.append(shipment.tracking_number or "—")
+        if shipment.weight_kg and shipment.weight_kg > 0:
+            total_weight += shipment.weight_kg
+        if shipment.total_price and shipment.total_price > 0:
+            total_price += shipment.total_price
+    
+    # Format tracking list
+    if len(tracking_numbers) <= 3:
+        tracking_list = "\n".join([f"• {t}" for t in tracking_numbers])
+    else:
+        tracking_list = "\n".join([f"• {t}" for t in tracking_numbers[:3]])
+        tracking_list += f"\n• ... и еще {len(tracking_numbers) - 3} посылок"
+    
+    weight_text = f"⚖️ Общий вес: {total_weight} кг\n" if total_weight > 0 else ""
+    price_text = f"💰 Общая стоимость: {total_price} сом\n" if total_price > 0 else ""
+    
+    return (
+        "✅📦 Ваши посылки готовы к выдаче!\n\n"
+        f"🧾 Трек-номера ({len(tracking_numbers)} шт.):\n{tracking_list}\n\n"
+        f"{weight_text}"
+        f"{price_text}"
+        "🆓 Бесплатное хранение — 3 дня\n"
+        "⏳ Далее начисляется плата за хранение.\n\n"
+        "📍 Вы можете забрать посылки в пункте выдачи."
+    )
+
+
+@shared_task
+def notify_user_arrival_batch_task(user_id: int, shipments_data: list) -> bool:
+    """Send one notification for multiple shipments"""
+    try:
+        token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+        if not token:
+            return False
+
+        user_obj = tg_models.User.objects.filter(id=user_id).first()
+        if user_obj is None:
+            return False
+
+        chat_id = getattr(user_obj, "telegram_id", None)
+        if not chat_id:
+            return False
+
+        # Get actual shipment objects
+        shipment_ids = [s.get('id') for s in shipments_data]
+        shipments = tg_models.Shipment.objects.filter(id__in=shipment_ids)
+        
+        text = _shipment_notify_text_ready_for_pickup_batch_total(shipments)
+        
+        ok = _send_telegram_message(token=token, chat_id=int(chat_id), text=text)
+        if not ok:
+            logger.exception(
+                "telegram send failed (user_id=%s, shipments=%s)",
+                user_id,
+                shipment_ids,
+            )
+            return False
+        return True
+    except Exception as e:
+        logger.exception(
+            "notify_user_arrival_batch_task failed (user_id=%s): %s",
+            user_id,
+            e,
+        )
+        return False
+
+
 @shared_task
 def notify_user_arrival_task(user_id: int, tracking: str, shipment_status: str, weight_kg=None, total_price=None) -> bool:
     try:
