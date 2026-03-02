@@ -9,8 +9,8 @@
     <h2 class="h">Пакетная сортировка</h2>
     <div class="muted">Введите код клиента (например: 678 или PIJU-678) и нажмите Enter.</div>
 
-    <form method="get" style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <input name="q" value="{{ q|default:'' }}" placeholder="Код клиента" autofocus />
+    <form method="get" id="searchForm" style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <input name="q" id="clientCodeInput" value="{{ q|default:'' }}" placeholder="Код клиента" autofocus />
       <button class="btn accent" type="submit">Найти</button>
       <a class="btn" href="{% url 'manager_sorting' %}">Назад</a>
     </form>
@@ -269,6 +269,18 @@
           renderModalItems(ids);
           if (overlay) overlay.style.display = 'block';
           if (modal) modal.style.display = 'block';
+          
+          // Set focus to weight input field
+          setTimeout(() => {
+            const mode = (modeSelect && modeSelect.value) || 'kg';
+            if (mode === 'kg' && commonWeight) {
+              commonWeight.focus();
+              commonWeight.select();
+            } else if (mode === 'gabarit' && commonTotal) {
+              commonTotal.focus();
+              commonTotal.select();
+            }
+          }, 100);
         }
 
         function hideModal() {
@@ -300,6 +312,15 @@
 
           modalBody.innerHTML = '';
           modalBody.appendChild(frag);
+          
+          // Set focus to appropriate input field after rendering
+          setTimeout(() => {
+            if (mode === 'kg' && commonWeight) {
+              commonWeight.focus();
+            } else if (mode === 'gabarit' && commonTotal) {
+              commonTotal.focus();
+            }
+          }, 50);
         }
 
         function buildPayload() {
@@ -372,6 +393,43 @@
               payloadInput.value = JSON.stringify(buildPayload());
             } catch (e) {
               payloadInput.value = '';
+            }
+            
+            // After successful submission, clear client code and set focus
+            setTimeout(() => {
+              const clientCodeInput = document.getElementById('clientCodeInput');
+              if (clientCodeInput) {
+                clientCodeInput.value = '';
+                clientCodeInput.focus();
+              }
+            }, 500);
+          });
+        }
+        
+        // Auto-search when client code is entered
+        const clientCodeInput = document.getElementById('clientCodeInput');
+        const searchForm = document.getElementById('searchForm');
+        
+        if (clientCodeInput && searchForm) {
+          let searchTimeout;
+          
+          clientCodeInput.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const value = e.target.value.trim();
+            
+            // Only auto-search if we have at least 3 characters
+            if (value.length >= 3) {
+              searchTimeout = setTimeout(() => {
+                searchForm.submit();
+              }, 800); // Wait 800ms after user stops typing
+            }
+          });
+          
+          // Also search on Enter key
+          clientCodeInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+              clearTimeout(searchTimeout);
+              searchForm.submit();
             }
           });
         }
