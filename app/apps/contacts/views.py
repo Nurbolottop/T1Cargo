@@ -3331,10 +3331,38 @@ def manager_shipment_detail(request, shipment_id: int):
     if staff_filial is not None:
         clients_qs = clients_qs.filter(filial=staff_filial)
 
+    # Calculate total amount for client's ready shipments
+    total_ready_amount = Decimal("0")
+    ready_shipments_count = 0
+    if shipment.user:
+        ready_shipments_qs = tg_models.Shipment.objects.filter(
+            user=shipment.user,
+            status=tg_models.Shipment.Status.WAREHOUSE
+        )
+        if staff_filial is not None:
+            ready_shipments_qs = ready_shipments_qs.filter(filial=staff_filial)
+        
+        try:
+            ready_shipments_count = ready_shipments_qs.count()
+            total_ready_amount = ready_shipments_qs.aggregate(
+                total=Sum('total_price')
+            )['total'] or Decimal("0")
+        except Exception:
+            total_ready_amount = Decimal("0")
+            ready_shipments_count = 0
+
     return render(
         request,
         "contacts/manager/shipment_detail.html",
-        {"nav": "shipments", "shipment": shipment, "statuses": tg_models.Shipment.Status.choices, "clients": clients_qs, **_role_ctx(request)},
+        {
+            "nav": "shipments", 
+            "shipment": shipment, 
+            "statuses": tg_models.Shipment.Status.choices, 
+            "clients": clients_qs,
+            "total_ready_amount": total_ready_amount,
+            "ready_shipments_count": ready_shipments_count,
+            **_role_ctx(request)
+        },
     )
 
 
