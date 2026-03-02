@@ -3071,30 +3071,49 @@ def manager_shipment_new(request):
     if request.method == "POST":
         form = ShipmentCreateForm(request.POST, staff_filial=effective_filial)
         if form.is_valid():
-            # Get quantity for creating multiple shipments with same tracking
-            quantity = (request.POST.get("quantity") or "").strip()
-            try:
-                quantity = int(quantity) if quantity else 1
-                quantity = max(1, min(quantity, 100))  # Limit between 1 and 100
-            except (ValueError, TypeError):
-                quantity = 1
+            # Collect tracking numbers and quantities
+            tracking_data = []
+            for i in range(1, 5):  # Support up to 4 tracking numbers
+                tracking_number = request.POST.get(f"tracking_number_{i}", "").strip()
+                quantity = request.POST.get(f"quantity_{i}", "1").strip()
+                
+                if tracking_number:  # Only process if tracking number is provided
+                    try:
+                        quantity = int(quantity) if quantity else 1
+                        quantity = max(1, min(quantity, 100))  # Limit between 1 and 100
+                    except (ValueError, TypeError):
+                        quantity = 1
+                    
+                    tracking_data.append({
+                        'tracking_number': tracking_number,
+                        'quantity': quantity
+                    })
             
-            # Create shipments
-            first_shipment = None
-            for i in range(quantity):
-                shipment = form.save(staff_filial=effective_filial)
-                if first_shipment is None:
-                    first_shipment = shipment
-            
-            if quantity > 1:
-                messages.success(request, f"Создано {quantity} посылок с трек-номером {first_shipment.tracking_number}")
-            return redirect("manager_shipment_detail", shipment_id=first_shipment.id)
+            if not tracking_data:
+                form.add_error(None, "Необходимо указать хотя бы один трек-номер")
+            else:
+                # Create shipments for each tracking number
+                all_shipments = []
+                for data in tracking_data:
+                    for i in range(data['quantity']):
+                        shipment = form.save(staff_filial=effective_filial, tracking_number=data['tracking_number'])
+                        all_shipments.append(shipment)
+                
+                # Show success message
+                if len(tracking_data) == 1:
+                    # Single tracking number with multiple quantities
+                    messages.success(request, f"Создано {tracking_data[0]['quantity']} посылок с трек-номером {tracking_data[0]['tracking_number']}")
+                else:
+                    # Multiple tracking numbers
+                    total_shipments = len(all_shipments)
+                    tracking_numbers = [data['tracking_number'] for data in tracking_data]
+                    messages.success(request, f"Создано {total_shipments} посылок с трек-номерами: {', '.join(tracking_numbers)}")
+                
+                return redirect("manager_shipment_detail", shipment_id=all_shipments[0].id)
     else:
         initial = {}
         if group_obj is not None:
             initial["group"] = group_obj
-        if tracking_prefill:
-            initial["tracking_number"] = tracking_prefill
         form = ShipmentCreateForm(staff_filial=effective_filial, initial=initial)
 
     return render(

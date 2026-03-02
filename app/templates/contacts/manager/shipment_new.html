@@ -40,17 +40,25 @@
       {# Section 2: Tracking Information #}
       <div style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
         <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Трек-номер</div>
-        <div class="form-row">
-          <div class="col-9">
-            <label>{{ form.tracking_number.label }}</label>
-            {{ form.tracking_number }}
-            {% if form.tracking_number.errors %}<div class="error" style="margin-top:8px;">{{ form.tracking_number.errors }}</div>{% endif %}
+        
+        <div id="trackingNumbersContainer">
+          <div class="form-row tracking-row" data-row-id="1">
+            <div class="col-9">
+              <label>Трек-номер 1</label>
+              <input type="text" name="tracking_number_1" id="tracking_number_1" required />
+              <div class="muted" style="font-size:11px; margin-top:4px;">Введите трек-номер первой посылки</div>
+            </div>
+            <div class="col-3">
+              <label>Количество (шт.)</label>
+              <input type="number" name="quantity_1" id="quantity_1" value="1" min="1" max="100" />
+              <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок</div>
+            </div>
           </div>
-          <div class="col-3">
-            <label>Количество (шт.)</label>
-            <input type="number" name="quantity" id="quantityInput" value="1" min="1" max="100" />
-            <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок</div>
-          </div>
+        </div>
+        
+        <div style="margin-top: 12px; display: flex; gap: 8px;">
+          <button type="button" class="btn" id="addTrackingBtn" style="font-size: 12px; padding: 8px 12px;">+ Добавить трек-номер</button>
+          <button type="button" class="btn" id="removeTrackingBtn" style="font-size: 12px; padding: 8px 12px; display: none;">− Удалить последний</button>
         </div>
       </div>
 
@@ -112,7 +120,6 @@
       const totalPriceInput = document.querySelector('input[name="total_price"]');
       const modeEl = document.getElementById('pricingMode');
       const modeButtonsWrap = document.getElementById('pricingModeButtons');
-      const trackingInput = document.querySelector('input[name="tracking_number"]');
       
       // KG mode fields
       const kgWeightWrap = document.getElementById('kgWeightWrap');
@@ -120,6 +127,70 @@
       const totalPriceWrap = document.getElementById('totalPriceWrap');
       const weightInput = document.querySelector('input[name="weight_kg"]');
       const pricePerKgInput = document.getElementById('pricePerKgInput');
+
+      // Tracking numbers management
+      const trackingNumbersContainer = document.getElementById('trackingNumbersContainer');
+      const addTrackingBtn = document.getElementById('addTrackingBtn');
+      const removeTrackingBtn = document.getElementById('removeTrackingBtn');
+      let trackingRowCount = 1;
+      const maxTrackingRows = 4; // Maximum 4 tracking numbers
+
+      // Add new tracking number row
+      function addTrackingRow() {
+        if (trackingRowCount >= maxTrackingRows) return;
+        
+        trackingRowCount++;
+        const newRow = document.createElement('div');
+        newRow.className = 'form-row tracking-row';
+        newRow.setAttribute('data-row-id', trackingRowCount);
+        newRow.style.marginTop = '12px';
+        
+        newRow.innerHTML = `
+          <div class="col-9">
+            <label>Трек-номер ${trackingRowCount}</label>
+            <input type="text" name="tracking_number_${trackingRowCount}" id="tracking_number_${trackingRowCount}" />
+            <div class="muted" style="font-size:11px; margin-top:4px;">Введите трек-номер ${trackingRowCount === 2 ? 'второй' : trackingRowCount === 3 ? 'третьей' : 'четвертой'} посылки</div>
+          </div>
+          <div class="col-3">
+            <label>Количество (шт.)</label>
+            <input type="number" name="quantity_${trackingRowCount}" id="quantity_${trackingRowCount}" value="1" min="1" max="100" />
+            <div class="muted" style="font-size:11px; margin-top:4px;">Если несколько посылок</div>
+          </div>
+        `;
+        
+        trackingNumbersContainer.appendChild(newRow);
+        updateTrackingButtons();
+      }
+
+      // Remove last tracking number row
+      function removeTrackingRow() {
+        if (trackingRowCount <= 1) return;
+        
+        const lastRow = trackingNumbersContainer.querySelector(`[data-row-id="${trackingRowCount}"]`);
+        if (lastRow) {
+          lastRow.remove();
+          trackingRowCount--;
+          updateTrackingButtons();
+        }
+      }
+
+      // Update visibility of add/remove buttons
+      function updateTrackingButtons() {
+        if (addTrackingBtn) {
+          addTrackingBtn.style.display = trackingRowCount >= maxTrackingRows ? 'none' : '';
+        }
+        if (removeTrackingBtn) {
+          removeTrackingBtn.style.display = trackingRowCount <= 1 ? 'none' : '';
+        }
+      }
+
+      // Event listeners for tracking buttons
+      if (addTrackingBtn) {
+        addTrackingBtn.addEventListener('click', addTrackingRow);
+      }
+      if (removeTrackingBtn) {
+        removeTrackingBtn.addEventListener('click', removeTrackingRow);
+      }
 
       // Auto-fill price_per_kg when group is selected
       function updatePriceFromGroup() {
@@ -196,18 +267,25 @@
       }
       syncMode();
 
-      // Prevent auto-submit on Enter in tracking field (for scanner)
-      if (trackingInput && form) {
-        trackingInput.addEventListener('keydown', function(e) {
-          if (e.key === 'Enter') {
-            e.preventDefault();
+      // Prevent auto-submit on Enter in tracking fields (for scanner)
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && e.target.name && e.target.name.startsWith('tracking_number_')) {
+          e.preventDefault();
+          // Focus on the next tracking number field if available, otherwise focus on client code
+          const currentRowId = e.target.name.split('_')[2];
+          const nextRowId = parseInt(currentRowId) + 1;
+          const nextField = document.querySelector(`input[name="tracking_number_${nextRowId}"]`);
+          
+          if (nextField) {
+            nextField.focus();
+          } else {
             const clientCodeInput = document.querySelector('input[name="client_code"]');
             if (clientCodeInput) {
               clientCodeInput.focus();
             }
           }
-        });
-      }
+        }
+      });
     })();
   </script>
 {% endblock %}

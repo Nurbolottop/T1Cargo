@@ -24,13 +24,15 @@ class ShipmentCreateForm(forms.ModelForm):
         # Remove status from visible fields - will be auto-set from group
         if "status" in self.fields:
             del self.fields["status"]
+        # Remove tracking_number from visible fields - will be handled in view
+        if "tracking_number" in self.fields:
+            del self.fields["tracking_number"]
 
     class Meta:
         model = tg_models.Shipment
         fields = [
             "client_code",
             "group",
-            "tracking_number",
             "weight_kg",
             "price_per_kg",
             "total_price",
@@ -75,11 +77,14 @@ class ShipmentCreateForm(forms.ModelForm):
         self._user_obj = user_obj
         return value
 
-    def save(self, commit=True, staff_filial=None):
+    def save(self, commit=True, staff_filial=None, tracking_number=None):
         instance = super().save(commit=False)
         instance.user = getattr(self, "_user_obj", None)
         instance.filial = staff_filial if staff_filial is not None else getattr(instance.user, "filial", None)
         instance.group = self.cleaned_data.get("group")
+        # Set tracking number if provided
+        if tracking_number:
+            instance.tracking_number = tracking_number
         # Auto-set status to WAREHOUSE (Готов к выдаче) for manual creation
         instance.status = tg_models.Shipment.Status.WAREHOUSE
         if commit:
