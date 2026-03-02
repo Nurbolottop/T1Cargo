@@ -23,7 +23,7 @@ from django.views.decorators.cache import never_cache
 from django.views.decorators.csrf import csrf_protect
 
 from apps.telegram_bot import models as tg_models
-from apps.telegram_bot.tasks import notify_shipment_status_change
+from apps.telegram_bot.tasks import notify_user_arrival_task
 from apps.base import models as base_models
 from apps.telegram_bot.views import _send_telegram_message
 from apps.telegram_bot.tasks import (
@@ -2161,13 +2161,10 @@ def manager_batch_sorting_apply(request):
         # Send SMS/Telegram notifications for updated shipments
         for shipment in to_update:
             try:
-                notify_shipment_status_change(
-                    shipment_id=shipment.id,
+                notify_user_arrival_task(
                     user_id=client.id,
-                    shipment_status=tg_models.Shipment.Status.WAREHOUSE,
-                    tracking_number=shipment.tracking_number,
-                    weight_kg=float(shipment.weight_kg) if shipment.weight_kg else None,
-                    total_price=float(shipment.total_price) if shipment.total_price else None
+                    tracking=shipment.tracking_number,
+                    shipment_status=tg_models.Shipment.Status.WAREHOUSE
                 )
             except Exception as e:
                 # Log error but don't fail the whole operation
