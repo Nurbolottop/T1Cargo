@@ -148,6 +148,15 @@
           <div class="kv-k">Итого к оплате</div>
           <div class="kv-v">{{ total_to_pay|default:'0' }}</div>
         </div>
+        <!-- Debug info - remove later -->
+        <div class="kv-row" style="font-size:10px; color: #666;">
+          <div class="kv-k">Debug:</div>
+          <div class="kv-v">
+            Доставка: {{ delivery_due|default:'0' }} | 
+            Долг: {{ client.total_debt|default:'0' }} | 
+            Total: {{ total_to_pay|default:'0' }}
+          </div>
+        </div>
         {% if today_sorted_count > 0 %}
         <div class="kv-row" style="background: rgba(59,130,246,.08); border-left: 4px solid rgba(59,130,246,.5);">
           <div class="kv-k" style="color: rgba(59,130,246,1); font-weight:600;">Отсортировано сегодня</div>

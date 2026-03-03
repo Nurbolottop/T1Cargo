@@ -790,11 +790,21 @@ def manager_client_detail(request, user_id: int):
 
     delivery_due = Decimal("0")
     try:
-        qs_due = tg_models.Shipment.objects.filter(user=client, status=tg_models.Shipment.Status.WAREHOUSE)
+        qs_due = tg_models.Shipment.objects.filter(
+            user=client, 
+            status=tg_models.Shipment.Status.WAREHOUSE
+        ).exclude(
+            total_price__isnull=True
+        ).exclude(
+            total_price=0
+        )
         if staff_filial is not None:
             qs_due = qs_due.filter(filial=staff_filial)
-        delivery_due = (qs_due.aggregate(s=models.Sum("total_price")).get("s") or Decimal("0"))
-    except Exception:
+        delivery_due = qs_due.aggregate(
+            total=Sum('total_price')
+        )['total'] or Decimal("0")
+    except Exception as e:
+        logger.error(f"Error calculating delivery_due: {e}")
         delivery_due = Decimal("0")
 
     try:
