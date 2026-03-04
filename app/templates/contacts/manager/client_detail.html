@@ -138,6 +138,14 @@
           <div class="kv-k">Адрес</div>
           <div class="kv-v">{{ client.address|default:'—' }}</div>
         </div>
+        <div class="kv-row">
+          <div class="kv-k">Долг</div>
+          <div class="kv-v">{{ client.total_debt|default:'0' }}</div>
+        </div>
+        <div class="kv-row">
+          <div class="kv-k">Итоги к оплате</div>
+          <div class="kv-v">{{ total_to_pay|default:'0' }}</div>
+        </div>
       </div>
     {% endif %}
   </div>
