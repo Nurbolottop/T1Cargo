@@ -817,6 +817,31 @@ def manager_client_detail(request, user_id: int):
     # So we'll use delivery_due instead of total_due
     total_to_pay = delivery_due
     
+    # Calculate total amount for client's ready shipments (like in shipment detail)
+    total_ready_amount = Decimal("0")
+    ready_shipments_count = 0
+    if client:
+        ready_shipments_qs = tg_models.Shipment.objects.filter(
+            user=client,
+            status=tg_models.Shipment.Status.WAREHOUSE
+        ).exclude(
+            total_price__isnull=True
+        ).exclude(
+            total_price=0
+        )
+        if staff_filial is not None:
+            ready_shipments_qs = ready_shipments_qs.filter(filial=staff_filial)
+        
+        try:
+            ready_shipments_count = ready_shipments_qs.count()
+            total_ready_amount = ready_shipments_qs.aggregate(
+                total=Sum('total_price')
+            )['total'] or Decimal("0")
+        except Exception as e:
+            logger.error(f"Error calculating ready shipments total: {e}")
+            total_ready_amount = Decimal("0")
+            ready_shipments_count = 0
+    
     # Calculate today's sorted shipments total
     today_sorted_total = Decimal("0")
     today_sorted_count = 0
@@ -852,6 +877,8 @@ def manager_client_detail(request, user_id: int):
             "delivery_due": delivery_due,
             "total_due": total_due,
             "total_to_pay": total_to_pay,
+            "total_ready_amount": total_ready_amount,
+            "ready_shipments_count": ready_shipments_count,
             "today_sorted_total": today_sorted_total,
             "today_sorted_count": today_sorted_count,
             **_role_ctx(request),

@@ -162,7 +162,29 @@
         </div>
       </div>
     </div>
-    {% endif %}{% endif %}
+    {% endif %}
+    
+    <!-- Штрафы -->
+    {% if client.total_debt and client.total_debt != 0 %}
+    <div class="card" style="margin-top:12px; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.35);">
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;">
+        <div>
+          <div style="color: rgba(239,68,68,1); font-weight:850; font-size:12px; text-transform:uppercase; letter-spacing:.5px;">Штрафы</div>
+          <div style="font-weight:950; font-size:20px; color: rgba(239,68,68,1);">
+            {{ client.total_debt }} сом
+          </div>
+        </div>
+        <div style="text-align:right;">
+          {% if is_manager or is_director %}
+            <form method="post" action="{% url 'manager_client_debt_clear' user_id=client.id %}" style="display:inline;" onsubmit="return confirm('Сбросить штрафы клиента?');">
+              {% csrf_token %}
+              <button class="btn" style="background: rgba(239,68,68,0.15); color: rgba(239,68,68,1); border: 1px solid rgba(239,68,68,0.3); font-size:11px; padding:4px 8px;" type="submit">Сбросить</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 
   <div class="card" style="margin-top:12px;">
