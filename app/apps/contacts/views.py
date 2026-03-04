@@ -817,39 +817,6 @@ def manager_client_detail(request, user_id: int):
     # So we'll use delivery_due instead of total_due
     total_to_pay = delivery_due
     
-    # Calculate total statistics for all client shipments
-    total_weight = Decimal("0")
-    total_sum = Decimal("0")
-    total_shipments = 0
-    try:
-        all_shipments_qs = tg_models.Shipment.objects.filter(user=client)
-        if staff_filial is not None:
-            all_shipments_qs = all_shipments_qs.filter(filial=staff_filial)
-        
-        total_shipments = all_shipments_qs.count()
-        
-        # Calculate total weight (excluding null values)
-        weight_stats = all_shipments_qs.exclude(weight_kg__isnull=True).aggregate(
-            total_weight=Sum('weight_kg')
-        )
-        total_weight = weight_stats['total_weight'] or Decimal("0")
-        
-        # Calculate total sum (excluding null and zero values)
-        sum_stats = all_shipments_qs.exclude(
-            total_price__isnull=True
-        ).exclude(
-            total_price=0
-        ).aggregate(
-            total_sum=Sum('total_price')
-        )
-        total_sum = sum_stats['total_sum'] or Decimal("0")
-        
-    except Exception as e:
-        logger.error(f"Error calculating total stats: {e}")
-        total_weight = Decimal("0")
-        total_sum = Decimal("0")
-        total_shipments = 0
-    
     # Calculate today's sorted shipments total
     today_sorted_total = Decimal("0")
     today_sorted_count = 0
@@ -885,9 +852,6 @@ def manager_client_detail(request, user_id: int):
             "delivery_due": delivery_due,
             "total_due": total_due,
             "total_to_pay": total_to_pay,
-            "total_weight": total_weight,
-            "total_sum": total_sum,
-            "total_shipments": total_shipments,
             "today_sorted_total": today_sorted_total,
             "today_sorted_count": today_sorted_count,
             **_role_ctx(request),
