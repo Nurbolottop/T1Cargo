@@ -184,17 +184,11 @@
         </div>
       </div>
     </div>
-    </div>
     {% endif %}
   </div>
-    {% endif %}  <!-- Закрываем {% if edit_mode %} -->
 
   <div class="card" style="margin-top:12px;">
     <h3 class="h">Посылки клиента</h3>
-    <!-- Debug info -->
-    <div style="font-size:10px; color: #666; margin-bottom:10px;">
-      Debug: shipments={{ shipments|length }}, stats={{ shipments_stats }}
-    </div>
     <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
       {% if is_manager %}
         <a class="btn accent" href="{% url 'manager_shipment_new' %}">+ Добавить посылку</a>
@@ -214,27 +208,62 @@
             {% csrf_token %}
             <button class="btn" type="submit" style="background: rgba(16,185,129,.95); border-color: rgba(16,185,129,.95); color: rgba(255,255,255,1); font-weight:850;">Выдать все</button>
           </form>
+        {% endif %}
+      {% endif %}
+    </div>
+
     {# Filter buttons #}
-    <div style="display:flex; gap:10px; margin-bottom:10px;">
-      <button class="btn" type="button" data-filter="all" onclick="filterShipments('all')">Все</button>
-      <button class="btn" type="button" data-filter="new" onclick="filterShipments('new')">Новые</button>
-      <button class="btn" type="button" data-filter="ready" onclick="filterShipments('ready')">Готовы</button>
-      <button class="btn" type="button" data-filter="issued" onclick="filterShipments('issued')">Выданы</button>
+    <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+      <button class="btn accent" type="button" data-filter="all" onclick="filterShipments('all')">Все</button>
+      <button class="btn" type="button" data-filter="in_transit" onclick="filterShipments('in_transit')">В пути</button>
+      <button class="btn" type="button" data-filter="in_kyrgyzstan" onclick="filterShipments('in_kyrgyzstan')">В Кыргызстане</button>
+      <button class="btn" type="button" data-filter="warehouse" onclick="filterShipments('warehouse')">Готов к выдаче</button>
+      <button class="btn" type="button" data-filter="issued" onclick="filterShipments('issued')">Выдано</button>
       <button class="btn" type="button" onclick="filterShipments('all')">Сбросить</button>
     </div>
 
     {% if is_manager or is_director %}
       <div id="pickupModal" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.55); z-index:9999; align-items:center; justify-content:center; padding:16px;">
-        <div style="width:100%; max-width:420px; background: rgba(17,24,39,.98); border: 1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px;">
-          <div style="font-weight:850; font-size:18px;">Массовая выдача</div>
-          <div class="muted" style="margin-top:6px;">Отсканируйте трек-номера для выдачи:</div>
-          <div style="margin-top:12px;">
-            <input type="text" id="pickupScanInput" placeholder="Трек-номер..." style="width:100%; padding:10px; background: rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.1); border-radius:8px; color:#fff;">
+        <div style="width:100%; max-width:820px; background: rgba(17,24,39,.98); border: 1px solid rgba(255,255,255,.08); border-radius:16px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; align-items:center; flex-wrap:wrap;">
+            <div style="font-weight:850; font-size:18px;">Выдача</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+              <div class="badge"><span>Товаров:</span><b id="pickupCount">0</b></div>
+              <div class="badge"><span>Сумма:</span><b id="pickupSum">0</b></div>
+            </div>
           </div>
-          <div id="pickupMsg" style="margin-top:8px; font-size:12px;"></div>
+
+          <form method="post" action="{% url 'manager_client_pickup_add_by_tracking' user_id=client.id %}" id="pickupAddForm" style="display:flex; gap:10px; align-items:center; margin-top:12px;">
+            {% csrf_token %}
+            <input id="pickupScanInput" type="text" name="tracking" placeholder="Сканируйте трек и нажмите Enter" autocomplete="off" style="max-width:360px;" />
+            <button class="btn" type="submit">Добавить</button>
+            <button class="btn" type="button" id="pickupClear" style="margin-left:auto;">Сброс</button>
+          </form>
+
+          <div class="muted" id="pickupMsg" style="margin-top:10px; display:none;"></div>
+
+          <div style="margin-top:12px; max-height: 52vh; overflow:auto; border: 1px solid rgba(255,255,255,.07); border-radius:14px;">
+            <table style="margin:0;">
+              <thead>
+                <tr>
+                  <th>Трек</th>
+                  <th>Сумма</th>
+                  <th>Отправка (Китай)</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="pickupList">
+                <tr><td colspan="4" class="muted">Пока ничего не добавлено.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
           <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:14px;">
-            <button class="btn" type="button" id="pickupCancel">Отмена</button>
-            <button class="btn accent" type="button" id="pickupIssue">Выдать</button>
+            <button class="btn" type="button" id="pickupClose">Закрыть</button>
+            <form method="post" action="{% url 'manager_client_pickup_bulk_issue' user_id=client.id %}" id="pickupIssueForm" style="margin:0;">
+              {% csrf_token %}
+              <button class="btn accent" type="submit" id="pickupIssueBtn">Выдать</button>
+            </form>
           </div>
         </div>
       </div>
@@ -242,33 +271,17 @@
     <table>
       <thead>
         <tr>
-          <th>#</th>
-          <th>Клиент</th>
           <th>Трек</th>
           <th>Статус</th>
           <th>Вес</th>
-          <th>Сумма</th>
+          <th>Итого</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         {% for sh in shipments %}
-          <tr data-shipment-id="{{ sh.id }}" data-shipment-status="{{ sh.status }}">
-            <td>{{ forloop.counter }}</td>
-            <td>
-              {% if sh.user %}
-                <a href="{% url 'manager_client_detail' user_id=sh.user.id %}">{{ sh.user.client_code|default:sh.user.full_name|default:sh.user.username|default:'—' }}</a>
-              {% else %}
-                —
-              {% endif %}
-            </td>
-            <td>
-              {% if sh.tracking_number %}
-                <a href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">{{ sh.tracking_number }}</a>
-              {% else %}
-                <a href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">—</a>
-              {% endif %}
-            </td>
+          <tr data-shipment-id="{{ sh.id }}" data-tracking="{{ sh.tracking_number|default:'' }}">
+            <td>{{ sh.tracking_number }}</td>
             <td data-shipment-status="{{ sh.id }}">{{ sh.get_status_display }}</td>
             <td class="muted">{{ sh.weight_kg }}</td>
             <td class="muted" data-shipment-total="{{ sh.id }}">
@@ -276,10 +289,10 @@
             </td>
             <td>
               <div style="display:flex; gap:10px; justify-content:flex-end;">
-                <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Детали</a>
-                {% if is_manager or is_director %}
-                  {% if sh.status == 'ready' %}
-                    <form method="post" action="{% url 'manager_client_shipment_set_issued' user_id=client.id shipment_id=sh.id %}" style="margin:0;">
+                <a class="btn" href="{% url 'manager_shipment_detail' shipment_id=sh.id %}">Открыть</a>
+                {% if sh.status == 'warehouse' %}
+                  {% if is_manager or is_director %}
+                    <form method="post" action="{% url 'manager_client_shipment_set_issued' user_id=client.id shipment_id=sh.id %}" style="margin:0;" data-issued-form="1" data-shipment-id="{{ sh.id }}">
                       {% csrf_token %}
                       <button class="btn" type="submit" style="background: rgba(245,158,11,.95); border-color: rgba(245,158,11,.95); color: rgba(17,24,39,1); font-weight:850;">Выдано</button>
                     </form>
@@ -289,9 +302,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr>
-            <td colspan="7" style="text-align:center; padding:20px; color: rgba(156,163,175,.8);">Нет посылок</td>
-          </tr>
+          <tr><td colspan="5" class="muted">У клиента пока нет посылок.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -306,7 +317,6 @@
         <button class="btn accent" type="button" id="issuedOk">Да, выдано</button>
       </div>
     </div>
-    {% endif %}
   </div>
 
   <script>
