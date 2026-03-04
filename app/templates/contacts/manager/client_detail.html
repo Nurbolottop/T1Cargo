@@ -127,92 +127,25 @@
           <div class="kv-v" style="font-weight:850; color: rgba(156,163,175,.98);">{{ client.telegram_id|default:'—' }}</div>
         </div>
         <div class="kv-row">
-          <div class="kv-k">Долг</div>
-          <div class="kv-v">
-            {{ client.total_debt|default:'0' }}
-            {% if is_manager or is_director %}
-              {% if client.total_debt and client.total_debt != 0 %}
-                <form method="post" action="{% url 'manager_client_debt_clear' user_id=client.id %}" style="display:inline; margin-left:10px;" onsubmit="return confirm('Сбросить долг клиента?');">
-                  {% csrf_token %}
-                  <button class="btn" type="submit">Сбросить долг</button>
-                </form>
-              {% endif %}
-            {% endif %}
-          </div>
+          <div class="kv-k">Общий вес</div>
+          <div class="kv-v">{{ total_weight|default:'0' }} кг</div>
         </div>
         <div class="kv-row">
-          <div class="kv-k">Итоги к оплате</div>
-          <div class="kv-v">{{ total_to_pay|default:'0' }}</div>
+          <div class="kv-k">Общая сумма</div>
+          <div class="kv-v">{{ total_sum|default:'0' }} сом</div>
         </div>
-        <!-- Debug info - remove later -->
-        <div class="kv-row" style="
-          font-size: 10px; 
-          color: #666; 
-          background: rgba(255,255,255,0.5);
-          border-radius: 8px;
-          padding: 8px;
-          margin: 4px 0;
-          opacity: 0.7;
-        ">
-          <div class="kv-k" style="font-weight: 600;">Debug:</div>
-          <div class="kv-v" style="font-family: monospace;">
-            Доставка: {{ delivery_due|default:'0' }} | 
-            Долг: {{ client.total_debt|default:'0' }} | 
-            Total: {{ total_to_pay|default:'0' }}
-          </div>
+        <div class="kv-row">
+          <div class="kv-k">Количество посылок</div>
+          <div class="kv-v">{{ total_shipments|default:'0' }} шт</div>
         </div>
-        {% if today_sorted_count > 0 %}
-        <div class="kv-row" style="
-          background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(59,130,246,0.04) 100%); 
-          border-left: 4px solid rgba(59,130,246,0.6);
-          border-radius: 12px;
-          margin: 8px 0;
-          box-shadow: 0 1px 3px rgba(59,130,246,0.1);
-          position: relative;
-          overflow: hidden;
-        ">
-          <div class="kv-k" style="
-            color: rgba(59,130,246,1); 
-            font-weight:600; 
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          ">
-            <span style="
-              display: inline-flex;
-              align-items: center;
-              justify-content: center;
-              width: 24px;
-              height: 24px;
-              background: rgba(59,130,246,0.15);
-              border-radius: 6px;
-              font-size: 12px;
-              font-weight: 700;
-            ">📦</span>
-            Отсортировано сегодня
-          </div>
-          <div class="kv-v" style="
-            color: rgba(59,130,246,1); 
-            font-weight:850; 
-            font-size: 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 2px;
-          ">
-            <span style="font-weight: 900;">{{ today_sorted_total }} сом</span>
-            <span style="
-              font-size: 11px; 
-              font-weight: 500; 
-              color: rgba(59,130,246,0.8);
-              background: rgba(59,130,246,0.1);
-              padding: 2px 6px;
-              border-radius: 4px;
-            ">{{ today_sorted_count }} шт.</span>
-          </div>
+        <div class="kv-row">
+          <div class="kv-k">Долг</div>
+          <div class="kv-v">{{ client.total_debt|default:'0' }} сом</div>
         </div>
-        {% endif %}
+        <div class="kv-row">
+          <div class="kv-k">Итого к оплате</div>
+          <div class="kv-v">{{ total_to_pay|default:'0' }} сом</div>
+        </div>
         <div class="kv-row">
           <div class="kv-k">ФИО</div>
           <div class="kv-v">{{ client.full_name|default:'—' }}</div>
