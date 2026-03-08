@@ -85,15 +85,16 @@ class ShipmentCreateForm(forms.ModelForm):
         instance.group = self.cleaned_data.get("group")
         if tracking_number:
             instance.tracking_number = tracking_number
+        # Apply passed values AFTER super().save() to override form values
         if weight_kg is not None:
             instance.weight_kg = weight_kg
+        if total_price is not None:
+            instance.total_price = total_price
         # If price_per_kg not provided, use filial's default_price_per_kg
         if price_per_kg is not None:
             instance.price_per_kg = price_per_kg
         elif instance.filial and getattr(instance.filial, "default_price_per_kg", None):
             instance.price_per_kg = instance.filial.default_price_per_kg
-        if total_price is not None:
-            instance.total_price = total_price
         instance.status = tg_models.Shipment.Status.WAREHOUSE
         if commit:
             instance.save()

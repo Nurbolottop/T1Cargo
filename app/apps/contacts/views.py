@@ -3340,6 +3340,9 @@ def manager_shipment_new(request):
                 for data in tracking_data:
                     qty = int(data.get("quantity") or 1)
                     for _ in range(qty):
+                        # Reset form instance to create new shipment (not update existing)
+                        form.instance.pk = None
+                        form.instance._state.adding = True
                         shipment = form.save(
                             staff_filial=effective_filial,
                             tracking_number=data["tracking_number"],
