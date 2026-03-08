@@ -6,8 +6,21 @@
 
 {% block content %}
   <div class="card">
-    <h2 class="h">Группы</h2>
-    <div class="muted">Список загруженных Excel-групп.</div>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <h2 class="h">Группы</h2>
+        <div class="muted">Список загруженных Excel-групп.</div>
+      </div>
+      <button type="button" class="btn accent" onclick="openCreateGroupModal()">+ Добавить группу</button>
+    </div>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}error{% else %}success{% endif %}" style="margin-top:12px; padding: 12px; border-radius: 8px; {% if message.tags != 'error' %}background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: rgba(34,197,94,1);{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
   </div>
 
   <div class="card" style="margin-top:12px;">
@@ -40,4 +53,70 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Modal for creating new group -->
+  <div id="createGroupModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: var(--card-bg); border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+      <h3 class="h" style="margin-top: 0;">Добавить группу</h3>
+      
+      <form method="post" action="{% url 'manager_group_create' %}">
+        {% csrf_token %}
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600;">Дата отправки</label>
+          <input type="date" name="sent_date" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;" />
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600;">Номер группы</label>
+          <input type="text" value="(генерируется автоматически)" disabled style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--muted);" />
+          <div class="muted" style="font-size: 11px; margin-top: 4px;">Номер генерируется автоматически (например: group-91)</div>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600;">Статус группы</label>
+          <select name="status" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;">
+            <option value="on_the_way">В пути</option>
+            <option value="bishkek">В Кыргызстане</option>
+            <option value="warehouse">Готов к выдаче</option>
+            <option value="issued">Выдано</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600;">Цена за кг</label>
+          <input type="number" step="0.01" name="price_per_kg" placeholder="0.00" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;" />
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+          <button type="button" class="btn" onclick="closeCreateGroupModal()">Отмена</button>
+          <button type="submit" class="btn accent">Создать</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function openCreateGroupModal() {
+      document.getElementById('createGroupModal').style.display = 'flex';
+    }
+    
+    function closeCreateGroupModal() {
+      document.getElementById('createGroupModal').style.display = 'none';
+    }
+    
+    // Close modal on click outside
+    document.getElementById('createGroupModal').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeCreateGroupModal();
+      }
+    });
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeCreateGroupModal();
+      }
+    });
+  </script>
 {% endblock %}

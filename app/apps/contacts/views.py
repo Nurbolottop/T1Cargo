@@ -1371,6 +1371,67 @@ def manager_groups(request):
 
 
 @login_required(login_url="/manager/login/")
+@csrf_protect
+def manager_group_create(request):
+    """Создание новой группы через модальное окно."""
+    denied = _require_editor_role(request)
+    if denied is not None:
+        return denied
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return denied_filial
+
+    if request.method != "POST":
+        return HttpResponseForbidden("method_not_allowed")
+
+    sent_date_raw = (request.POST.get("sent_date") or "").strip()
+    status_raw = (request.POST.get("status") or "").strip()
+    price_per_kg_raw = (request.POST.get("price_per_kg") or "").strip()
+
+    # Validate and parse inputs
+    sent_date = None
+    if sent_date_raw:
+        try:
+            sent_date = timezone.datetime.fromisoformat(sent_date_raw).date()
+        except Exception:
+            messages.error(request, "Некорректная дата отправки")
+            return redirect("manager_groups")
+
+    # Validate status
+    valid_statuses = dict(tg_models.ShipmentGroup.Status.choices).keys()
+    group_status = status_raw if status_raw in valid_statuses else tg_models.ShipmentGroup.Status.ON_THE_WAY
+
+    # Validate price_per_kg
+    price_per_kg = None
+    if price_per_kg_raw:
+        try:
+            price_per_kg = Decimal(price_per_kg_raw.replace(",", "."))
+            if price_per_kg < 0:
+                price_per_kg = None
+        except Exception:
+            price_per_kg = None
+
+    # Generate next group name
+    def _next_group_name():
+        last = tg_models.ShipmentGroup.objects.order_by("-id").first()
+        next_n = 1 if last is None else int(last.id) + 1
+        return f"group-{next_n}"
+
+    # Create group
+    group = tg_models.ShipmentGroup.objects.create(
+        name=_next_group_name(),
+        status=group_status,
+        sent_date=sent_date,
+        price_per_kg=price_per_kg or Decimal("0"),
+        filial=staff_filial,
+    )
+
+    messages.success(request, f"Группа {group.name} успешно создана")
+    return redirect("manager_group_detail", group_id=group.id)
+
+
+@login_required(login_url="/manager/login/")
 def manager_group_detail(request, group_id: int):
     denied = _require_manager(request)
     if denied is not None:
