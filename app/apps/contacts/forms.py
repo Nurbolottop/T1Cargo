@@ -44,6 +44,7 @@ class ShipmentCreateForm(forms.ModelForm):
         ]
         widgets = {
             "arrival_date": forms.DateInput(attrs={"type": "date"}),
+            "price_per_kg": forms.NumberInput(attrs={"step": "0.01", "placeholder": "Авто из филиала"}),
         }
 
     def clean_group(self):
@@ -86,8 +87,11 @@ class ShipmentCreateForm(forms.ModelForm):
             instance.tracking_number = tracking_number
         if weight_kg is not None:
             instance.weight_kg = weight_kg
+        # If price_per_kg not provided, use filial's default_price_per_kg
         if price_per_kg is not None:
             instance.price_per_kg = price_per_kg
+        elif instance.filial and getattr(instance.filial, "default_price_per_kg", None):
+            instance.price_per_kg = instance.filial.default_price_per_kg
         if total_price is not None:
             instance.total_price = total_price
         instance.status = tg_models.Shipment.Status.WAREHOUSE

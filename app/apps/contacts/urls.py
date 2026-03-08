@@ -16,6 +16,7 @@ urlpatterns = [
     path("manager/sorting/batch/apply/", views.manager_batch_sorting_apply, name="manager_batch_sorting_apply"),
     path("manager/penalties/", views.manager_penalties, name="manager_penalties"),
     path("manager/clients/", views.manager_clients, name="manager_clients"),
+    path("manager/clients/lookup/", views.manager_client_lookup, name="manager_client_lookup"),
     path("manager/clients/<int:user_id>/", views.manager_client_detail, name="manager_client_detail"),
     path("manager/clients/<int:user_id>/debt/clear/", views.manager_client_debt_clear, name="manager_client_debt_clear"),
     path(

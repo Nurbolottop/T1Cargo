@@ -716,6 +716,66 @@ def manager_clients(request):
 
 
 @login_required(login_url="/manager/login/")
+def manager_client_lookup(request):
+    """AJAX endpoint для поиска клиента по коду и получения статистики посылок."""
+    denied = _require_manager(request)
+    if denied is not None:
+        return JsonResponse({"ok": False, "error": "Forbidden"}, status=403)
+
+    staff_filial, denied_filial = _get_staff_filial_or_denied(request)
+    if denied_filial is not None:
+        return JsonResponse({"ok": False, "error": "Forbidden"}, status=403)
+
+    code = (request.GET.get("code") or "").strip()
+    if not code:
+        return JsonResponse({"ok": False, "error": "No code provided"}, status=400)
+
+    # Поиск клиента по коду (точное совпадение или по суффиксу)
+    qs = tg_models.User.objects.all()
+    if staff_filial is not None:
+        qs = qs.filter(filial=staff_filial)
+
+    user_obj = qs.filter(client_code__iexact=code).first()
+    if not user_obj and "-" not in code:
+        user_obj = qs.filter(client_code__iendswith=f"-{code}").first()
+
+    if not user_obj:
+        return JsonResponse({"ok": False, "error": "Клиент не найден"}, status=404)
+
+    # Получаем статистику по посылкам клиента
+    shipments_qs = tg_models.Shipment.objects.filter(user=user_obj)
+    if staff_filial is not None:
+        shipments_qs = shipments_qs.filter(filial=staff_filial)
+
+    warehouse_count = shipments_qs.filter(status=tg_models.Shipment.Status.WAREHOUSE).count()
+    bishkek_count = shipments_qs.filter(status=tg_models.Shipment.Status.BISHKEK).count()
+    on_the_way_count = shipments_qs.filter(status=tg_models.Shipment.Status.ON_THE_WAY).count()
+
+    # Цена за кг из филиала клиента
+    default_price = None
+    if user_obj.filial:
+        default_price = getattr(user_obj.filial, "default_price_per_kg", None)
+
+    return JsonResponse({
+        "ok": True,
+        "user": {
+            "id": user_obj.id,
+            "client_code": user_obj.client_code,
+            "full_name": user_obj.full_name,
+            "phone": user_obj.phone,
+        },
+        "shipments": {
+            "warehouse": warehouse_count,  # Готовы к выдаче
+            "bishkek": bishkek_count,      # В Кыргызстане
+            "on_the_way": on_the_way_count,  # В пути
+        },
+        "filial": {
+            "default_price_per_kg": float(default_price) if default_price else None,
+        } if user_obj.filial else None,
+    })
+
+
+@login_required(login_url="/manager/login/")
 def manager_client_detail(request, user_id: int):
     denied = _require_manager(request)
     if denied is not None:
@@ -3219,21 +3279,28 @@ def manager_shipment_new(request):
 
             # Collect tracking numbers and quantities
             tracking_data = []
-            for i in range(1, 5):  # Support up to 4 tracking numbers
-                tracking_number = request.POST.get(f"tracking_number_{i}", "").strip()
-                quantity = request.POST.get(f"quantity_{i}", "1").strip()
-                
-                if tracking_number:  # Only process if tracking number is provided
+            indices = set()
+            for k in request.POST.keys():
+                if not k.startswith("tracking_number_"):
+                    continue
+                suffix = k.split("tracking_number_", 1)[1]
+                try:
+                    indices.add(int(suffix))
+                except Exception:
+                    continue
+
+            for i in sorted(indices):
+                tracking_number = (request.POST.get(f"tracking_number_{i}") or "").strip()
+                quantity_raw = (request.POST.get(f"quantity_{i}") or "1").strip()
+
+                if tracking_number:
                     try:
-                        quantity = int(quantity) if quantity else 1
-                        quantity = max(1, min(quantity, 100))  # Limit between 1 and 100
+                        quantity = int(quantity_raw) if quantity_raw else 1
+                        quantity = max(1, min(quantity, 100))
                     except (ValueError, TypeError):
                         quantity = 1
-                    
-                    tracking_data.append({
-                        'tracking_number': tracking_number,
-                        'quantity': quantity
-                    })
+
+                    tracking_data.append({"tracking_number": tracking_number, "quantity": quantity})
             
             if not tracking_data:
                 form.add_error(None, "Необходимо указать хотя бы один трек-номер")
@@ -3468,6 +3535,27 @@ def manager_shipment_detail(request, shipment_id: int):
             total_ready_amount = Decimal("0")
             ready_shipments_count = 0
 
+    # Calculate shipment counts for client by status
+    client_shipment_stats = {
+        "warehouse": 0,
+        "bishkek": 0,
+        "on_the_way": 0,
+    }
+    if shipment.user:
+        user_shipments_qs = tg_models.Shipment.objects.filter(user=shipment.user)
+        if staff_filial is not None:
+            user_shipments_qs = user_shipments_qs.filter(filial=staff_filial)
+        
+        client_shipment_stats["warehouse"] = user_shipments_qs.filter(
+            status=tg_models.Shipment.Status.WAREHOUSE
+        ).count()
+        client_shipment_stats["bishkek"] = user_shipments_qs.filter(
+            status=tg_models.Shipment.Status.BISHKEK
+        ).count()
+        client_shipment_stats["on_the_way"] = user_shipments_qs.filter(
+            status=tg_models.Shipment.Status.ON_THE_WAY
+        ).count()
+
     return render(
         request,
         "contacts/manager/shipment_detail.html",
@@ -3478,6 +3566,7 @@ def manager_shipment_detail(request, shipment_id: int):
             "clients": clients_qs,
             "total_ready_amount": total_ready_amount,
             "ready_shipments_count": ready_shipments_count,
+            "client_shipment_stats": client_shipment_stats,
             **_role_ctx(request)
         },
     )

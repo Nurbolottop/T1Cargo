@@ -14,6 +14,18 @@
       {% endif %}
     </div>
 
+    {% if shipment.user %}
+    <div class="card" style="margin-top:8px; background: var(--card-bg); border: 1px solid var(--border);">
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center;">
+        <div style="font-size: 12px; color: var(--muted);">
+          <span style="color: var(--success); font-weight: 600;">Готовы к выдаче: {{ client_shipment_stats.warehouse }}</span> | 
+          <span style="color: var(--warning); font-weight: 600;">В Кыргызстане: {{ client_shipment_stats.bishkek }}</span> | 
+          <span>В пути: {{ client_shipment_stats.on_the_way }}</span>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card" style="margin-top:12px;">
       <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
         <div>

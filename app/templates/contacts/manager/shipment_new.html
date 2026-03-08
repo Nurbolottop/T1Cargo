@@ -23,6 +23,17 @@
             {{ form.client_code }}
             {% if form.client_code.errors %}<div class="error" style="margin-top:8px;">{{ form.client_code.errors }}</div>{% endif %}
             <div class="muted" style="font-size:11px; margin-top:4px;">Введите только номер (например: 1957) или полный код (например: T1-1957)</div>
+            
+            {# Client info display (ajax loaded) #}
+            <div id="clientInfoBox" style="margin-top: 12px; padding: 12px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; display: none;">
+              <div style="font-weight: 600; margin-bottom: 4px;" id="clientName"></div>
+              <div style="font-size: 12px; color: var(--muted);">
+                Готовы к выдаче: <span id="warehouseCount" style="color: var(--success); font-weight: 600;">0</span> | 
+                В Кыргызстане: <span id="bishkekCount" style="color: var(--warning); font-weight: 600;">0</span> | 
+                В пути: <span id="onTheWayCount">0</span>
+              </div>
+            </div>
+            <div id="clientNotFound" style="margin-top: 8px; color: var(--error); font-size: 12px; display: none;">Клиент не найден</div>
           </div>
           <div class="col-6">
             <label>{{ form.group.label }}</label>
@@ -89,7 +100,7 @@
           <div class="col-6" id="kgPriceWrap" style="display:none;">
             <label>Цена за кг</label>
             <input type="number" step="0.01" name="price_per_kg" id="pricePerKgInput" value="" />
-            <div class="muted" style="font-size:11px; margin-top:4px;">Автоматически из группы (если задана)</div>
+            <div class="muted" style="font-size:11px; margin-top:4px;">Автоматически из филиала клиента (если задана)</div>
           </div>
 
           {# Field for "По габариту" mode only #}
@@ -135,12 +146,9 @@
       const addTrackingBtn = document.getElementById('addTrackingBtn');
       const removeTrackingBtn = document.getElementById('removeTrackingBtn');
       let trackingRowCount = 1;
-      const maxTrackingRows = 4; // Maximum 4 tracking numbers
 
       // Add new tracking number row
       function addTrackingRow() {
-        if (trackingRowCount >= maxTrackingRows) return;
-        
         trackingRowCount++;
         const newRow = document.createElement('div');
         newRow.className = 'form-row tracking-row';
@@ -195,7 +203,7 @@
       // Update visibility of add/remove buttons
       function updateTrackingButtons() {
         if (addTrackingBtn) {
-          addTrackingBtn.style.display = trackingRowCount >= maxTrackingRows ? 'none' : '';
+          addTrackingBtn.style.display = '';
         }
         if (removeTrackingBtn) {
           removeTrackingBtn.style.display = trackingRowCount <= 1 ? 'none' : '';
@@ -210,20 +218,109 @@
         removeTrackingBtn.addEventListener('click', removeTrackingRow);
       }
 
+      // Auto-add next tracking row when current is filled
+      if (trackingNumbersContainer) {
+        trackingNumbersContainer.addEventListener('input', function(e) {
+          const target = e.target;
+          if (!target || !target.name || !target.name.startsWith('tracking_number_')) return;
+          
+          const value = (target.value || '').trim();
+          if (!value) return;
+          
+          // Check if this is the last tracking row
+          const currentRowId = parseInt(target.name.split('_')[2]) || 0;
+          const nextField = document.querySelector(`input[name="tracking_number_${currentRowId + 1}"]`);
+          
+          // If no next field exists, auto-add new row
+          if (!nextField) {
+            addTrackingRow();
+          }
+        });
+      }
+
       // Auto-fill price_per_kg when group is selected
       function updatePriceFromGroup() {
         if (groupSelect && pricePerKgInput) {
           const selected = groupSelect.options[groupSelect.selectedIndex];
           const price = selected.getAttribute('data-price');
-          if (price) {
+          // Only set from group if no price from filial client
+          if (price && !pricePerKgInput.dataset.fromClient) {
             pricePerKgInput.value = price;
+          }
+          // Save selected group to localStorage
+          const groupId = groupSelect.value;
+          if (groupId) {
+            localStorage.setItem('lastSelectedGroup', groupId);
           }
         }
       }
 
       if (groupSelect) {
         groupSelect.addEventListener('change', updatePriceFromGroup);
+        
+        // Restore last selected group on page load
+        const lastGroup = localStorage.getItem('lastSelectedGroup');
+        if (lastGroup && !groupSelect.value) {
+          const option = groupSelect.querySelector(`option[value="${lastGroup}"]`);
+          if (option) {
+            groupSelect.value = lastGroup;
+            updatePriceFromGroup();
+          }
+        }
+        
         updatePriceFromGroup(); // Set on page load
+      }
+
+      // Client lookup via AJAX
+      const clientCodeInput = document.querySelector('input[name="client_code"]');
+      const clientInfoBox = document.getElementById('clientInfoBox');
+      const clientNotFound = document.getElementById('clientNotFound');
+      const clientNameEl = document.getElementById('clientName');
+      const warehouseCountEl = document.getElementById('warehouseCount');
+      const bishkekCountEl = document.getElementById('bishkekCount');
+      const onTheWayCountEl = document.getElementById('onTheWayCount');
+      
+      let clientLookupTimeout = null;
+      
+      function lookupClient(code) {
+        if (!code || code.length < 2) {
+          clientInfoBox.style.display = 'none';
+          clientNotFound.style.display = 'none';
+          return;
+        }
+        
+        fetch(`{% url 'manager_client_lookup' %}?code=${encodeURIComponent(code)}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.ok) {
+              clientInfoBox.style.display = 'block';
+              clientNotFound.style.display = 'none';
+              clientNameEl.textContent = `${data.user.full_name || '—'} (${data.user.client_code})`;
+              warehouseCountEl.textContent = data.shipments.warehouse;
+              bishkekCountEl.textContent = data.shipments.bishkek;
+              onTheWayCountEl.textContent = data.shipments.on_the_way;
+              
+              // Auto-fill price_per_kg from filial if available
+              if (data.filial && data.filial.default_price_per_kg && pricePerKgInput) {
+                pricePerKgInput.value = data.filial.default_price_per_kg;
+                pricePerKgInput.dataset.fromClient = 'true';
+              }
+            } else {
+              clientInfoBox.style.display = 'none';
+              clientNotFound.style.display = code.length >= 3 ? 'block' : 'none';
+            }
+          })
+          .catch(() => {
+            clientInfoBox.style.display = 'none';
+          });
+      }
+      
+      if (clientCodeInput) {
+        clientCodeInput.addEventListener('input', function(e) {
+          const val = (e.target.value || '').trim();
+          clearTimeout(clientLookupTimeout);
+          clientLookupTimeout = setTimeout(() => lookupClient(val), 300);
+        });
       }
 
       // Calculate total price for kg mode
@@ -285,22 +382,62 @@
       }
       syncMode();
 
+      // Auto-focus on first tracking field on page load (for scanner)
+      const firstTrackingInput = document.getElementById('tracking_number_1');
+      if (firstTrackingInput) {
+        firstTrackingInput.focus();
+      }
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', function(e) {
+        // Ctrl+Enter or Cmd+Enter to submit form
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          const submitBtn = document.getElementById('submitBtn');
+          if (submitBtn) {
+            submitBtn.click();
+          }
+        }
+      });
+
       // Prevent auto-submit on Enter in tracking fields (for scanner)
       document.addEventListener('keydown', function(e) {
         if (e.key === 'Enter' && e.target.name && e.target.name.startsWith('tracking_number_')) {
           e.preventDefault();
-          // Focus on the next tracking number field if available, otherwise focus on client code
-          const currentRowId = e.target.name.split('_')[2];
-          const nextRowId = parseInt(currentRowId) + 1;
-          const nextField = document.querySelector(`input[name="tracking_number_${nextRowId}"]`);
+          
+          // Check if current field has value
+          const currentValue = e.target.value.trim();
+          if (!currentValue) return;
+          
+          // Add new row if needed and focus on it
+          const currentRowId = parseInt(e.target.name.split('_')[2]) || 0;
+          let nextField = document.querySelector(`input[name="tracking_number_${currentRowId + 1}"]`);
+          
+          // If no next field, create one
+          if (!nextField) {
+            addTrackingRow();
+            // Get the newly created field
+            nextField = document.querySelector(`input[name="tracking_number_${trackingRowCount}"]`);
+          }
           
           if (nextField) {
             nextField.focus();
           } else {
+            // If can't create next field, focus on weight input or client code
             const clientCodeInput = document.querySelector('input[name="client_code"]');
-            if (clientCodeInput) {
+            if (clientCodeInput && !clientCodeInput.value.trim()) {
               clientCodeInput.focus();
+            } else if (weightInput) {
+              weightInput.focus();
             }
+          }
+        }
+        
+        // Tab from client code to weight
+        if (e.key === 'Enter' && e.target.name === 'client_code') {
+          e.preventDefault();
+          if (weightInput) {
+            weightInput.focus();
           }
         }
       });
