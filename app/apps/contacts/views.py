@@ -1373,7 +1373,7 @@ def manager_groups(request):
 @login_required(login_url="/manager/login/")
 @csrf_protect
 def manager_group_create(request):
-    """Создание новой группы через модальное окно."""
+    """Создание новой группы через модальное окно (AJAX)."""
     denied = _require_editor_role(request)
     if denied is not None:
         return denied
@@ -1395,6 +1395,8 @@ def manager_group_create(request):
         try:
             sent_date = timezone.datetime.fromisoformat(sent_date_raw).date()
         except Exception:
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({"success": False, "error": "Некорректная дата отправки"})
             messages.error(request, "Некорректная дата отправки")
             return redirect("manager_groups")
 
@@ -1427,6 +1429,25 @@ def manager_group_create(request):
         filial=staff_filial,
     )
 
+    # Prepare response data
+    status_display = dict(tg_models.ShipmentGroup.Status.choices).get(group.status, group.status)
+    
+    # Check if AJAX request
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            "success": True,
+            "group": {
+                "id": group.id,
+                "name": group.name,
+                "sent_date": group.sent_date.strftime('%d.%m.%Y') if group.sent_date else None,
+                "status": group.status,
+                "status_display": status_display,
+                "created_at": group.created_at.strftime('%d.%m.%Y %H:%M'),
+                "filial": str(group.filial) if group.filial else None,
+            }
+        })
+    
+    # Regular POST - redirect with message
     messages.success(request, f"Группа {group.name} успешно создана")
     return redirect("manager_group_detail", group_id=group.id)
 

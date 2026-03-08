@@ -14,17 +14,11 @@
       <button type="button" class="btn accent" onclick="openCreateGroupModal()">+ Добавить группу</button>
     </div>
 
-    {% if messages %}
-      {% for message in messages %}
-        <div class="{% if message.tags == 'error' %}error{% else %}success{% endif %}" style="margin-top:12px; padding: 12px; border-radius: 8px; {% if message.tags != 'error' %}background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: rgba(34,197,94,1);{% endif %}">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
+    <div id="ajaxMessage" style="margin-top: 12px; display: none;"></div>
   </div>
 
   <div class="card" style="margin-top:12px;">
-    <table>
+    <table id="groupsTable">
       <thead>
         <tr>
           <th>Группа</th>
@@ -48,34 +42,34 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="6" class="muted">Группы не найдены.</td></tr>
+          <tr id="emptyRow"><td colspan="6" class="muted">Группы не найдены.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
 
   <!-- Modal for creating new group -->
-  <div id="createGroupModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
-    <div style="background: var(--card-bg); border-radius: 12px; padding: 24px; width: 90%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+  <div id="createGroupModal" class="modal-overlay">
+    <div class="modal-content">
       <h3 class="h" style="margin-top: 0;">Добавить группу</h3>
       
-      <form method="post" action="{% url 'manager_group_create' %}">
+      <form id="createGroupForm" method="post" action="{% url 'manager_group_create' %}">
         {% csrf_token %}
         
         <div style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 6px; font-weight: 600;">Дата отправки</label>
-          <input type="date" name="sent_date" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;" />
+          <input type="date" name="sent_date" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;" />
         </div>
         
         <div style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 6px; font-weight: 600;">Номер группы</label>
-          <input type="text" value="(генерируется автоматически)" disabled style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--muted);" />
+          <input type="text" value="(генерируется автоматически)" disabled style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--muted); box-sizing: border-box;" />
           <div class="muted" style="font-size: 11px; margin-top: 4px;">Номер генерируется автоматически (например: group-91)</div>
         </div>
         
         <div style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 6px; font-weight: 600;">Статус группы</label>
-          <select name="status" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;">
+          <select name="status" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;">
             <option value="on_the_way">В пути</option>
             <option value="bishkek">В Кыргызстане</option>
             <option value="warehouse">Готов к выдаче</option>
@@ -85,24 +79,69 @@
         
         <div style="margin-bottom: 20px;">
           <label style="display: block; margin-bottom: 6px; font-weight: 600;">Цена за кг</label>
-          <input type="number" step="0.01" name="price_per_kg" placeholder="0.00" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;" />
+          <input type="number" step="0.01" name="price_per_kg" placeholder="0.00" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;" />
         </div>
         
         <div style="display: flex; gap: 10px; justify-content: flex-end;">
           <button type="button" class="btn" onclick="closeCreateGroupModal()">Отмена</button>
-          <button type="submit" class="btn accent">Создать</button>
+          <button type="submit" class="btn accent" id="createGroupBtn">Создать</button>
         </div>
       </form>
     </div>
   </div>
 
+  <style>
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 24px;
+      width: 90%;
+      max-width: 500px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .success-message {
+      background: rgba(34,197,94,.1);
+      border: 1px solid rgba(34,197,94,.3);
+      color: rgba(34,197,94,1);
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .error-message {
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      color: rgba(239,68,68,1);
+      padding: 12px;
+      border-radius: 8px;
+    }
+  </style>
+
   <script>
     function openCreateGroupModal() {
-      document.getElementById('createGroupModal').style.display = 'flex';
+      document.getElementById('createGroupModal').classList.add('active');
+      document.body.style.overflow = 'hidden'; // Prevent background scrolling
     }
     
     function closeCreateGroupModal() {
-      document.getElementById('createGroupModal').style.display = 'none';
+      document.getElementById('createGroupModal').classList.remove('active');
+      document.body.style.overflow = '';
+      document.getElementById('createGroupForm').reset();
     }
     
     // Close modal on click outside
@@ -118,5 +157,95 @@
         closeCreateGroupModal();
       }
     });
+    
+    // AJAX form submission
+    document.getElementById('createGroupForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const form = e.target;
+      const btn = document.getElementById('createGroupBtn');
+      const originalText = btn.textContent;
+      btn.textContent = 'Создание...';
+      btn.disabled = true;
+      
+      const formData = new FormData(form);
+      
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        
+        if (data.success) {
+          // Show success message
+          showMessage('Группа ' + data.group.name + ' успешно создана', 'success');
+          
+          // Add new group to table
+          addGroupToTable(data.group);
+          
+          // Close modal
+          closeCreateGroupModal();
+        } else {
+          showMessage(data.error || 'Ошибка при создании группы', 'error');
+        }
+      })
+      .catch(error => {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        showMessage('Ошибка сети: ' + error.message, 'error');
+      });
+    });
+    
+    function showMessage(text, type) {
+      const msgDiv = document.getElementById('ajaxMessage');
+      msgDiv.className = type === 'success' ? 'success-message' : 'error-message';
+      msgDiv.textContent = text;
+      msgDiv.style.display = 'block';
+      
+      // Auto hide after 5 seconds
+      setTimeout(() => {
+        msgDiv.style.display = 'none';
+      }, 5000);
+    }
+    
+    function addGroupToTable(group) {
+      const tbody = document.querySelector('#groupsTable tbody');
+      
+      // Remove empty row if exists
+      const emptyRow = document.getElementById('emptyRow');
+      if (emptyRow) {
+        emptyRow.remove();
+      }
+      
+      // Create new row
+      const row = document.createElement('tr');
+      row.setAttribute('data-group-id', group.id);
+      row.style.background = 'rgba(34,197,94,.05)'; // Highlight new row
+      
+      row.innerHTML = `
+        <td><b>${group.name}</b></td>
+        <td class="muted">${group.sent_date || '—'}</td>
+        <td>${group.status_display}</td>
+        <td class="muted">${group.created_at}</td>
+        <td class="muted">${group.filial || '—'}</td>
+        <td class="row-actions">
+          <a class="btn" href="/manager/groups/${group.id}/">Открыть</a>
+        </td>
+      `;
+      
+      // Insert at the top
+      tbody.insertBefore(row, tbody.firstChild);
+      
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        row.style.background = '';
+      }, 3000);
+    }
   </script>
 {% endblock %}
