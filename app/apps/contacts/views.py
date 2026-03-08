@@ -3353,7 +3353,7 @@ def manager_shipment_new(request):
                         all_shipments.append(shipment)
                         seq += 1
 
-                # Show success message
+                # Show success message and redirect back to form for next entry
                 if len(tracking_data) == 1:
                     # Single tracking number with multiple quantities
                     messages.success(request, f"Создано {tracking_data[0]['quantity']} посылок с трек-номером {tracking_data[0]['tracking_number']}")
@@ -3363,7 +3363,13 @@ def manager_shipment_new(request):
                     tracking_numbers = [data['tracking_number'] for data in tracking_data]
                     messages.success(request, f"Создано {total_shipments} посылок с трек-номерами: {', '.join(tracking_numbers)}")
                 
-                return redirect("manager_shipment_detail", shipment_id=all_shipments[0].id)
+                # Redirect back to shipment creation form
+                redirect_url = reverse("manager_shipment_new")
+                if group_obj:
+                    redirect_url = f"{redirect_url}?group_id={group_obj.id}"
+                elif effective_filial:
+                    redirect_url = f"{redirect_url}?filial={effective_filial.id}"
+                return redirect(redirect_url)
     else:
         initial = {}
         if group_obj is not None:

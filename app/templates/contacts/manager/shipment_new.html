@@ -7,6 +7,14 @@
     <h2 class="h">Добавить посылку</h2>
     <div class="muted">Клиент выбирается по <b>коду клиента</b> (вводите только номер, например: 1957).</div>
 
+    {% if messages %}
+      {% for message in messages %}
+        <div class="{% if message.tags == 'error' %}error{% else %}success{% endif %}" style="margin-top:12px; padding: 12px; border-radius: 8px; {% if message.tags != 'error' %}background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: rgba(34,197,94,1);{% endif %}">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
     {% if form.non_field_errors %}
       <div class="error" style="margin-top:12px;">{{ form.non_field_errors }}</div>
     {% endif %}
