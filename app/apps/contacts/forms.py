@@ -77,15 +77,19 @@ class ShipmentCreateForm(forms.ModelForm):
         self._user_obj = user_obj
         return value
 
-    def save(self, commit=True, staff_filial=None, tracking_number=None):
+    def save(self, commit=True, staff_filial=None, tracking_number=None, weight_kg=None, price_per_kg=None, total_price=None):
         instance = super().save(commit=False)
         instance.user = getattr(self, "_user_obj", None)
         instance.filial = staff_filial if staff_filial is not None else getattr(instance.user, "filial", None)
         instance.group = self.cleaned_data.get("group")
-        # Set tracking number if provided
         if tracking_number:
             instance.tracking_number = tracking_number
-        # Auto-set status to WAREHOUSE (Готов к выдаче) for manual creation
+        if weight_kg is not None:
+            instance.weight_kg = weight_kg
+        if price_per_kg is not None:
+            instance.price_per_kg = price_per_kg
+        if total_price is not None:
+            instance.total_price = total_price
         instance.status = tg_models.Shipment.Status.WAREHOUSE
         if commit:
             instance.save()

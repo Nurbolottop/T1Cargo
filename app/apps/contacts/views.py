@@ -3215,6 +3215,8 @@ def manager_shipment_new(request):
     if request.method == "POST":
         form = ShipmentCreateForm(request.POST, staff_filial=effective_filial)
         if form.is_valid():
+            from decimal import Decimal, ROUND_HALF_UP
+
             # Collect tracking numbers and quantities
             tracking_data = []
             for i in range(1, 5):  # Support up to 4 tracking numbers
@@ -3238,11 +3240,49 @@ def manager_shipment_new(request):
             else:
                 # Create shipments for each tracking number
                 all_shipments = []
+                total_qty = 0
                 for data in tracking_data:
-                    for i in range(data['quantity']):
-                        shipment = form.save(staff_filial=effective_filial, tracking_number=data['tracking_number'])
+                    try:
+                        total_qty += int(data.get("quantity") or 1)
+                    except Exception:
+                        total_qty += 1
+
+                # Distribute total weight/price across ALL created shipments.
+                weight_total = form.cleaned_data.get("weight_kg")
+                total_price_total = form.cleaned_data.get("total_price")
+                price_per_kg = form.cleaned_data.get("price_per_kg")
+
+                def _split_decimal(total_value, parts: int, quant: str):
+                    if total_value is None:
+                        return [None] * parts
+                    total_d = Decimal(str(total_value))
+                    if parts <= 1:
+                        return [total_d]
+                    q = Decimal(quant)
+                    per = (total_d / Decimal(parts)).quantize(q, rounding=ROUND_HALF_UP)
+                    values = [per] * parts
+                    remainder = (total_d - (per * Decimal(parts))).quantize(q, rounding=ROUND_HALF_UP)
+                    values[-1] = (values[-1] + remainder).quantize(q, rounding=ROUND_HALF_UP)
+                    return values
+
+                # Shipment.weight_kg has 3 decimal places, total_price has 2.
+                weights = _split_decimal(weight_total, total_qty, "0.001")
+                totals = _split_decimal(total_price_total, total_qty, "0.01")
+
+                seq = 0
+                for data in tracking_data:
+                    qty = int(data.get("quantity") or 1)
+                    for _ in range(qty):
+                        shipment = form.save(
+                            staff_filial=effective_filial,
+                            tracking_number=data["tracking_number"],
+                            weight_kg=weights[seq] if seq < len(weights) else None,
+                            price_per_kg=price_per_kg,
+                            total_price=totals[seq] if seq < len(totals) else None,
+                        )
                         all_shipments.append(shipment)
-                
+                        seq += 1
+
                 # Show success message
                 if len(tracking_data) == 1:
                     # Single tracking number with multiple quantities
