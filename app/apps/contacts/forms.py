@@ -95,6 +95,14 @@ class ShipmentCreateForm(forms.ModelForm):
             instance.price_per_kg = price_per_kg
         elif instance.filial and getattr(instance.filial, "default_price_per_kg", None):
             instance.price_per_kg = instance.filial.default_price_per_kg
+        # Calculate total_price if not provided but weight and price_per_kg are available
+        if instance.total_price is None or instance.total_price == 0:
+            if instance.weight_kg and instance.price_per_kg:
+                try:
+                    from decimal import Decimal
+                    instance.total_price = (Decimal(str(instance.weight_kg)) * Decimal(str(instance.price_per_kg))).quantize(Decimal("0.01"))
+                except Exception:
+                    pass
         instance.status = tg_models.Shipment.Status.WAREHOUSE
         if commit:
             instance.save()
