@@ -2598,7 +2598,8 @@ def manager_analytics(request):
 
     day_map = {row["d"]: {"cnt": row["cnt"], "total": row["total"]} for row in per_day_rows}
 
-    # Calculate sorted shipments by created_at (all shipments added this day, regardless of current status)
+    # Calculate sorted shipments: ALL shipments created this month (manual adds, imports, groups)
+    # Manual adds are considered "sorted" automatically. Filter by created_at date.
     sorted_qs = tg_models.Shipment.objects.select_related("user").filter(
         created_at__date__gte=first_day,
         created_at__date__lt=next_month,
