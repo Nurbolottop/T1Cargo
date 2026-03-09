@@ -3435,6 +3435,20 @@ def manager_shipment_new(request):
                         all_shipments.append(shipment)
                         seq += 1
 
+                # Send notifications to clients for ready shipments (WAREHOUSE status)
+                for shipment in all_shipments:
+                    if shipment.user_id and shipment.status == tg_models.Shipment.Status.WAREHOUSE:
+                        try:
+                            notify_user_arrival_task(
+                                user_id=int(shipment.user_id),
+                                tracking=shipment.tracking_number,
+                                shipment_status=str(tg_models.Shipment.Status.WAREHOUSE),
+                                weight_kg=float(shipment.weight_kg) if shipment.weight_kg and shipment.weight_kg > 0 else None,
+                                total_price=float(shipment.total_price) if shipment.total_price else None
+                            )
+                        except Exception:
+                            pass
+
                 # Show success message and redirect back to form for next entry
                 if len(tracking_data) == 1:
                     # Single tracking number with multiple quantities
