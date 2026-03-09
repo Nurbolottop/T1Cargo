@@ -2598,17 +2598,17 @@ def manager_analytics(request):
 
     day_map = {row["d"]: {"cnt": row["cnt"], "total": row["total"]} for row in per_day_rows}
 
-    # Calculate sorted shipments (WAREHOUSE status) by arrival_date
+    # Calculate sorted shipments (WAREHOUSE or BISHKEK status) by created_at (includes manual adds)
     sorted_qs = tg_models.Shipment.objects.select_related("user").filter(
-        status=tg_models.Shipment.Status.WAREHOUSE,
-        arrival_date__gte=first_day,
-        arrival_date__lt=next_month,
+        status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.BISHKEK],
+        created_at__date__gte=first_day,
+        created_at__date__lt=next_month,
     )
     if effective_filial is not None:
         sorted_qs = sorted_qs.filter(filial=effective_filial)
 
     sorted_per_day = (
-        sorted_qs.annotate(d=F("arrival_date"))
+        sorted_qs.annotate(d=TruncDate("created_at"))
         .values("d")
         .annotate(
             sorted_cnt=Count("id"),
