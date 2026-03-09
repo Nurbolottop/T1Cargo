@@ -22,6 +22,18 @@
         <div class="muted" style="font-size: 11px; margin-top: 4px;">Номер генерируется автоматически</div>
       </div>
 
+      {% if is_director and filials %}
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600;">Филиал</label>
+        <select name="filial" required style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;">
+          <option value="">Выберите филиал</option>
+          {% for f in filials %}
+            <option value="{{ f.id }}">{{ f }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+
       <div style="margin-bottom: 16px;">
         <label style="display: block; margin-bottom: 6px; font-weight: 600;">Статус группы</label>
         <select name="status" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;">

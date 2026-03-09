@@ -12,7 +12,7 @@ import uuid
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 from django.db import transaction
-from django.db.models import Count, Q, F, Sum, Min, ExpressionWrapper, DecimalField, Value, Case, When, IntegerField
+from django.db.models import Count, Q, F, Sum, Min, ExpressionWrapper, DecimalField, Value, Case, When, IntegerField, DateField, DateField
 from django.db.models.functions import Coalesce, TruncDate
 
 from django.http import HttpResponseForbidden, JsonResponse, HttpResponseRedirect
@@ -1384,7 +1384,16 @@ def manager_group_create(request):
 
     # GET — показать форму
     if request.method != "POST":
-        return render(request, "contacts/manager/group_new.html", {"nav": "groups", **_role_ctx(request)})
+        return render(
+            request,
+            "contacts/manager/group_new.html",
+            {
+                "nav": "groups",
+                "is_director": is_director,
+                "filials": base_models.Filial.objects.filter(is_active=True).order_by("city", "name") if is_director else [],
+                **_role_ctx(request),
+            },
+        )
 
     # POST — создать группу
     sent_date_raw = (request.POST.get("sent_date") or "").strip()
@@ -1397,10 +1406,7 @@ def manager_group_create(request):
         try:
             sent_date = timezone.datetime.fromisoformat(sent_date_raw).date()
         except Exception:
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({"success": False, "error": "Некорректная дата отправки"})
-            messages.error(request, "Некорректная дата отправки")
-            return redirect("manager_groups")
+            sent_date = None
 
     # Validate status
     valid_statuses = dict(tg_models.ShipmentGroup.Status.choices).keys()
@@ -1416,11 +1422,31 @@ def manager_group_create(request):
         except Exception:
             price_per_kg = None
 
+    # Handle filial: if director, get from POST; otherwise use staff_filial
+    if is_director:
+        filial_id = (request.POST.get("filial") or "").strip()
+        if filial_id:
+            try:
+                filial = base_models.Filial.objects.filter(id=int(filial_id), is_active=True).first()
+            except (ValueError, TypeError):
+                filial = None
+        else:
+            filial = None
+    else:
+        filial = staff_filial
+
+    if not filial:
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "error": "Филиал не выбран"})
+        messages.error(request, "Филиал не выбран")
+        return redirect("manager_group_create")
+
     # Generate next group name
     def _next_group_name():
-        last = tg_models.ShipmentGroup.objects.order_by("-id").first()
-        next_n = 1 if last is None else int(last.id) + 1
-        return f"group-{next_n}"
+        with transaction.atomic():
+            last = tg_models.ShipmentGroup.objects.select_for_update().order_by("-id").first()
+            next_n = 1 if last is None else int(last.id) + 1
+            return f"group-{next_n}"
 
     # Create group
     group = tg_models.ShipmentGroup.objects.create(
@@ -1428,7 +1454,7 @@ def manager_group_create(request):
         status=group_status,
         sent_date=sent_date,
         price_per_kg=price_per_kg or Decimal("0"),
-        filial=staff_filial,
+        filial=filial,
     )
 
     # Prepare response data
