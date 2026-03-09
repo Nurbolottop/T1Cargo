@@ -2598,17 +2598,18 @@ def manager_analytics(request):
 
     day_map = {row["d"]: {"cnt": row["cnt"], "total": row["total"]} for row in per_day_rows}
 
-    # Calculate sorted shipments: ALL shipments created this month (manual adds, imports, groups)
-    # Manual adds are considered "sorted" automatically. Filter by created_at date.
+    # Calculate sorted shipments: count shipments that have total_price > 0 by the date they were priced
+    # This tracks when sorting actually happened (price was calculated), not when shipment was created
     sorted_qs = tg_models.Shipment.objects.select_related("user").filter(
-        created_at__date__gte=first_day,
-        created_at__date__lt=next_month,
+        total_price__gt=0,
+        updated_at__date__gte=first_day,
+        updated_at__date__lt=next_month,
     )
     if effective_filial is not None:
         sorted_qs = sorted_qs.filter(filial=effective_filial)
 
     sorted_per_day = (
-        sorted_qs.annotate(d=TruncDate("created_at"))
+        sorted_qs.annotate(d=TruncDate("updated_at"))
         .values("d")
         .annotate(
             sorted_cnt=Count("id"),
