@@ -1,0 +1,117 @@
+{% extends 'contacts/manager/base.html' %}
+
+{% block title %}Добавить группу • Менеджер{% endblock %}
+
+{% block page_title %}Добавить группу{% endblock %}
+
+{% block content %}
+  <div class="card" style="max-width: 500px; margin: 0 auto;">
+    <div id="message" style="display: none; margin-bottom: 16px;"></div>
+
+    <form id="createGroupForm" method="post" action="{% url 'manager_group_create' %}">
+      {% csrf_token %}
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600;">Дата отправки</label>
+        <input type="date" name="sent_date" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;" />
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600;">Номер группы</label>
+        <input type="text" value="(генерируется автоматически)" disabled style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--muted); box-sizing: border-box;" />
+        <div class="muted" style="font-size: 11px; margin-top: 4px;">Номер генерируется автоматически</div>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600;">Статус группы</label>
+        <select name="status" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;">
+          <option value="on_the_way">В пути</option>
+          <option value="bishkek">В Кыргызстане</option>
+          <option value="warehouse">Готов к выдаче</option>
+          <option value="issued">Выдано</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 6px; font-weight: 600;">Цена за кг</label>
+        <input type="number" step="0.01" name="price_per_kg" placeholder="0.00" style="width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; box-sizing: border-box;" />
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: space-between;">
+        <a href="{% url 'manager_groups' %}" class="btn">Отмена</a>
+        <button type="submit" class="btn accent" id="createGroupBtn">Создать</button>
+      </div>
+    </form>
+  </div>
+
+  <style>
+    .success-message {
+      background: rgba(34,197,94,.1);
+      border: 1px solid rgba(34,197,94,.3);
+      color: rgba(34,197,94,1);
+      padding: 12px;
+      border-radius: 8px;
+    }
+    .error-message {
+      background: rgba(239,68,68,.1);
+      border: 1px solid rgba(239,68,68,.3);
+      color: rgba(239,68,68,1);
+      padding: 12px;
+      border-radius: 8px;
+    }
+  </style>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var form = document.getElementById('createGroupForm');
+      if (form) {
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+
+          var btn = document.getElementById('createGroupBtn');
+          var originalText = btn.textContent;
+          btn.textContent = 'Создание...';
+          btn.disabled = true;
+
+          var formData = new FormData(form);
+
+          fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(function(response) { return response.json(); })
+          .then(function(data) {
+            btn.textContent = originalText;
+            btn.disabled = false;
+
+            if (data.success) {
+              showMessage('Группа ' + data.group.name + ' успешно создана', 'success');
+              form.reset();
+              // Redirect to groups list after 1.5 seconds
+              setTimeout(function() {
+                window.location.href = "{% url 'manager_groups' %}";
+              }, 1500);
+            } else {
+              showMessage(data.error || 'Ошибка при создании группы', 'error');
+            }
+          })
+          .catch(function(error) {
+            btn.textContent = originalText;
+            btn.disabled = false;
+            showMessage('Ошибка сети: ' + error.message, 'error');
+          });
+        });
+      }
+    });
+
+    function showMessage(text, type) {
+      var msgDiv = document.getElementById('message');
+      msgDiv.className = type === 'success' ? 'success-message' : 'error-message';
+      msgDiv.textContent = text;
+      msgDiv.style.display = 'block';
+    }
+  </script>
+{% endblock %}

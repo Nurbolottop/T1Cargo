@@ -1373,7 +1373,7 @@ def manager_groups(request):
 @login_required(login_url="/manager/login/")
 @csrf_protect
 def manager_group_create(request):
-    """Создание новой группы через модальное окно (AJAX)."""
+    """Создание новой группы — отдельная страница с AJAX."""
     denied = _require_editor_role(request)
     if denied is not None:
         return denied
@@ -1382,9 +1382,11 @@ def manager_group_create(request):
     if denied_filial is not None:
         return denied_filial
 
+    # GET — показать форму
     if request.method != "POST":
-        return HttpResponseForbidden("method_not_allowed")
+        return render(request, "contacts/manager/group_new.html", {"nav": "groups", **_role_ctx(request)})
 
+    # POST — создать группу
     sent_date_raw = (request.POST.get("sent_date") or "").strip()
     status_raw = (request.POST.get("status") or "").strip()
     price_per_kg_raw = (request.POST.get("price_per_kg") or "").strip()
@@ -1431,7 +1433,7 @@ def manager_group_create(request):
 
     # Prepare response data
     status_display = dict(tg_models.ShipmentGroup.Status.choices).get(group.status, group.status)
-    
+
     # Check if AJAX request
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return JsonResponse({
@@ -1446,7 +1448,7 @@ def manager_group_create(request):
                 "filial": str(group.filial) if group.filial else None,
             }
         })
-    
+
     # Regular POST - redirect with message
     messages.success(request, f"Группа {group.name} успешно создана")
     return redirect("manager_group_detail", group_id=group.id)
