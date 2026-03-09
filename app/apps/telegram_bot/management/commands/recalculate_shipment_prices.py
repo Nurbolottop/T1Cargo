@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from django.db import transaction
 
-from telegram_bot import models as tg_models
+from apps.telegram_bot import models as tg_models
 
 
 class Command(BaseCommand):
