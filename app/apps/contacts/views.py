@@ -2598,23 +2598,19 @@ def manager_analytics(request):
 
     day_map = {row["d"]: {"cnt": row["cnt"], "total": row["total"]} for row in per_day_rows}
 
-    # Calculate sorted shipments: count shipments that have total_price > 0
-    # Use arrival_date if set (actual sorting date), otherwise use created_at (manual adds)
+    # Calculate sorted shipments: count shipments that have total_price > 0 by creation date
+    # created_at = when shipment was added to system (import or manual add)
     sorted_qs = tg_models.Shipment.objects.select_related("user").filter(
         total_price__gt=0,
-    ).annotate(
-        d=Coalesce(
-            F("arrival_date"),
-            TruncDate("created_at"),
-            output_field=DateField(),
-        )
-    ).filter(d__gte=first_day, d__lt=next_month)
-    
+        created_at__date__gte=first_day,
+        created_at__date__lt=next_month,
+    )
     if effective_filial is not None:
         sorted_qs = sorted_qs.filter(filial=effective_filial)
 
     sorted_per_day = (
-        sorted_qs.values("d")
+        sorted_qs.annotate(d=TruncDate("created_at"))
+        .values("d")
         .annotate(
             sorted_cnt=Count("id"),
             sorted_total=Coalesce(Sum("total_price", output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),
