@@ -2598,9 +2598,8 @@ def manager_analytics(request):
 
     day_map = {row["d"]: {"cnt": row["cnt"], "total": row["total"]} for row in per_day_rows}
 
-    # Calculate sorted shipments (WAREHOUSE or BISHKEK status) by created_at (includes manual adds)
+    # Calculate sorted shipments by created_at (all shipments added this day, regardless of current status)
     sorted_qs = tg_models.Shipment.objects.select_related("user").filter(
-        status__in=[tg_models.Shipment.Status.WAREHOUSE, tg_models.Shipment.Status.BISHKEK],
         created_at__date__gte=first_day,
         created_at__date__lt=next_month,
     )
