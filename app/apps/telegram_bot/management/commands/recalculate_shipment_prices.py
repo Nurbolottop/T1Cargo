@@ -100,7 +100,12 @@ class Command(BaseCommand):
                         )
                     else:
                         shipment.total_price = new_total
-                        shipment.save(update_fields=["total_price", "updated_at"])
+                        # Also set arrival_date if not set (use created_at date for proper analytics tracking)
+                        update_fields = ["total_price", "updated_at"]
+                        if not shipment.arrival_date:
+                            shipment.arrival_date = shipment.created_at.date()
+                            update_fields.append("arrival_date")
+                        shipment.save(update_fields=update_fields)
                         self.stdout.write(
                             f"Обновлено {shipment.tracking_number}: "
                             f"{shipment.weight_kg} кг × {shipment.price_per_kg} = {new_total} сом"

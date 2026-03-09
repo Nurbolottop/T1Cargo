@@ -104,6 +104,10 @@ class ShipmentCreateForm(forms.ModelForm):
                 except Exception:
                     pass
         instance.status = tg_models.Shipment.Status.WAREHOUSE
+        # Set arrival_date to today for manually added shipments
+        if not instance.arrival_date:
+            from django.utils import timezone
+            instance.arrival_date = timezone.localdate()
         if commit:
             instance.save()
         return instance
