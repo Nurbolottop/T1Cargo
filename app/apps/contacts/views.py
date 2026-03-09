@@ -1468,6 +1468,10 @@ def manager_group_detail(request, group_id: int):
     if staff_filial is not None and group.filial_id != staff_filial.id:
         return HttpResponseForbidden("Нет доступа")
     status = (request.GET.get("status") or "").strip()
+    
+    # Date filters
+    date_from = (request.GET.get("date_from") or "").strip()
+    date_to = (request.GET.get("date_to") or "").strip()
 
     status_tabs = [
         ("", "Все"),
@@ -1481,6 +1485,22 @@ def manager_group_detail(request, group_id: int):
     shipments = shipments_qs
     if status:
         shipments = shipments.filter(status=status)
+    
+    # Apply date filters
+    if date_from:
+        try:
+            from datetime import datetime
+            date_from_obj = datetime.strptime(date_from, "%Y-%m-%d").date()
+            shipments = shipments.filter(created_at__date__gte=date_from_obj)
+        except ValueError:
+            pass
+    if date_to:
+        try:
+            from datetime import datetime
+            date_to_obj = datetime.strptime(date_to, "%Y-%m-%d").date()
+            shipments = shipments.filter(created_at__date__lte=date_to_obj)
+        except ValueError:
+            pass
 
     agg_all = shipments_qs.aggregate(
         total_cnt=Count("id"),
@@ -1527,6 +1547,8 @@ def manager_group_detail(request, group_id: int):
             "group_kpi": group_kpi,
             "status": status,
             "status_tabs": status_tabs,
+            "date_from": date_from,
+            "date_to": date_to,
             **_role_ctx(request),
         },
     )
@@ -2598,19 +2620,23 @@ def manager_analytics(request):
 
     day_map = {row["d"]: {"cnt": row["cnt"], "total": row["total"]} for row in per_day_rows}
 
-    # Calculate sorted shipments: count shipments that have total_price > 0 by creation date
-    # created_at = when shipment was added to system (import or manual add)
+    # Calculate sorted shipments: count shipments that have total_price > 0
+    # Use arrival_date if set (actual sorting date), otherwise use created_at (manual adds)
     sorted_qs = tg_models.Shipment.objects.select_related("user").filter(
         total_price__gt=0,
-        created_at__date__gte=first_day,
-        created_at__date__lt=next_month,
-    )
+    ).annotate(
+        d=Coalesce(
+            F("arrival_date"),
+            TruncDate("created_at"),
+            output_field=DateField(),
+        )
+    ).filter(d__gte=first_day, d__lt=next_month)
+    
     if effective_filial is not None:
         sorted_qs = sorted_qs.filter(filial=effective_filial)
 
     sorted_per_day = (
-        sorted_qs.annotate(d=TruncDate("created_at"))
-        .values("d")
+        sorted_qs.values("d")
         .annotate(
             sorted_cnt=Count("id"),
             sorted_total=Coalesce(Sum("total_price", output_field=DecimalField(max_digits=18, decimal_places=2)), dec0),

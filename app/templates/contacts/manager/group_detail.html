@@ -80,17 +80,30 @@
   <div class="card" style="margin-top:12px;">
     <h3 class="h">Посылки в группе</h3>
 
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items:center;">
       {% for value,label in status_tabs %}
         <a
           class="btn {% if status == value %}accent{% endif %}"
-          href="{% url 'manager_group_detail' group_id=group.id %}{% if value %}?status={{ value }}{% endif %}"
+          href="{% url 'manager_group_detail' group_id=group.id %}{% if value %}?status={{ value }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
         >
           {{ label }}
         </a>
       {% endfor %}
-      <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}">Сбросить</a>
     </div>
+
+    <form method="get" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:15px; align-items:end;">
+      <input type="hidden" name="status" value="{{ status }}">
+      <div>
+        <label style="display:block; font-size:12px; color:#8892a0; margin-bottom:4px;">Дата от</label>
+        <input type="date" name="date_from" value="{{ date_from }}" style="padding:8px 12px; border-radius:8px; border:1px solid #2c3040; background:#151928; color:#eaeaea;">
+      </div>
+      <div>
+        <label style="display:block; font-size:12px; color:#8892a0; margin-bottom:4px;">Дата до</label>
+        <input type="date" name="date_to" value="{{ date_to }}" style="padding:8px 12px; border-radius:8px; border:1px solid #2c3040; background:#151928; color:#eaeaea;">
+      </div>
+      <button type="submit" class="btn accent" style="height:40px;">Применить</button>
+      <a class="btn" href="{% url 'manager_group_detail' group_id=group.id %}" style="height:40px; display:flex; align-items:center;">Сбросить</a>
+    </form>
 
     <table>
       <thead>
