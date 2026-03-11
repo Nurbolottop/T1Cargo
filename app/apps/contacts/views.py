@@ -1382,6 +1382,9 @@ def manager_group_create(request):
     if denied_filial is not None:
         return denied_filial
 
+    user = getattr(request, "user", None)
+    is_director = _is_director(user) or getattr(user, "is_superuser", False)
+
     # GET — показать форму
     if request.method != "POST":
         return render(
