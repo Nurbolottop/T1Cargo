@@ -547,12 +547,12 @@
           <div style="display:flex; gap:32px; justify-content:center; margin-bottom:28px;">
             <div style="text-align:center;">
               <div style="background:#fff; padding:28px; border-radius:20px; box-shadow: 0 8px 32px rgba(0,0,0,.12), inset 0 2px 4px rgba(0,0,0,.04); border:2px solid #e2e8f0;">
-                <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:240px; height:240px; border-radius:16px; object-fit:cover;">
+                <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="max-width:280px; max-height:350px; width:auto; height:auto; border-radius:16px;">
               </div>
             </div>
             <div style="text-align:center;">
               <div style="background:#fff; padding:28px; border-radius:20px; box-shadow: 0 8px 32px rgba(0,0,0,.12), inset 0 2px 4px rgba(0,0,0,.04); border:2px solid #e2e8f0;">
-                <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:240px; height:240px; border-radius:16px; object-fit:cover;">
+                <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="max-width:280px; max-height:350px; width:auto; height:auto; border-radius:16px;">
               </div>
             </div>
           </div>
@@ -562,7 +562,7 @@
           <!-- Только основной QR -->
           <div style="text-align:center; margin-bottom:28px;">
             <div style="background:#fff; padding:32px; border-radius:24px; box-shadow: 0 12px 40px rgba(0,0,0,.15), inset 0 2px 4px rgba(0,0,0,.04); display:inline-block; border:2px solid #e2e8f0;">
-              <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:280px; height:280px; border-radius:20px; object-fit:cover;">
+              <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="max-width:320px; max-height:400px; width:auto; height:auto; border-radius:20px;">
             </div>
             <p style="margin:20px 0 0; font-size:16px; color:#64748b; font-weight:600;">📱 Отсканируйте QR-код для оплаты</p>
           </div>
@@ -571,7 +571,7 @@
           <!-- Только доп фото -->
           <div style="text-align:center; margin-bottom:28px;">
             <div style="background:#fff; padding:32px; border-radius:24px; box-shadow: 0 12px 40px rgba(0,0,0,.15), inset 0 2px 4px rgba(0,0,0,.04); display:inline-block; border:2px solid #e2e8f0;">
-              <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:280px; height:280px; border-radius:20px; object-fit:cover;">
+              <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="max-width:320px; max-height:400px; width:auto; height:auto; border-radius:20px;">
             </div>
           </div>
           {% endif %}
