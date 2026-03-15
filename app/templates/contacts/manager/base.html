@@ -540,18 +540,35 @@
         {# Обычному пользователю #}
         <div style="background: linear-gradient(145deg, #fff 0%, #f8fafc 100%); border-radius:16px; padding:20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);">
           
-          {% if payment_details.qr_code %}
+          {% if payment_details.qr_code and payment_details.additional_photo %}
+          <!-- Оба QR кода в ряд -->
+          <div style="display:flex; gap:20px; justify-content:center; margin-bottom:20px;">
+            <div style="text-align:center;">
+              <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06);">
+                <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:220px; height:220px; border-radius:12px; object-fit:cover;">
+              </div>
+            </div>
+            <div style="text-align:center;">
+              <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06);">
+                <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:220px; height:220px; border-radius:12px; object-fit:cover;">
+              </div>
+            </div>
+          </div>
+          <p style="text-align:center; margin:0 0 20px; font-size:13px; color:#64748b; font-weight:500;">📱 Отсканируйте QR-код для оплаты</p>
+          {% elif payment_details.qr_code %}
+          <!-- Только основной QR -->
           <div style="text-align:center; margin-bottom:20px;">
             <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06); display:inline-block;">
-              <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:180px; height:180px; border-radius:12px; object-fit:cover;">
+              <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:250px; height:250px; border-radius:12px; object-fit:cover;">
             </div>
             <p style="margin:12px 0 0; font-size:13px; color:#64748b; font-weight:500;">📱 Отсканируйте QR-код для оплаты</p>
           </div>
-          {% endif %}
-          
-          {% if payment_details.additional_photo %}
+          {% elif payment_details.additional_photo %}
+          <!-- Только доп фото -->
           <div style="text-align:center; margin-bottom:20px;">
-            <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="max-width:100%; max-height:180px; border-radius:12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);">
+            <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06); display:inline-block;">
+              <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:250px; height:250px; border-radius:12px; object-fit:cover;">
+            </div>
           </div>
           {% endif %}
           
