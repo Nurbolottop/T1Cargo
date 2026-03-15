@@ -121,7 +121,33 @@ class PaymentDetailsAdmin(admin.ModelAdmin):
     )
     list_filter = ("filial", "is_active", "is_primary", "created_at")
     search_fields = ("bank_name", "account_name", "account_number")
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("created_at", "updated_at", "qr_code_preview", "photo_preview")
+    fields = (
+        "filial",
+        "is_active",
+        "is_primary",
+        "qr_code",
+        "qr_code_preview",
+        "additional_photo",
+        "photo_preview",
+        "bank_name",
+        "account_name",
+        "account_number",
+        "created_at",
+        "updated_at",
+    )
+
+    def qr_code_preview(self, obj):
+        if obj.qr_code:
+            return format_html('<img src="{}" style="max-height: 100px;" />', obj.qr_code.url)
+        return "—"
+    qr_code_preview.short_description = "Превью QR"
+
+    def photo_preview(self, obj):
+        if obj.additional_photo:
+            return format_html('<img src="{}" style="max-height: 100px;" />', obj.additional_photo.url)
+        return "—"
+    photo_preview.short_description = "Превью фото"
 
 @admin.register(base_models.Filial)
 class FilialAdmin(admin.ModelAdmin):
