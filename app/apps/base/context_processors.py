@@ -23,6 +23,17 @@ def site_settings(request):
             elif user.is_superuser:
                 # Для суперпользователя берем первый активный филиал
                 filial = Filial.objects.filter(is_active=True).first()
+            elif hasattr(user, 'userssh') and user.userssh:
+                # Для пользователей с userssh (включая директоров)
+                try:
+                    from apps.telegram_bot import models as tg_models
+                    if user.userssh.role == tg_models.UsersSH.Role.DIRECTOR:
+                        # Для директора берем первый активный филиал
+                        filial = Filial.objects.filter(is_active=True).first()
+                    else:
+                        filial = None
+                except Exception:
+                    filial = None
             else:
                 filial = None
             
