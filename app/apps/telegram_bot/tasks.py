@@ -416,13 +416,8 @@ def _shipment_notify_text_ready_for_pickup_batch_total(shipments: list) -> str:
             total_weight += shipment.weight_kg
         if shipment.total_price and shipment.total_price > 0:
             total_price += shipment.total_price
-    
-    # Format tracking list
-    if len(tracking_numbers) <= 3:
-        tracking_list = "\n".join([f"• {t}" for t in tracking_numbers])
-    else:
-        tracking_list = "\n".join([f"• {t}" for t in tracking_numbers[:3]])
-        tracking_list += f"\n• ... и еще {len(tracking_numbers) - 3} посылок"
+
+    tracking_list = "\n".join([f"• {t}" for t in tracking_numbers])
     
     weight_text = f"⚖️ Общий вес: {total_weight} кг\n" if total_weight > 0 else ""
     price_text = f"💰 Общая стоимость: {total_price} сом\n" if total_price > 0 else ""
@@ -482,7 +477,7 @@ def notify_manual_shipments_batch_task(user_shipments_map: dict) -> dict:
                 text = _shipment_notify_text_ready_for_pickup_batch_total(shipments)
                 
                 # Send message
-                ok = _send_telegram_message(token=token, chat_id=int(chat_id), text=text)
+                ok = _send_text_to_chat(token=token, chat_id=int(chat_id), text=text)
                 if ok:
                     results["sent"] += 1
                 else:
@@ -519,8 +514,8 @@ def notify_user_arrival_batch_task(user_id: int, shipments_data: list) -> bool:
         shipments = tg_models.Shipment.objects.filter(id__in=shipment_ids)
         
         text = _shipment_notify_text_ready_for_pickup_batch_total(shipments)
-        
-        ok = _send_telegram_message(token=token, chat_id=int(chat_id), text=text)
+
+        ok = _send_text_to_chat(token=token, chat_id=int(chat_id), text=text)
         if not ok:
             logger.exception(
                 "telegram send failed (user_id=%s, shipments=%s)",
