@@ -366,8 +366,18 @@
 
       const pickupItems = new Map();
 
+      function ensureModalInBody(){
+        try {
+          if (!modal) return;
+          if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        } catch (e) {
+          return;
+        }
+      }
+
       function openModal(form){
         pendingForm = form;
+        ensureModalInBody();
         if (!modal) return;
         modal.style.display = 'flex';
       }

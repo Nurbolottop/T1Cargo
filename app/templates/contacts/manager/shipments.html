@@ -109,8 +109,18 @@
       const textEl = document.getElementById('shipActionModalText');
       let pendingForm = null;
 
+      function ensureModalInBody(){
+        try {
+          if (!modal) return;
+          if (modal.parentElement !== document.body) document.body.appendChild(modal);
+        } catch (e) {
+          return;
+        }
+      }
+
       function openModal(form){
         pendingForm = form;
+        ensureModalInBody();
         if (textEl) {
           const t = (form && form.getAttribute) ? (form.getAttribute('data-action-type') || '') : '';
           if (t === 'issued') textEl.textContent = 'Отметить посылку как выдано?';
