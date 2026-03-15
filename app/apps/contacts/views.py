@@ -539,6 +539,10 @@ def manager_dashboard(request):
     ).get("s")
     if warehouse_sum is None:
         warehouse_sum = Decimal("0")
+
+    # Количество посылок готовых к выдаче
+    warehouse_count = shipments_qs.filter(status=tg_models.Shipment.Status.WAREHOUSE).count()
+
     return render(
         request,
         "contacts/manager/dashboard.html",
@@ -549,6 +553,7 @@ def manager_dashboard(request):
             "registered_clients": registered_clients,
             "unregistered_clients": unregistered_clients,
             "warehouse_sum": warehouse_sum,
+            "warehouse_count": warehouse_count,
             "client_day_labels": day_labels,
             "client_day_values": day_values,
             "client_day_today_label": today_label,
@@ -1106,17 +1111,38 @@ def manager_client_pickup_add_by_tracking(request, user_id: int):
     if staff_filial is not None and client.filial_id != staff_filial.id:
         return HttpResponseForbidden("Нет доступа")
 
-    tracking = (request.POST.get("tracking") or request.POST.get("tracking_number") or "").strip()
+    # Очистка трек-кода от лишних символов
+    tracking_raw = (request.POST.get("tracking") or request.POST.get("tracking_number") or "").strip()
+    # Убираем частые префиксы которые добавляют сканеры
+    tracking = tracking_raw.upper().replace("TRK", "").replace("TRACK", "").replace("#", "").strip()
     if not tracking:
         return JsonResponse({"ok": False, "error": "empty_tracking"})
 
+    # Сначала ищем точное совпадение
     shipment_any = (
         tg_models.Shipment.objects.select_related("user")
         .filter(user=client, tracking_number__iexact=tracking)
         .first()
     )
+    
+    # Если не нашли, ищем по частичному совпадению (содержит)
     if shipment_any is None:
-        return JsonResponse({"ok": False, "error": "not_found"})
+        shipment_any = (
+            tg_models.Shipment.objects.select_related("user")
+            .filter(user=client, tracking_number__icontains=tracking)
+            .first()
+        )
+    
+    # Если всё ещё не нашли, пробуем поиск по оригинальному значению
+    if shipment_any is None and tracking != tracking_raw:
+        shipment_any = (
+            tg_models.Shipment.objects.select_related("user")
+            .filter(user=client, tracking_number__iexact=tracking_raw)
+            .first()
+        )
+    
+    if shipment_any is None:
+        return JsonResponse({"ok": False, "error": "not_found", "tracking": tracking})
     if staff_filial is not None and shipment_any.filial_id != staff_filial.id:
         return HttpResponseForbidden("Нет доступа")
 

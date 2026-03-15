@@ -19,9 +19,9 @@
         <div class="n">{{ registered_clients|default:0 }}</div>
         <div class="t">Клиенты (с кодом)</div>
       </div>
-      <div class="box">
-        <div class="n">{{ unregistered_clients|default:0 }}</div>
-        <div class="t">Не зарегистрированы</div>
+      <div class="card">
+        <div class="stat" style="color: #22c55e;">{{ warehouse_count }}</div>
+        <div class="muted" style="font-size:12px;">Готовы к выдаче</div>
       </div>
     </div>
   </div>
