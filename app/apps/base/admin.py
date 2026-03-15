@@ -125,7 +125,7 @@ class PaymentDetailsAdmin(admin.ModelAdmin):
 
 @admin.register(base_models.Filial)
 class FilialAdmin(admin.ModelAdmin):
-    inlines = (PaymentDetailsInline, AdminIdInline)
+    inlines = (PaymentDetailsInline,)
     list_display = (
         "city",
         "name",
