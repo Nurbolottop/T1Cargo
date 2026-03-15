@@ -421,6 +421,9 @@
           {% endif %}
 
           <a class="btn" href="{% url 'manager_notifications' %}">Уведомления</a>
+          <button class="btn" type="button" id="paymentDetailsBtn" style="cursor:pointer;">
+            💳 Реквизиты
+          </button>
           <button class="btn" type="button" id="themeToggle" style="cursor:pointer;">
             <span id="themeToggleText">🌙 Темная тема</span>
           </button>
@@ -466,6 +469,53 @@
       <button class="btn" type="button" id="numKeypadBack">⌫</button>
       <button class="btn" type="button" data-num="0">0</button>
       <button class="btn accent" type="button" id="numKeypadOk">OK</button>
+    </div>
+  </div>
+
+  <!-- Payment Details Modal -->
+  <div id="paymentModalOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.5); z-index:9998; backdrop-filter: blur(4px);"></div>
+  <div id="paymentModalPanel" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%, -50%); width:100%; max-width:480px; background: var(--card-bg); border: 1px solid var(--card-border); border-radius:24px; padding:24px; z-index:9999; box-shadow: 0 28px 60px rgba(0,0,0,.5);">
+    <div style="display:flex; gap:12px; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h2 style="margin:0; font-size:20px; font-weight:950; color: var(--text);">💳 Реквизиты для оплаты</h2>
+      <button class="btn" type="button" id="paymentModalClose" style="padding:8px 12px;">✕</button>
+    </div>
+    
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      {% if settings.payment_qr_code %}
+      <div style="text-align:center; padding:16px; background: var(--input-bg); border-radius:16px; border: 1px solid var(--border);">
+        <img src="{{ settings.payment_qr_code.url }}" alt="QR код для оплаты" style="max-width:200px; max-height:200px; border-radius:12px;">
+        <div style="margin-top:12px; font-size:12px; color: var(--muted);">Отсканируйте QR код для оплаты</div>
+      </div>
+      {% endif %}
+      
+      <div class="kv" style="border-radius:16px;">
+        {% if settings.payment_bank_name %}
+        <div class="kv-row">
+          <div class="kv-k">Банк</div>
+          <div class="kv-v">{{ settings.payment_bank_name }}</div>
+        </div>
+        {% endif %}
+        {% if settings.payment_account_name %}
+        <div class="kv-row">
+          <div class="kv-k">Получатель</div>
+          <div class="kv-v">{{ settings.payment_account_name }}</div>
+        </div>
+        {% endif %}
+        {% if settings.payment_account_number %}
+        <div class="kv-row">
+          <div class="kv-k">Номер счета</div>
+          <div class="kv-v" style="font-family: monospace; font-size:14px;">{{ settings.payment_account_number }}</div>
+        </div>
+        {% endif %}
+      </div>
+      
+      {% if not settings.payment_qr_code and not settings.payment_bank_name and not settings.payment_account_name and not settings.payment_account_number %}
+      <div style="text-align:center; padding:32px 16px; color: var(--muted);">
+        <div style="font-size:48px; margin-bottom:12px;">🏦</div>
+        <div>Реквизиты не настроены</div>
+        <div style="font-size:12px; margin-top:8px; opacity:.7;">Обратитесь к администратору</div>
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -698,6 +748,38 @@
         header.addEventListener('pointerup', endDrag);
         header.addEventListener('pointercancel', endDrag);
       }
+    })();
+  </script>
+
+  <script>
+    // Payment Details Modal
+    (function(){
+      const paymentBtn = document.getElementById('paymentDetailsBtn');
+      const paymentOverlay = document.getElementById('paymentModalOverlay');
+      const paymentPanel = document.getElementById('paymentModalPanel');
+      const paymentClose = document.getElementById('paymentModalClose');
+      
+      if (!paymentBtn || !paymentOverlay || !paymentPanel) return;
+      
+      function openPaymentModal() {
+        paymentOverlay.style.display = 'block';
+        paymentPanel.style.display = 'block';
+      }
+      
+      function closePaymentModal() {
+        paymentOverlay.style.display = 'none';
+        paymentPanel.style.display = 'none';
+      }
+      
+      paymentBtn.addEventListener('click', openPaymentModal);
+      paymentClose.addEventListener('click', closePaymentModal);
+      paymentOverlay.addEventListener('click', closePaymentModal);
+      
+      document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && paymentPanel.style.display === 'block') {
+          closePaymentModal();
+        }
+      });
     })();
   </script>
 </body>

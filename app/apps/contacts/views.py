@@ -33,6 +33,7 @@ from apps.telegram_bot.tasks import (
     broadcast_to_clients_task,
     remind_penalties_and_debts_task,
     remind_ready_for_pickup_task,
+    notify_manual_shipments_batch_task,
 )
 
 logger = logging.getLogger(__name__)
@@ -3494,18 +3495,26 @@ def manager_shipment_new(request):
                         seq += 1
 
                 # Send notifications to clients for ready shipments (WAREHOUSE status)
+                # Group shipments by user for batch notifications
+                user_shipments_map = {}
                 for shipment in all_shipments:
                     if shipment.user_id and shipment.status == tg_models.Shipment.Status.WAREHOUSE:
-                        try:
-                            notify_user_arrival_task(
-                                user_id=int(shipment.user_id),
-                                tracking=shipment.tracking_number,
-                                shipment_status=str(tg_models.Shipment.Status.WAREHOUSE),
-                                weight_kg=float(shipment.weight_kg) if shipment.weight_kg and shipment.weight_kg > 0 else None,
-                                total_price=float(shipment.total_price) if shipment.total_price else None
-                            )
-                        except Exception:
-                            pass
+                        user_id_str = str(shipment.user_id)
+                        if user_id_str not in user_shipments_map:
+                            user_shipments_map[user_id_str] = []
+                        user_shipments_map[user_id_str].append({
+                            "id": shipment.id,
+                            "tracking_number": shipment.tracking_number,
+                            "weight_kg": float(shipment.weight_kg) if shipment.weight_kg and shipment.weight_kg > 0 else None,
+                            "total_price": float(shipment.total_price) if shipment.total_price else None,
+                        })
+                
+                # Send batch notification if there are shipments to notify
+                if user_shipments_map:
+                    try:
+                        notify_manual_shipments_batch_task.delay(user_shipments_map)
+                    except Exception:
+                        pass
 
                 # Show success message and redirect back to form for next entry
                 if len(tracking_data) == 1:

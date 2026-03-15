@@ -439,6 +439,66 @@ def _shipment_notify_text_ready_for_pickup_batch_total(shipments: list) -> str:
 
 
 @shared_task
+def notify_manual_shipments_batch_task(user_shipments_map: dict) -> dict:
+    """
+    Send batched notifications for manually added shipments.
+    user_shipments_map: {user_id: [shipment_data, ...]}
+    shipment_data: {id, tracking_number, weight_kg, total_price}
+    """
+    results = {"sent": 0, "failed": 0}
+    
+    try:
+        token = (getattr(base_models.Settings.objects.first(), "telegram_token", "") or "").strip()
+        if not token:
+            return results
+        
+        # Get all user IDs
+        user_ids = [int(uid) for uid in user_shipments_map.keys()]
+        
+        # Get user telegram IDs
+        user_map = {
+            int(u.id): (getattr(u, "telegram_id", None) or None)
+            for u in tg_models.User.objects.filter(id__in=user_ids).only("id", "telegram_id")
+        }
+        
+        for user_id_str, shipments_data in user_shipments_map.items():
+            try:
+                user_id = int(user_id_str)
+                chat_id = user_map.get(user_id)
+                
+                if not chat_id:
+                    results["failed"] += 1
+                    continue
+                
+                # Get shipment objects
+                shipment_ids = [s.get("id") for s in shipments_data]
+                shipments = list(tg_models.Shipment.objects.filter(id__in=shipment_ids))
+                
+                if not shipments:
+                    results["failed"] += 1
+                    continue
+                
+                # Build message
+                text = _shipment_notify_text_ready_for_pickup_batch_total(shipments)
+                
+                # Send message
+                ok = _send_telegram_message(token=token, chat_id=int(chat_id), text=text)
+                if ok:
+                    results["sent"] += 1
+                else:
+                    results["failed"] += 1
+                    
+            except Exception as e:
+                logger.exception("Failed to send batch notification for user %s: %s", user_id_str, e)
+                results["failed"] += 1
+        
+        return results
+    except Exception as e:
+        logger.exception("notify_manual_shipments_batch_task failed: %s", e)
+        return results
+
+
+@shared_task
 def notify_user_arrival_batch_task(user_id: int, shipments_data: list) -> bool:
     """Send one notification for multiple shipments"""
     try:
