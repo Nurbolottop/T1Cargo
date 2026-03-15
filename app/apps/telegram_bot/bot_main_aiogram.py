@@ -317,6 +317,7 @@ async def _run_bot(token: str) -> None:
             return list(
                 tg_models.Shipment.objects.select_related("group")
                 .filter(user=user_obj)
+                .exclude(status="issued")
                 .order_by("-created_at")[:30]
             )
 
