@@ -473,63 +473,65 @@
   </div>
 
   <!-- Payment Details Modal -->
-  <div id="paymentModalOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.6); z-index:9998; backdrop-filter: blur(8px);"></div>
-  <div id="paymentModalPanel" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%, -50%); width:100%; max-width:420px; background: linear-gradient(145deg, var(--card-bg) 0%, var(--input-bg) 100%); border: 1px solid var(--card-border); border-radius:20px; padding:0; z-index:9999; box-shadow: 0 25px 50px -12px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.1); overflow:hidden;">
+  <div id="paymentModalOverlay" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,.7); z-index:9998; backdrop-filter: blur(12px);"></div>
+  <div id="paymentModalPanel" style="display:none; position:fixed; left:50%; top:50%; transform: translate(-50%, -50%); width:95%; max-width:720px; background: #fff; border-radius:24px; padding:0; z-index:9999; box-shadow: 0 32px 64px -12px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.1); overflow:hidden;">
     
     <!-- Header -->
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding:20px 24px; display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; align-items:center; gap:10px;">
-        <span style="font-size:22px;">💳</span>
-        <h2 style="margin:0; font-size:18px; font-weight:700; color:#fff; letter-spacing:.3px;">Реквизиты для оплаты</h2>
+    <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a855f7 100%); padding:24px 32px; display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <span style="font-size:28px;">💳</span>
+        <h2 style="margin:0; font-size:22px; font-weight:800; color:#fff; letter-spacing:.5px; text-shadow: 0 2px 4px rgba(0,0,0,.2);">Реквизиты для оплаты</h2>
       </div>
-      <button class="btn" type="button" id="paymentModalClose" style="background:rgba(255,255,255,.2); border:none; color:#fff; padding:6px 12px; border-radius:8px; font-size:16px; cursor:pointer; transition:all .2s;">✕</button>
+      <button class="btn" type="button" id="paymentModalClose" style="background:rgba(255,255,255,.25); border:none; color:#fff; padding:10px 14px; border-radius:12px; font-size:18px; cursor:pointer; transition:all .2s; font-weight:600;">✕</button>
     </div>
     
     <!-- Content -->
-    <div style="padding:24px; max-height:70vh; overflow-y:auto;">
+    <div style="padding:32px; max-height:80vh; overflow-y:auto; background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);">
       {% if all_payment_details %}
         {# Директору показываем все филиалы #}
         {% for payment in all_payment_details %}
-        <div style="background: linear-gradient(145deg, #fff 0%, #f8fafc 100%); border-radius:16px; padding:20px; margin-bottom:16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1), 0 2px 4px -2px rgba(0,0,0,.1); border:1px solid rgba(0,0,0,.05);">
+        <div style="background: #fff; border-radius:20px; padding:28px; margin-bottom:24px; box-shadow: 0 10px 40px -10px rgba(0,0,0,.15); border:1px solid #e2e8f0;">
           <!-- Filial Badge -->
-          <div style="display:flex; align-items:center; gap:8px; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(0,0,0,.08);">
-            <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#fff; padding:6px 14px; border-radius:20px; font-size:13px; font-weight:600;">{{ payment.filial.name }}</span>
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid #f1f5f9;">
+            <span style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color:#fff; padding:10px 20px; border-radius:30px; font-size:15px; font-weight:700; box-shadow: 0 4px 12px rgba(99,102,241,.3);">{{ payment.filial.name }}</span>
           </div>
           
           {% if payment.qr_code %}
           <!-- QR Section -->
-          <div style="text-align:center; margin-bottom:16px;">
-            <div style="background:#fff; padding:16px; border-radius:16px; box-shadow: inset 0 2px 4px rgba(0,0,0,.06); display:inline-block;">
-              <img src="{{ payment.qr_code.url }}" alt="QR код" style="width:160px; height:160px; border-radius:12px; object-fit:cover;">
+          <div style="text-align:center; margin-bottom:24px;">
+            <div style="background:#fff; padding:24px; border-radius:20px; box-shadow: 0 8px 32px rgba(0,0,0,.08), inset 0 2px 4px rgba(0,0,0,.04); display:inline-block; border:1px solid #e2e8f0;">
+              <img src="{{ payment.qr_code.url }}" alt="QR код" style="width:200px; height:200px; border-radius:16px; object-fit:cover;">
             </div>
-            <p style="margin:10px 0 0; font-size:12px; color:#64748b;">Отсканируйте для оплаты</p>
+            <p style="margin:16px 0 0; font-size:14px; color:#64748b; font-weight:500;">📱 Отсканируйте для оплаты</p>
           </div>
           {% endif %}
           
           {% if payment.additional_photo %}
-          <div style="text-align:center; margin-bottom:16px;">
-            <img src="{{ payment.additional_photo.url }}" alt="Доп. фото" style="max-width:100%; max-height:150px; border-radius:12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);">
+          <div style="text-align:center; margin-bottom:24px;">
+            <div style="background:#fff; padding:24px; border-radius:20px; box-shadow: 0 8px 32px rgba(0,0,0,.08); display:inline-block; border:1px solid #e2e8f0;">
+              <img src="{{ payment.additional_photo.url }}" alt="Доп. фото" style="width:200px; height:200px; border-radius:16px; object-fit:cover;">
+            </div>
           </div>
           {% endif %}
           
           <!-- Bank Details Card -->
-          <div style="background:#f1f5f9; border-radius:12px; padding:16px;">
+          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius:16px; padding:24px; border:1px solid #e2e8f0;">
             {% if payment.bank_name %}
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed #cbd5e1;">
-              <span style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.5px; font-weight:500;">🏦 Банк</span>
-              <span style="font-size:14px; font-weight:600; color:#1e293b;">{{ payment.bank_name }}</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:14px; border-bottom:2px dashed #cbd5e1;">
+              <span style="font-size:14px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700;">🏦 Банк</span>
+              <span style="font-size:18px; font-weight:700; color:#1e293b;">{{ payment.bank_name }}</span>
             </div>
             {% endif %}
             {% if payment.account_name %}
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:10px; border-bottom:1px dashed #cbd5e1;">
-              <span style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.5px; font-weight:500;">👤 Получатель</span>
-              <span style="font-size:14px; font-weight:600; color:#1e293b;">{{ payment.account_name }}</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:14px; border-bottom:2px dashed #cbd5e1;">
+              <span style="font-size:14px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700;">👤 Получатель</span>
+              <span style="font-size:18px; font-weight:700; color:#1e293b;">{{ payment.account_name }}</span>
             </div>
             {% endif %}
             {% if payment.account_number %}
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.5px; font-weight:500;">🔢 Номер счета</span>
-              <span style="font-family:'SF Mono', Monaco, monospace; font-size:14px; font-weight:700; color:#0ea5e9; background:#e0f2fe; padding:4px 10px; border-radius:6px;">{{ payment.account_number }}</span>
+              <span style="font-size:14px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700;">🔢 Номер счета</span>
+              <span style="font-family:'SF Mono', Monaco, monospace; font-size:18px; font-weight:800; color:#0ea5e9; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); padding:8px 16px; border-radius:10px; border:2px solid #7dd3fc;">{{ payment.account_number }}</span>
             </div>
             {% endif %}
           </div>
@@ -538,67 +540,69 @@
       
       {% elif payment_details %}
         {# Обычному пользователю #}
-        <div style="background: linear-gradient(145deg, #fff 0%, #f8fafc 100%); border-radius:16px; padding:20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,.1);">
+        <div style="background: #fff; border-radius:20px; padding:32px; box-shadow: 0 10px 40px -10px rgba(0,0,0,.15); border:1px solid #e2e8f0;">
           
           {% if payment_details.qr_code and payment_details.additional_photo %}
           <!-- Оба QR кода в ряд -->
-          <div style="display:flex; gap:20px; justify-content:center; margin-bottom:20px;">
+          <div style="display:flex; gap:32px; justify-content:center; margin-bottom:28px;">
             <div style="text-align:center;">
-              <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06);">
-                <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:220px; height:220px; border-radius:12px; object-fit:cover;">
+              <div style="background:#fff; padding:28px; border-radius:20px; box-shadow: 0 8px 32px rgba(0,0,0,.12), inset 0 2px 4px rgba(0,0,0,.04); border:2px solid #e2e8f0;">
+                <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:240px; height:240px; border-radius:16px; object-fit:cover;">
               </div>
             </div>
             <div style="text-align:center;">
-              <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06);">
-                <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:220px; height:220px; border-radius:12px; object-fit:cover;">
+              <div style="background:#fff; padding:28px; border-radius:20px; box-shadow: 0 8px 32px rgba(0,0,0,.12), inset 0 2px 4px rgba(0,0,0,.04); border:2px solid #e2e8f0;">
+                <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:240px; height:240px; border-radius:16px; object-fit:cover;">
               </div>
             </div>
           </div>
-          <p style="text-align:center; margin:0 0 20px; font-size:13px; color:#64748b; font-weight:500;">📱 Отсканируйте QR-код для оплаты</p>
+          <p style="text-align:center; margin:0 0 28px; font-size:16px; color:#64748b; font-weight:600;">📱 Отсканируйте QR-код для оплаты</p>
+          
           {% elif payment_details.qr_code %}
           <!-- Только основной QR -->
-          <div style="text-align:center; margin-bottom:20px;">
-            <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06); display:inline-block;">
-              <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:250px; height:250px; border-radius:12px; object-fit:cover;">
+          <div style="text-align:center; margin-bottom:28px;">
+            <div style="background:#fff; padding:32px; border-radius:24px; box-shadow: 0 12px 40px rgba(0,0,0,.15), inset 0 2px 4px rgba(0,0,0,.04); display:inline-block; border:2px solid #e2e8f0;">
+              <img src="{{ payment_details.qr_code.url }}" alt="QR код" style="width:280px; height:280px; border-radius:20px; object-fit:cover;">
             </div>
-            <p style="margin:12px 0 0; font-size:13px; color:#64748b; font-weight:500;">📱 Отсканируйте QR-код для оплаты</p>
+            <p style="margin:20px 0 0; font-size:16px; color:#64748b; font-weight:600;">📱 Отсканируйте QR-код для оплаты</p>
           </div>
+          
           {% elif payment_details.additional_photo %}
           <!-- Только доп фото -->
-          <div style="text-align:center; margin-bottom:20px;">
-            <div style="background:#fff; padding:20px; border-radius:16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.1), inset 0 2px 4px rgba(0,0,0,.06); display:inline-block;">
-              <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:250px; height:250px; border-radius:12px; object-fit:cover;">
+          <div style="text-align:center; margin-bottom:28px;">
+            <div style="background:#fff; padding:32px; border-radius:24px; box-shadow: 0 12px 40px rgba(0,0,0,.15), inset 0 2px 4px rgba(0,0,0,.04); display:inline-block; border:2px solid #e2e8f0;">
+              <img src="{{ payment_details.additional_photo.url }}" alt="Доп. фото" style="width:280px; height:280px; border-radius:20px; object-fit:cover;">
             </div>
           </div>
           {% endif %}
           
           <!-- Bank Details -->
-          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius:14px; padding:20px; border:1px solid rgba(0,0,0,.05);">
+          <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius:20px; padding:28px; border:2px solid #e2e8f0;">
             {% if payment_details.bank_name %}
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #e2e8f0;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:16px;">🏦</span>
-                <span style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.5px; font-weight:600;">Банк</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:16px; border-bottom:2px solid #e2e8f0;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:22px;">🏦</span>
+                <span style="font-size:14px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Банк</span>
               </div>
-              <span style="font-size:15px; font-weight:700; color:#1e293b;">{{ payment_details.bank_name }}</span>
+              <span style="font-size:20px; font-weight:800; color:#1e293b;">{{ payment_details.bank_name }}</span>
             </div>
             {% endif %}
             {% if payment_details.account_name %}
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #e2e8f0;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:16px;">👤</span>
-                <span style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.5px; font-weight:600;">Получатель</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:16px; border-bottom:2px solid #e2e8f0;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:22px;">👤</span>
+                <span style="font-size:14px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Получатель</span>
               </div>
-              <span style="font-size:15px; font-weight:700; color:#1e293b;">{{ payment_details.account_name }}</span>
+              <span style="font-size:20px; font-weight:800; color:#1e293b;">{{ payment_details.account_name }}</span>
             </div>
             {% endif %}
             {% if payment_details.account_number %}
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:16px;">🔢</span>
-                <span style="font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.5px; font-weight:600;">Номер счета</span>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-size:22px;">🔢</span>
+                <span style="font-size:14px; color:#64748b; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Номер счета</span>
               </div>
-              <span style="font-family:'SF Mono', Monaco, monospace; font-size:14px; font-weight:800; color:#0284c7; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); padding:6px 12px; border-radius:8px; border:1px solid #7dd3fc;">{{ payment_details.account_number }}</span>
+              <span style="font-family:'SF Mono', Monaco, monospace; font-size:20px; font-weight:900; color:#0284c7; background:linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); padding:10px 18px; border-radius:12px; border:2px solid #7dd3fc;">{{ payment_details.account_number }}</span>
             </div>
             {% endif %}
           </div>
@@ -606,17 +610,17 @@
       
       {% else %}
         <!-- Empty State -->
-        <div style="text-align:center; padding:48px 24px;">
-          <div style="font-size:64px; margin-bottom:16px; opacity:.8;">🏦</div>
-          <h3 style="margin:0 0 8px; font-size:18px; color:#334155; font-weight:600;">Реквизиты не настроены</h3>
-          <p style="margin:0; font-size:14px; color:#64748b;">Обратитесь к администратору для получения данных</p>
+        <div style="text-align:center; padding:64px 32px;">
+          <div style="font-size:80px; margin-bottom:24px; opacity:.8;">🏦</div>
+          <h3 style="margin:0 0 12px; font-size:24px; color:#334155; font-weight:700;">Реквизиты не настроены</h3>
+          <p style="margin:0; font-size:16px; color:#64748b;">Обратитесь к администратору для получения данных</p>
         </div>
       {% endif %}
     </div>
     
     <!-- Footer -->
-    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:16px 24px; border-top:1px solid var(--card-border); text-align:center;">
-      <p style="margin:0; font-size:12px; color:#64748b;">💡 Сохраните реквизиты для быстрой оплаты</p>
+    <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); padding:20px 32px; border-top:2px solid #e2e8f0; text-align:center;">
+      <p style="margin:0; font-size:14px; color:#64748b; font-weight:600;">💡 Сохраните реквизиты для быстрой оплаты</p>
     </div>
   </div>
 
