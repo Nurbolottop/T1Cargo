@@ -1,5 +1,8 @@
 from apps.base.models import Settings, Filial
 from apps.base.payment_models import PaymentDetails
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def site_settings(request):
@@ -17,6 +20,8 @@ def site_settings(request):
     try:
         user = request.user
         if user.is_authenticated:
+            filial = None
+            
             if hasattr(user, 'staff') and user.staff and user.staff.filial:
                 # Для staff берем филиал из профиля
                 filial = user.staff.filial
@@ -27,15 +32,15 @@ def site_settings(request):
                 # Для пользователей с userssh (включая директоров)
                 try:
                     from apps.telegram_bot import models as tg_models
-                    if user.userssh.role == tg_models.UsersSH.Role.DIRECTOR:
+                    role = user.userssh.role
+                    logger.info(f"User {user.username} has role: {role}")
+                    if role == tg_models.UsersSH.Role.DIRECTOR:
                         # Для директора берем первый активный филиал
                         filial = Filial.objects.filter(is_active=True).first()
-                    else:
-                        filial = None
-                except Exception:
+                        logger.info(f"Director filial: {filial}")
+                except Exception as e:
+                    logger.error(f"Error checking director role: {e}")
                     filial = None
-            else:
-                filial = None
             
             if filial:
                 # Ищем основные реквизиты или первые активные
@@ -43,7 +48,8 @@ def site_settings(request):
                     filial=filial, is_active=True
                 ).order_by('-is_primary', '-created_at').first()
                 context["payment_details"] = payment
-    except Exception:
-        pass
+                logger.info(f"Payment details for {user.username}: {payment}")
+    except Exception as e:
+        logger.error(f"Error in site_settings: {e}")
     
     return context
