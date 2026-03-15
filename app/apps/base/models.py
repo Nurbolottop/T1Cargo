@@ -37,19 +37,6 @@ class Settings(models.Model):
 
     prohibited_goods_text = models.TextField(verbose_name="Запрещенные товары (текст)", blank=True)
 
-    # Реквизиты для оплаты
-    payment_qr_code = ResizedImageField(
-        force_format="WEBP",
-        quality=100,
-        upload_to="payment/",
-        verbose_name="QR код для оплаты",
-        blank=True,
-        null=True,
-    )
-    payment_account_name = models.CharField(max_length=255, verbose_name="Имя владельца счета", blank=True, default="")
-    payment_account_number = models.CharField(max_length=255, verbose_name="Номер счета", blank=True, default="")
-    payment_bank_name = models.CharField(max_length=255, verbose_name="Название банка", blank=True, default="")
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

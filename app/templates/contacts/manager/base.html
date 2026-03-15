@@ -481,35 +481,41 @@
     </div>
     
     <div style="display:flex; flex-direction:column; gap:16px;">
-      {% if settings.payment_qr_code %}
+      {% if payment_details.qr_code %}
       <div style="text-align:center; padding:16px; background: var(--input-bg); border-radius:16px; border: 1px solid var(--border);">
-        <img src="{{ settings.payment_qr_code.url }}" alt="QR код для оплаты" style="max-width:200px; max-height:200px; border-radius:12px;">
+        <img src="{{ payment_details.qr_code.url }}" alt="QR код для оплаты" style="max-width:200px; max-height:200px; border-radius:12px;">
         <div style="margin-top:12px; font-size:12px; color: var(--muted);">Отсканируйте QR код для оплаты</div>
       </div>
       {% endif %}
       
+      {% if payment_details.additional_photo %}
+      <div style="text-align:center; padding:16px; background: var(--input-bg); border-radius:16px; border: 1px solid var(--border);">
+        <img src="{{ payment_details.additional_photo.url }}" alt="Дополнительное фото" style="max-width:200px; max-height:200px; border-radius:12px;">
+      </div>
+      {% endif %}
+      
       <div class="kv" style="border-radius:16px;">
-        {% if settings.payment_bank_name %}
+        {% if payment_details.bank_name %}
         <div class="kv-row">
           <div class="kv-k">Банк</div>
-          <div class="kv-v">{{ settings.payment_bank_name }}</div>
+          <div class="kv-v">{{ payment_details.bank_name }}</div>
         </div>
         {% endif %}
-        {% if settings.payment_account_name %}
+        {% if payment_details.account_name %}
         <div class="kv-row">
           <div class="kv-k">Получатель</div>
-          <div class="kv-v">{{ settings.payment_account_name }}</div>
+          <div class="kv-v">{{ payment_details.account_name }}</div>
         </div>
         {% endif %}
-        {% if settings.payment_account_number %}
+        {% if payment_details.account_number %}
         <div class="kv-row">
           <div class="kv-k">Номер счета</div>
-          <div class="kv-v" style="font-family: monospace; font-size:14px;">{{ settings.payment_account_number }}</div>
+          <div class="kv-v" style="font-family: monospace; font-size:14px;">{{ payment_details.account_number }}</div>
         </div>
         {% endif %}
       </div>
       
-      {% if not settings.payment_qr_code and not settings.payment_bank_name and not settings.payment_account_name and not settings.payment_account_number %}
+      {% if not payment_details %}
       <div style="text-align:center; padding:32px 16px; color: var(--muted);">
         <div style="font-size:48px; margin-bottom:12px;">🏦</div>
         <div>Реквизиты не настроены</div>

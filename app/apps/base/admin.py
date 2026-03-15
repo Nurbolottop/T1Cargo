@@ -1,12 +1,41 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from apps.base import models as base_models
+from apps.base.payment_models import PaymentDetails
 
 # Register your models here.
 class AdminIdInline(admin.StackedInline):
     model = base_models.AdminId
     fk_name = "settings"
     extra = 0
+
+class PaymentDetailsInline(admin.StackedInline):
+    model = PaymentDetails
+    extra = 1
+    fields = (
+        "is_active",
+        "is_primary",
+        "qr_code",
+        "qr_code_preview",
+        "additional_photo",
+        "photo_preview",
+        "bank_name",
+        "account_name",
+        "account_number",
+    )
+    readonly_fields = ("qr_code_preview", "photo_preview", "created_at", "updated_at")
+
+    def qr_code_preview(self, obj):
+        if obj.qr_code:
+            return format_html('<img src="{}" style="max-height: 100px;" />', obj.qr_code.url)
+        return "—"
+    qr_code_preview.short_description = "Превью QR"
+
+    def photo_preview(self, obj):
+        if obj.additional_photo:
+            return format_html('<img src="{}" style="max-height: 100px;" />', obj.additional_photo.url)
+        return "—"
+    photo_preview.short_description = "Превью фото"
 
 @admin.register(base_models.Settings)
 class SettingsAdmin(admin.ModelAdmin):
@@ -80,8 +109,23 @@ class SettingsAdmin(admin.ModelAdmin):
 
     icon_preview.short_description = "Превью иконки"
 
+@admin.register(PaymentDetails)
+class PaymentDetailsAdmin(admin.ModelAdmin):
+    list_display = (
+        "filial",
+        "bank_name",
+        "account_name",
+        "is_active",
+        "is_primary",
+        "created_at",
+    )
+    list_filter = ("filial", "is_active", "is_primary", "created_at")
+    search_fields = ("bank_name", "account_name", "account_number")
+    readonly_fields = ("created_at", "updated_at")
+
 @admin.register(base_models.Filial)
 class FilialAdmin(admin.ModelAdmin):
+    inlines = (PaymentDetailsInline, AdminIdInline)
     list_display = (
         "city",
         "name",
